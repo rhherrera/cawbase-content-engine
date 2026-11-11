@@ -1,0 +1,84 @@
+# Desarrollo
+
+> **Estado: implementado en la versión 0.1.0 (rama `feature/a01-product-foundation`, sin commitear); probado localmente en macOS, no en Linux/GitHub Actions todavía; no aceptado por el usuario.** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
+
+Relacionado: [feature A01](features/A01-base-del-producto-instalacion-independiente.md) · [instalación y operación](installation-and-operations.md) · [CLAUDE.md](../CLAUDE.md).
+
+## 1. Proceso por feature
+
+1. Documentación y contrato primero. El primer prompt de cada feature **no** implementa.
+2. Revisión del usuario y resolución de las propuestas que bloquean ([decisiones](decisions/A01-decisions.md)).
+3. Prompt de implementación autocontenido; implementación; ejecución de checks.
+4. Instalación en ambiente de aceptación, pruebas con evidencia y acta de cierre (solo la emite el usuario).
+
+Distinguir siempre: **especificado** (documentado) ≠ **implementado** (hay código) ≠ **probado** (checks ejecutados con evidencia) ≠ **aceptado** (acta del usuario). Un test omitido (*skip*) no cuenta como aprobado.
+
+## 2. Entorno (D-02, D-03)
+
+- Desarrollo local: macOS. Aceptación automatizada: Linux (workflow escrito, **aún no ejecutado**). Python 3.13, gestionado con `uv`.
+- Backends reales en las pruebas: PostgreSQL (15, 17 y 18 ejecutados localmente) y SQLite. Ningún test de persistencia usa dobles.
+
+```bash
+uv sync --group dev          # entorno de desarrollo (usa uv.lock)
+```
+
+### PostgreSQL de pruebas (descartable y aislado)
+
+Las pruebas **nunca** usan una base existente. `CCE_TEST_POSTGRES_URL` apunta a un servidor descartable (usuario administrador); cada test crea una base propia `cce_t_<uuid>` y la elimina al terminar, sin tocar nada más. Ejemplo con un contenedor local dedicado (nombre y puerto propios de este repo):
+
+```bash
+docker run -d --name cce-test-pg17 -e POSTGRES_USER=cce_admin -e POSTGRES_PASSWORD=cce_test_pw \
+  -p 127.0.0.1:55417:5432 postgres:17-alpine
+export CCE_TEST_POSTGRES_URL='postgresql+asyncpg://cce_admin:cce_test_pw@127.0.0.1:55417/postgres'
+export CCE_REQUIRE_POSTGRES=1      # falta de PostgreSQL = fallo, no un skip silencioso
+```
+
+Sin `CCE_TEST_POSTGRES_URL` las pruebas de PostgreSQL se omiten y se informan como omitidas; con `CCE_REQUIRE_POSTGRES=1` fallan.
+
+## 3. Herramientas (adoptadas)
+
+`uv`, `ruff` (lint y formato), `mypy` en modo estricto (único verificador de tipos), `pytest` + `pytest-asyncio`, `httpx` (pruebas ASGI), `build` vía `uv build`. Configuración en [pyproject.toml](../pyproject.toml). `ruff format` se aplica a `src tests examples scripts` (no al Markdown).
+
+## 4. Checks
+
+```bash
+uv run ruff check .
+uv run ruff format --check src tests examples scripts
+uv run mypy
+uv run pytest -q -rs                 # SQLite siempre; PostgreSQL si CCE_TEST_POSTGRES_URL está definida
+uv run pytest -m dist -q             # construye wheel+sdist y los instala en entornos limpios fuera del árbol (necesita índice de paquetes)
+uv run python scripts/measure_import.py --runs 15      # importación y módulos cargados (registra, no es un gate)
+uv run --isolated --resolution lowest-direct --group dev pytest -q   # cotas inferiores declaradas
+bash examples/standalone_service.sh  # servicio real con SQLite
+uv run python examples/python_host.py
+```
+
+Suites (en `tests/`): `test_spike_sqlite.py` y `test_spike_alembic.py` (incertidumbres técnicas de base), `test_config_and_lifecycle.py`, `test_transactions.py`, `test_scopes_and_isolation.py`, `test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_migrations.py`, `test_http.py`, `test_processes.py` (CLI y servicio reales), `test_import_light.py`, `test_remaining_acceptance.py`, `test_examples.py`, `test_distribution.py` (marca `dist`).
+
+## 5. Compatibilidad de versiones
+
+Cotas declaradas en `pyproject.toml`: `sqlalchemy>=2.0.36,<2.2`, `pydantic>=2.9,<3`, `asyncpg>=0.30,<1`, `aiosqlite>=0.20,<1`, `alembic>=1.14,<2`, `fastapi>=0.115,<1`, `uvicorn>=0.32,<1`. Se ejecutó la suite con la resolución **más baja** de esas cotas y con la **más alta** disponible (versiones exactas en el informe). PostgreSQL se probó en 15, 17 y 18; PostgreSQL 14 llega a fin de soporte el 12-nov-2026 y no se soporta. De SQLite solo se probó la versión enlazada por el Python de la plataforma de pruebas; el piso 3.38 se comprueba en tiempo de ejecución pero **no** se ejecutó en esa versión.
+
+## 6. Convenciones de código
+
+- API pública explícita; lo demás privado.
+- Sin efectos al importar (verificado en un subproceso); ninguna configuración global de logging, lectura de entorno ni conexiones en módulos.
+- Todo acceso a datos de alcance pasa por el contexto; cualquier consulta de recurso de alcance lleva `scope_id`.
+- Errores tipados con código estable; nunca se propaga texto del driver; se evita `__context__` que pueda arrastrar un secreto (ver `SecretDeliveryError`).
+- Sin secretos ni valores de `metadata` en logs, excepciones ni fixtures versionados; las claves de prueba se generan en tiempo de ejecución.
+- Pruebas de concurrencia separadas por backend con expectativas distintas.
+- Los enlaces sin romper solo acreditan la coherencia de referencias entre documentos; **no validan técnicamente el contrato**, que se valida ejecutando la matriz de aceptación.
+
+## 7. CI
+
+[.github/workflows/ci.yml](../.github/workflows/ci.yml): `static`, `tests` (PostgreSQL 15/17/18 + SQLite, `CCE_REQUIRE_POSTGRES=1`), `tests-lowest-bounds`, `distribution`. **No se ha ejecutado en GitHub** (no se hizo push); su sintaxis YAML se validó localmente y sus comandos equivalen a los ejecutados a mano. Las versiones de las acciones (`actions/checkout@v4`, `astral-sh/setup-uv@v5`) no se verificaron contra su documentación oficial en este entorno.
+
+## 8. Documentación
+
+- Los documentos permanentes conservan contratos; la especificación de feature define alcance y aceptación y enlaza, no copia.
+- Todo cambio de contrato actualiza en el mismo cambio: [API pública](public-api.md), [persistencia](persistence-and-migrations.md), [seguridad](security-and-isolation.md), [operación](installation-and-operations.md), [arquitectura](architecture.md), [decisiones](decisions/A01-decisions.md), la matriz de aceptación y el [informe](a01-implementation-report.md).
+- Antes de cerrar una tarea: revisar enlaces relativos, nombres de permisos, códigos de error y estados entre documentos.
+
+## 9. Commits y ramas
+
+Rama de implementación: `feature/a01-product-foundation` (creada desde `docs/a01-product-foundation`, que no tiene commits). **No se han hecho commits ni push**; todo está en el árbol de trabajo para revisión. Los cambios ajenos (`docs/STAGE_3_PLAYBOOK.md`, `.DS_Store`) se preservan y `.DS_Store` no se agrega a Git.
