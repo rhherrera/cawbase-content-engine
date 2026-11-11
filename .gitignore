@@ -6,3 +6,5 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.DS_Store
+docs/STAGE_3_PLAYBOOK.md
