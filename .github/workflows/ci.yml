@@ -1,0 +1,81 @@
+# NOT YET EXECUTED ON GITHUB. This workflow was written together with the code but nothing has been
+# pushed, so no run exists. Local runs are documented in docs/a01-implementation-report.md.
+name: ci
+
+on:
+  push:
+    branches: [main, "feature/**", "docs/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  UV_PYTHON: "3.13"
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check src tests examples scripts
+      - run: uv run mypy
+
+  tests:
+    name: tests (PostgreSQL ${{ matrix.postgres }} + SQLite)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ["15", "17", "18"]   # minimum supported, a middle release, latest (all upstream-supported)
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: cce_admin
+          POSTGRES_PASSWORD: cce_test_pw
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cce_admin" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CCE_TEST_POSTGRES_URL: postgresql+asyncpg://cce_admin:cce_test_pw@127.0.0.1:5432/postgres
+      CCE_REQUIRE_POSTGRES: "1"   # a missing database is a failure, never a silent skip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev --frozen
+      - run: uv run pytest -q
+
+  tests-lowest-bounds:
+    name: tests (lowest declared dependency versions)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cce_admin
+          POSTGRES_PASSWORD: cce_test_pw
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cce_admin" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CCE_TEST_POSTGRES_URL: postgresql+asyncpg://cce_admin:cce_test_pw@127.0.0.1:5432/postgres
+      CCE_REQUIRE_POSTGRES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --isolated --resolution lowest-direct --group dev pytest -q
+
+  distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev --frozen
+      - name: Build wheel+sdist, install into clean environments outside the source tree
+        run: uv run pytest -m dist -q
+      - name: Import cost and loaded modules (recorded, not a gate)
+        run: uv run python scripts/measure_import.py --runs 15 | tee "$GITHUB_STEP_SUMMARY"
