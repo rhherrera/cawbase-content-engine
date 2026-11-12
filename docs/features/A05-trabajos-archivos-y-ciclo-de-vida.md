@@ -1,6 +1,6 @@
 # A05 — Trabajos, archivos y ciclo de vida
 
-> **Estado: ESPECIFICADA / NO IMPLEMENTADA, pendiente de revisión del usuario.** Entrega solo documental: sin código, migraciones, tests, scripts, dependencias, configuración ejecutable ni cambio de versión (`0.3.0`). Ninguna operación, ruta, permiso, tabla ni comando de A05 está disponible. No está cerrada ni aceptada.
+> **Estado: ESPECIFICADA / NO IMPLEMENTADA, pendiente de revisión del usuario (revisión 2 de la especificación: correcciones previas a la implementación, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)).** Entrega solo documental: sin código, migraciones, tests, scripts, dependencias, configuración ejecutable ni cambio de versión (`0.3.0`). Ninguna operación, ruta, permiso, tabla ni comando de A05 está disponible. No está cerrada ni aceptada.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A05), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md), [A05](../decisions/A05-decisions.md)), que prevalecen.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a05-jobs-files-lifecycle`, creada desde `main` en `58001e0` (merge del PR #3 de A04).
@@ -17,7 +17,7 @@
 
 ## 2. Decisiones
 
-Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios administrativos después de aceptar), texto en [A05-decisions §2](../decisions/A05-decisions.md#2-decisiones-aprobadas). Elecciones técnicas `E-A05-01` a `24` en [§3](../decisions/A05-decisions.md#3-elecciones-técnicas-derivadas) (no son decisiones de producto). Diferencias con el playbook y backlog: §4–§5 del registro.
+Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios administrativos después de aceptar), texto en [A05-decisions §2](../decisions/A05-decisions.md#2-decisiones-aprobadas). Elecciones técnicas `E-A05-01` a `31` en [§3](../decisions/A05-decisions.md#3-elecciones-técnicas-derivadas) (no son decisiones de producto). Diferencias con el playbook y backlog: §4–§5 del registro.
 
 ## 3. Mapa del contrato
 
@@ -27,7 +27,7 @@ Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios admi
 | Archivos, storage, referencias, HTTP de archivos | [§3](../jobs-files-and-lifecycle.md#3-archivos-y-almacenamiento) |
 | Protocolo base/storage y tabla de fallos | [§4](../jobs-files-and-lifecycle.md#4-consistencia-entre-base-y-almacenamiento) |
 | Operaciones, matriz de transiciones, cancelación | [§5](../jobs-files-and-lifecycle.md#5-trabajos) |
-| Autoridad temporal, reclamación, lease, publicación | [§6](../jobs-files-and-lifecycle.md#6-reclamación-posesión-y-tiempo) |
+| Autoridad temporal, orden de bloqueos, reclamación, lease, publicación | [§6](../jobs-files-and-lifecycle.md#6-tiempo-bloqueos-reclamación-y-publicación) |
 | Reintentos y commit incierto | [§7](../jobs-files-and-lifecycle.md#7-reintentos-y-recuperación) |
 | Idempotencia y fijación | [§8](../jobs-files-and-lifecycle.md#8-idempotencia-y-fijación-de-ejecución) |
 | Scope, perfil y clave tras la aceptación | [§9](../jobs-files-and-lifecycle.md#9-cambios-administrativos-después-de-aceptar-d-a05-02) |
@@ -50,7 +50,7 @@ Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios admi
 
 ## 5. Matriz de aceptación (para la implementación posterior)
 
-Criterios trazables al contrato. Estado de todos: **especificado / no implementado / no probado**.
+Criterios trazables al contrato (AC-A05-01 a 42). Estado de todos: **especificado / no implementado / no probado**.
 
 | AC | Criterio verificable | Contrato | Evidencia exigida |
 |---|---|---|---|
@@ -62,7 +62,7 @@ Criterios trazables al contrato. Estado de todos: **especificado / no implementa
 | AC-A05-06 | Reclamación concurrente (N workers): una sola posesión por trabajo; PostgreSQL con `SKIP LOCKED`, SQLite serializado | §6.2 | pruebas de concurrencia por backend |
 | AC-A05-07 | Pérdida de lease: heartbeat, registro de artefacto y publicación de un worker obsoleto fallan aunque nadie haya reclamado; la posesión vencida no se revive; otro worker publica | §6.3, §6.4 | reloj de la base manipulado por plazos cortos, no *mocks* de tiempo del motor |
 | AC-A05-08 | Cancelación frente a éxito: carrera en ambos órdenes; si gana la cancelación ninguna salida se publica; si ganó el éxito, cancelar no lo reescribe | §5.4 | pruebas con barreras |
-| AC-A05-09 | Deshabilitar el scope cancela no terminales e impide reclamar/publicar; deshabilitar+rehabilitar rápido entre aceptación y publicación **no** permite publicar; rehabilitar no resucita; resultados previos intactos; lecturas permitidas | §9 | pruebas por backend, incluido cambio hecho por el código de A03 (runtime anterior simulado sin el fence) |
+| AC-A05-09 | Deshabilitar el scope cancela no terminales e impide reclamar/publicar; deshabilitar+rehabilitar rápido entre aceptación y publicación **no** permite publicar; rehabilitar no resucita; resultados previos intactos; lecturas permitidas. **Contraejemplo de §9.2**: runtime anterior deshabilita y rehabilita (R+2) y luego un runtime A05 edita metadatos ⇒ la reconciliación ocurre antes de avanzar la revisión observada y la publicación no ocurre. También: cambio sin efecto, enable/disable A05, inicialización perezosa con trabajos preexistentes de generación desconocida, dos reconciliadores concurrentes (una sola invalidación) y D-30 intacto | §9 | pruebas por backend usando el código real de `0.3.0` para los cambios del runtime anterior |
 | AC-A05-10 | Desactivar/eliminar el perfil y publicar otra versión después de aceptar no afectan al trabajo (usa la versión fijada) | §8.5, §9 | pruebas |
 | AC-A05-11 | Revocar la clave tras aceptar: accesos posteriores 401; el trabajo sigue | §9.1 | prueba HTTP |
 | AC-A05-12 | Idempotencia: misma clave/solicitud ⇒ mismo trabajo (incluso tras cambiar el predeterminado o desactivar el perfil); clave igual y solicitud distinta ⇒ 409; dos primeras concurrentes; respuesta perdida; repetición tras expirar el resultado no re-ejecuta; tras purgar puede crear otro | §8 | pruebas por backend |
@@ -75,19 +75,33 @@ Criterios trazables al contrato. Estado de todos: **especificado / no implementa
 | AC-A05-19 | Seguridad de archivos: bombas ZIP/Flate (declarado y producido), XML con DTD/entidades, estructura inválida, tipo falso (extensión/MIME), límites efectivos (frontera ±1), rechazos heredados de A04 con motivo cerrado | §10, §12 | fixtures por familia |
 | AC-A05-20 | Aislamiento del parser: el canario falla en red, escritura fuera de tmpfs, variables sensibles, procesos y memoria en `linux_container_reference` (Linux); sin fallback silencioso; `unconfined_development` solo explícito y registrado | §10.5 | prueba Linux (Docker local) y comprobación en macOS de la negativa por defecto |
 | AC-A05-21 | Resultados: unidades válidas inconclusas conservadas; salida malformada o fallo operativo en una unidad ⇒ sin publicación parcial; unidad excesiva ⇒ `unit_too_large`; vacías sin llamar a A03; documento sin texto ⇒ `no_extractable_text`; sin agregación de puntuaciones | §11.4 | pruebas con mock |
-| AC-A05-22 | Indicadores: `textual_subset_complete` y `document_coverage_complete` según §11.6; comentarios/metadatos no analizados cuentan como no cubiertos; `authorized_removals_performed` vacío | §11.5–§11.6 | fixtures D06/P08 equivalentes |
-| AC-A05-23 | Cuotas concurrentes (cargas y trabajos simultáneos no superan límites; reservas liberadas tras fallos; contadores reparados por la limpieza) | §12.3 | pruebas por backend |
-| AC-A05-24 | HTTP: carga por stream con conteo real, 413, desconexión; límite JSON de 64 KiB intacto en rutas existentes; descargas `no-store`/`attachment`; nada no publicado/cuarentena/rechazado descargable; 404 indistinguible entre scopes | §3.7, §15 | pruebas HTTP |
+| AC-A05-22 | Indicadores según §11.5–§11.6: con comentarios/metadatos no analizados y el subconjunto `S` completo ⇒ `textual_subset_complete = true` y `document_coverage_complete = false`; `authorized_removals_performed` vacío | §11.5–§11.6 | fixtures equivalentes a D06/P08 |
+| AC-A05-23 | Cuotas concurrentes: cargas y trabajos simultáneos no superan límites; reservas convertidas en bytes almacenados o inciertos (nunca liberadas solo por fallar el registro); contadores de trabajos en cada transición; recálculo concurrente sin perder cambios | §12.3 | pruebas por backend |
+| AC-A05-24 | HTTP: carga por stream con conteo real, 413, desconexión; límite JSON de 64 KiB intacto; descargas verificadas antes de enviar encabezados (un objeto corrupto no produce un `200` completo), `no-store`/`attachment`; spool contabilizado y eliminado; nada no publicado/cuarentena/rechazado descargable; 404 indistinguible | §3.7, §15 | pruebas HTTP con objeto corrompido en el storage |
 | AC-A05-25 | Permisos: matriz completa de los 17 (cada operación con y sin su permiso); `analysis:execute` no lee archivos ni resultados; `AdminContext` sin acceso; sin jerarquías | §16 | pruebas |
 | AC-A05-26 | Ausencia de contenido sensible (texto, contexto, fragmentos, resultados, hashes de contenido, claves de storage, referencias externas, tokens, claves de idempotencia) en logs, errores, eventos y diagnósticos | §20 | marcadores únicos |
 | AC-A05-27 | Instalación liviana: base sin `documents` no importa bibliotecas documentales; gate D-33 se mantiene; wheel/sdist sin `experiments/` | §11.1 | `-m dist` y prueba de grafo de imports |
 | AC-A05-28 | Migración `0003` aditiva sobre esquema 2 con datos y objetos ajenos; niveles 3/1; runtime A03 sobre esquema 3 no rompe garantías (AC-A05-09); orden de despliegue documentado | §18 | pruebas de migración por backend |
 | AC-A05-29 | `HostTransaction`: operaciones largas rechazadas antes de efectos; breves en savepoint, sin commit del motor | §19 | pruebas por backend |
 | AC-A05-30 | Ningún import de `experiments/a04` en `src`; ninguna operación de protección/restauración expuesta | §11.1 | prueba estática |
+| AC-A05-31 | Orden común de bloqueos: reclamación, publicación, deshabilitación/reconciliación, cancelación, `delete_file`, `delete_job_data` y limpieza concurrentes sobre el mismo scope sin interbloqueos entre operaciones del motor (PostgreSQL); interbloqueo provocado con `HostTransaction` traducido a `database_unavailable` con el savepoint revertido | §6.2 | pruebas de concurrencia por backend |
+| AC-A05-32 | Publicación frente a `delete_file`, expiración y pérdida de la entrada **y** del contexto, en ambos órdenes: si gana la eliminación no hay publicación; si gana la publicación, eliminar después no borra el resultado | §6.5 | pruebas con barreras por backend |
+| AC-A05-33 | Plazos: lease inicial acotado por `attempt_deadline_at` y `deadline_at`; publicación rechazada con plazo de intento o de trabajo vencido aunque no haya ocurrido un heartbeat; cancelar un `running` con lease vencido (T5b); toda transición terminal fija timestamps, cierra intentos, descarta artefactos y ajusta contadores; mutaciones del dueño anterior fallan tras una recuperación | §5.3, §6.3, §6.5 | pruebas con reloj de la base |
+| AC-A05-34 | **Escritor tardío** (contraejemplo de §4.4): un `put_new` suspendido que reanuda después del sello no materializa el objeto (filesystem: temporal y nombre final); el tombstone sobrevive a la purga de metadatos y solo desaparece con la confirmación; un limpiador que perdió la posesión no registra resultados ni toca contadores | §3.3–§3.4, §4.3–§4.4 | pruebas con escritor bloqueado en un punto controlado |
+| AC-A05-35 | Idempotencia de envíos y cargas: el contexto exacto forma parte de la huella (ausente ≠ presente); repetición sin crear objetos nuevos; dos primeras solicitudes concurrentes con texto materializado (objetos de la perdedora abandonados y contabilizados); respuesta perdida antes y después de aceptar; conflicto con `HostTransaction` resuelto sin abortar la transacción exterior; carga reiniciada cuyo escritor antiguo no puede finalizar la reserva nueva; repetición de registro externo sin volver a llamar a `describe` | §8.2–§8.4 | pruebas por backend |
+| AC-A05-36 | Validaciones por identidad: dos configuraciones distintas sobre el mismo archivo coexisten; el primer resultado de una identidad es autoritativo; escritura de un worker obsoleto rechazada; admisión y descarga según la identidad vigente | §10.7 | pruebas |
+| AC-A05-37 | `delete_job_data`: no terminal ⇒ `job_not_terminal`; terminal sin datos ⇒ sin cambio; no elimina entradas compartidas; lectura de resultados frente a expiración/eliminación | §14.1 | pruebas |
+| AC-A05-38 | Cobertura por capacidad: solo clasificación, solo detección, ambas con una `not_configured`, ambas ejecutadas; ningún acceso a `coverage.complete` de capacidades no ejecutadas; sin verdad por vacuidad; resultados por unidad sin agregación | §11.6 | pruebas con mock |
+| AC-A05-39 | DOCX con hipervínculo externo ⇒ texto `S`, destino `N`, sin acceso de red; otras relaciones externas (plantilla, imagen vinculada, `altChunk`) ⇒ `external_reference` | §10.1, §11.2 | fixtures sin red (aislamiento sin red en Linux) |
+| AC-A05-40 | Matriz conservadora: `/Rotate 270`, texto oblicuo, object streams, `/Contents` en arreglo, linearización, anidación de tablas > 2 y varias secciones DOCX ⇒ rechazo con motivo cerrado; lo `S` de §11.2 extraído con oráculo | §11.2 | fixtures por variante |
+| AC-A05-41 | Retención de metadatos: archivos, validaciones, `external_ref` e idempotencia de cargas/registros purgados a los 30 días de `end_of_life_at`; trabajos e idempotencia a los 30 días de `terminated_at`; sobreviven solo tombstones sin contenido si falta la confirmación física | §13.3 | pruebas con reloj de la base |
+| AC-A05-42 | Cuotas bajo fallos: cargas fallidas repetidas, `declared_size` falso (menor y mayor), limpieza averiada (backend que falla el borrado) y reintentos concurrentes no hacen crecer el cargo de storage por encima de la cuota; los bytes solo se liberan tras confirmación | §12.3, §4.4 | pruebas con storage de prueba con fallos inyectados |
 
 ## 6. Riesgos y límites declarados
 
-- La extracción PDF se limita al subconjunto A04; muchos PDF reales (Type0/CID) se rechazarán hasta A08 (D-A04-04).
+- La extracción se limita al subconjunto conservador de §11.2 del contrato; muchos PDF y DOCX reales (Type0/CID, object streams, varias secciones) se rechazarán; las ampliaciones son backlog y D-A04-04 sigue en A08.
+- Mientras convivan runtimes anteriores, sus cambios efectivos sobre un scope cancelan trabajos pendientes (elección propuesta E-A05-10, pendiente de revisión).
+- Los sellos del filesystem de referencia son permanentes (B-A05-13).
 - La garantía de aislamiento depende del perfil configurado; en macOS no hay sandbox.
 - Los límites son elecciones iniciales sin medición; la capacidad no se acredita por haberlos fijado.
 - El mock no mide calidad de detección; ningún indicador de cobertura acredita protección.
