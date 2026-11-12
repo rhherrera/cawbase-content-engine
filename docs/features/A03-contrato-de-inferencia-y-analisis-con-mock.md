@@ -102,8 +102,8 @@ Casos verificables; **no se escriben pruebas ahora**. «PG» = PostgreSQL real, 
 | ID | Criterio | Backend |
 |---|---|---|
 | AC-A03-20 | Puntuaciones finitas en [0, 1]; se rechazan booleanos, NaN, ±∞, cadenas y valores fuera de rango (`inference_output_invalid`) | — |
-| AC-A03-21 | Elegibilidad `score ≥ umbral` con bordes (`==` umbral elegible; un paso por debajo no; umbral 0 y 1; puntuaciones 0 y 1) | — |
-| AC-A03-22 | Ranking descendente, empates con el mismo `rank`, desempate técnico por `category_id`; sin top-k ni exclusiones; no elegibles presentes con `eligible = false`; **sin ganadora implícita** en modo `ranking` | — |
+| AC-A03-21 | Elegibilidad `score ≥ umbral` con bordes (`==` umbral elegible; un paso por debajo no; umbral 0 y 1; puntuaciones 0 y 1; números extremos); comparación racional exacta independiente del contexto decimal del host | — |
+| AC-A03-22 | Ranking descendente, empates con el mismo `rank`, desempate técnico por `category_id`; sin top-k ni exclusiones; no elegibles presentes con `eligible = false`; **sin ganadora implícita** en modo `ranking` (`resolution: null`) | — |
 | AC-A03-23 | Resolución: candidatas = elegibles con `max − score ≤ tolerancia` (borde `==` incluido, p. ej. 0.9/0.7/0.2; un paso por encima excluido), sin empates transitivos; gana la menor prioridad; prioridades no alteran puntuaciones ni ranking; motivos `highest_score` / `priority_tiebreak` | — |
 | AC-A03-24 | Sin elegibles ⇒ `no_eligible_category`, `selected_category_id = null`; clasificación inconclusa ⇒ `classification_inconclusive`, sin ganadora aunque existan puntuaciones; los cuatro casos («sin elegibles», «inconclusa», «no solicitada», «no configurada») son distinguibles | — |
 | AC-A03-25 | Una clasificación completa cubre **todas** las categorías habilitadas, sin duplicados ni ids desconocidos; en una parcial, las ausentes van a `not_evaluated_ids` y nunca con puntuación inventada | — |
@@ -113,7 +113,7 @@ Casos verificables; **no se escriben pruebas ahora**. «PG» = PostgreSQL real, 
 
 | ID | Criterio | Backend |
 |---|---|---|
-| AC-A03-30 | Localizadores `[start, end)` en puntos de código: emoji (1), combinantes, `\r\n`, ZWJ, repeticiones; `0 ≤ start < end ≤ len`; el fragmento debe coincidir; sin búsqueda aproximada ni reparación (offset desplazado ⇒ `fragment_mismatch`) | — |
+| AC-A03-30 | Localizadores `[start, end)` en puntos de código: emoji (1), combinantes, `\r\n`, ZWJ, repeticiones; `0 ≤ start < end ≤ len`; el fragmento debe coincidir textualmente; sin búsqueda aproximada ni reparación; un desplazamiento hacia texto distinto ⇒ `fragment_mismatch`; un desplazamiento hacia otra ocurrencia idéntica **puede pasar** (la localización semántica es de A09) | — |
 | AC-A03-31 | Superposiciones y distintos tipos sobre el mismo fragmento válidos; duplicado exacto `(type_id, start, end)` ⇒ salida inválida; orden `(start, end, type_id)` estable | — |
 | AC-A03-32 | El fragmento no aparece en el resultado público; el contexto auxiliar no admite hallazgos (offsets solo del texto); ningún campo de página/bounding box/run | — |
 | AC-A03-33 | Cobertura por grupos: regiones canónicas aceptadas, no canónicas/fuera de rango/vacías/solapadas rechazadas; `not_evaluated_ids` y `complete` derivados por el núcleo; un id en dos grupos rechazado | — |
@@ -126,7 +126,7 @@ Casos verificables; **no se escriben pruebas ahora**. «PG» = PostgreSQL real, 
 | ID | Criterio | Backend |
 |---|---|---|
 | AC-A03-40 | Salidas malformadas (no mapa, no serializable, campos desconocidos/faltantes, tipos, versión de contrato, capacidad faltante o no ejecutada, ids desconocidos/duplicados, offsets, puntuaciones, contradicciones estado/cobertura/razón) ⇒ `inference_output_invalid` (502) con `problems` solo de códigos; ninguna se transforma en resultado parcial | — |
-| AC-A03-41 | Límites sin truncamiento silencioso: texto/contexto (caracteres y bytes), hallazgos, longitud de hallazgo, regiones, bytes de salida; entrada ⇒ `limit_exceeded`, salida ⇒ `inference_output_invalid`; cuerpo > 64 KiB ⇒ 413; los límites de otras rutas no cambian | PG, SQ |
+| AC-A03-41 | Límites sin truncamiento silencioso: texto/contexto (caracteres y bytes), hallazgos, longitud de hallazgo, regiones, bytes de salida; entrada ⇒ `limit_exceeded`, salida ⇒ `inference_output_invalid`; cuerpo > 64 KiB ⇒ `limit_exceeded` con HTTP 413 (código vigente); los límites de otras rutas no cambian | PG, SQ |
 | AC-A03-42 | Texto vacío ⇒ 422; solo espacios válido; sustitutos aislados (Python y `\ud800` en JSON) ⇒ 422; el texto no se normaliza ni recorta (el resultado y los offsets lo confirman); contexto vacío ⇒ 422 | PG, SQ |
 | AC-A03-43 | Timeout (`hang`) ⇒ `inference_timeout` (504, retryable); apagado/cargando/inalcanzable/fallo recuperable ⇒ `inference_unavailable` (503, retryable, `reason`); sin reintentos automáticos (contador de llamadas = 1), sin fallback, sin esperar readiness | PG, SQ |
 | AC-A03-44 | Cancelación del llamador: `CancelledError` se propaga, el adaptador recibe la cancelación, no hay resultado ni se convierte en éxito/timeout; HTTP: desconexión del cliente tampoco produce éxito | PG, SQ |

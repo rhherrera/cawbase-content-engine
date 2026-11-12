@@ -68,6 +68,19 @@ Adoptadas con criterio al completar el contrato; **no son decisiones de producto
 | E-A03-17 | Códigos nuevos: `inference_not_configured` (503), `capabilities_not_configured` (409), `inference_unavailable` (503, retryable, con `reason`), `inference_timeout` (504, retryable), `inference_output_invalid` (502, `problems` solo con códigos), `inference_fixture_not_found` (501); se reutiliza `transaction_incompatible` para `HostTransaction` y `internal_error` para fallos inesperados del adaptador | 422 queda para entrada del llamador; 5xx distintos para fallos del adaptador; sin filtrar contenido | [§8.1](../inference-and-analysis.md#81-tabla-de-errores-se-reutilizan-jerarquía-engineerror-y-envoltorio) |
 | E-A03-18 | Sin migración ni cambio de niveles: `schema_level = 2`, `min_runtime_level = 1`; sin tablas de análisis; sin eventos en `admin_events`; sin extra de dependencias | A03 no persiste; el permiso es una cadena en una columna `TEXT` | [§10.1](../inference-and-analysis.md#101-sin-persistencia-d-a03-01) |
 
+### 3.1 Precisiones técnicas de implementación
+
+Surgidas al implementar; **no son decisiones de producto** y no cambian D-A03-01 a 03.
+
+| ID | Precisión | Motivo |
+|---|---|---|
+| P-A03-01 | El cuerpo HTTP excesivo se mantiene como `limit_exceeded` con HTTP 413 (`PayloadTooLargeError`); el contrato no usa `payload_too_large` | El código vigente de A01/A02; no se cambia el middleware |
+| P-A03-02 | `resolution` es `null` en una clasificación ejecutada con `mode = ranking` y el objeto especificado con `mode = resolution`; `not_requested`/`not_configured` solo llevan `status` | Eliminar la contradicción «no existe el campo (`null`)» |
+| P-A03-03 | El ejemplo de salida cruda trae las tres puntuaciones (finance, hr, legal) coherentes con el ejemplo público; la regla de coincidencia exacta entre ids puntuados y evaluados no se debilita | Ejemplo inconsistente |
+| P-A03-04 | `text == input[start:end]` verifica correspondencia textual, no intención semántica: un desplazamiento a otra ocurrencia idéntica puede pasar; la localización semántica se evalúa en A09; sin búsqueda ni reparación | La afirmación anterior era falsa |
+| P-A03-05 | Las comparaciones usan racionales exactos `Fraction(repr(x))`, no `Decimal` con el contexto del host; el contexto decimal global no se modifica | `Decimal` redondea a la precisión del contexto; exactitud demostrable e independiente del host |
+| P-A03-06 | La selección compartida es una secuencia de lecturas sucesivas, no una instantánea atómica; reglas de concurrencia descritas con precisión en el contrato (§3.2) | `READ COMMITTED` no ofrece instantánea entre sentencias |
+
 ## 4. Diferencias respecto del playbook (revisión 6)
 
 Registro local; no reemplaza al playbook ni lo modifica. Referencia: sección «A03», «Perfiles e integración» y «Clasificación: ranking o resolución por desempate».
