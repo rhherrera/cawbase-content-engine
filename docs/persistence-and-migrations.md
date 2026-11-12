@@ -231,3 +231,139 @@ SQLite **no** emula PostgreSQL (D-04). Cada diferencia relevante, tratada explí
 | Uso previsto en A01 | producción, base compartida con CAWbase | desarrollo, pruebas, instalaciones pequeñas de un solo nodo |
 
 Las pruebas de concurrencia se escriben **por backend** con expectativas distintas, no con una sola aserción común.
+
+## 7. A02 — Modelo persistente y migración (especificado; no implementado)
+
+> **Especificado para A02; no implementado.** Ninguna de estas tablas ni la revisión `0002` existe en `0.1.0` (nivel de esquema 1). Semántica: [perfiles y catálogo](profiles-and-catalog.md); decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§6 (namespaces, propiedad, bloqueo, una transacción, objetos ajenos) **se mantiene sin cambios**.
+
+Mismos tipos lógicos que §2 (`text`, `int`, `bool`, `timestamp`, `json`, `bytes`) más `real` (`double precision` / `REAL`). Todos los nombres reciben el namespace fijo (schema o prefijo, §1), incluidos índices y restricciones. Las tablas heredan el modelo de pertenencia: **`scope_id` forma parte de toda clave primaria y toda clave foránea**.
+
+### 7.1 Tablas
+
+**`profiles`** — perfil y configuración editable de nivel perfil.
+
+| Campo | Tipo | Restricciones |
+|---|---|---|
+| `scope_id` | text | PK (1/2); FK → `scopes` |
+| `profile_id` | text | PK (2/2); `^[a-z0-9][a-z0-9_-]{0,63}$` validado por el motor + `CHECK length BETWEEN 1 AND 64` |
+| `display_name` | text | NOT NULL; 1–200 |
+| `description` | text | NULL; ≤ 1000 |
+| `language` | text | NOT NULL, `CHECK IN ('es','en')`; inmutable |
+| `status` | text | NOT NULL, `CHECK IN ('active','disabled','deleted')` |
+| `deleted_at` | timestamp | NULL; `CHECK (status = 'deleted') = (deleted_at IS NOT NULL)` |
+| `revision` | int | NOT NULL, ≥ 1 |
+| `draft_revision` | int | NOT NULL, ≥ 1 |
+| `ranking_mode` | text | NOT NULL, `CHECK IN ('ranking','resolution')` |
+| `eligibility_threshold`, `tie_tolerance` | real | NOT NULL, `CHECK BETWEEN 0 AND 1` (el motor rechaza NaN/±∞ antes: SQLite almacenaría NaN como NULL) |
+| `ranking_revision` | int | NOT NULL, ≥ 1 |
+| `current_version_number` | int | NULL hasta la primera publicación; ≥ 1; solo crece |
+| `catalog_id`, `catalog_version`, `catalog_copied_at` | text, int, timestamp | los tres NULL o los tres informados (`CHECK`) |
+| `created_at`, `updated_at` | timestamp | NOT NULL |
+
+Índice: (`scope_id`, `status`, `profile_id`) para listados.
+
+**`profile_categories`** y **`profile_sensitive_types`**
+
+| Campo | Tipo | Restricciones |
+|---|---|---|
+| `scope_id`, `profile_id` | text | FK compuesta → `profiles (scope_id, profile_id)` |
+| `category_id` / `type_id` | text | PK = (`scope_id`, `profile_id`, id) |
+| `name` / `name_key` | text | `name` 1–100; `name_key` = NFKC + *casefold* de `name` (lo calcula el motor) |
+| `definition` | text | NOT NULL; 1–1500 |
+| `examples` | json | NOT NULL; `{"positive":[…],"negative":[…]}` |
+| `translations` | json | NULL |
+| `priority` | int | solo categorías; NULL o `CHECK BETWEEN 1 AND 10000` |
+| `origin_entry` | text | solo tipos; NULL o clave del catálogo |
+| `state` | text | NOT NULL, `CHECK IN ('enabled','disabled','deleted')` |
+| `deleted_at` | timestamp | NULL; coherente con `state` |
+| `revision` | int | NOT NULL, ≥ 1 |
+| `created_at`, `updated_at` | timestamp | NOT NULL |
+
+Índices **parciales únicos** (PostgreSQL y SQLite ≥ 3.8; el piso 3.38 los soporta):
+
+- `UNIQUE (scope_id, profile_id, name_key) WHERE state <> 'deleted'` — nombre único entre los no eliminados; el id eliminado sigue reservado por la PK, su nombre queda libre.
+- Solo categorías: `UNIQUE (scope_id, profile_id, priority) WHERE state = 'enabled' AND priority IS NOT NULL`.
+- Listados: (`scope_id`, `profile_id`, `state`, id).
+
+**`profile_versions`** — instantáneas inmutables.
+
+| Campo | Tipo | Restricciones |
+|---|---|---|
+| `scope_id`, `profile_id` | text | FK compuesta → `profiles` |
+| `version_number` | int | PK = (`scope_id`, `profile_id`, `version_number`); ≥ 1 |
+| `version_id` | text | NOT NULL, UNIQUE global; `pvr_` + 32 hex |
+| `source_draft_revision` | int | NOT NULL; **UNIQUE** (`scope_id`, `profile_id`, `source_draft_revision`) |
+| `snapshot_schema_version` | int | NOT NULL |
+| `snapshot` | json | NOT NULL; ≤ 1 MiB canónico |
+| `content_hash` | bytes | NOT NULL; 32 bytes (SHA-256 de la serialización canónica) |
+| `snapshot_bytes` | int | NOT NULL |
+| `capabilities` | json | NOT NULL (`classification`, `detection`; derivado, para listar sin leer la instantánea) |
+| `published_at` | timestamp | NOT NULL |
+| `published_by` | text | NULL; etiqueta opaca del contexto |
+
+Sin `UPDATE` ni `DELETE`: el código del motor solo hace `INSERT` y `SELECT` sobre esta tabla (verificable por prueba estática). Un rol de runtime puede restringirse a `SELECT, INSERT` sobre ella como defensa adicional (no es requisito: quien comparte credenciales con el motor puede alterar cualquier tabla; ver el [límite del contexto](security-and-isolation.md#limite-del-contexto-python)).
+
+**`scope_profile_defaults`** — predeterminado por scope.
+
+| Campo | Tipo | Restricciones |
+|---|---|---|
+| `scope_id` | text | PK; FK → `scopes`. **Una fila por scope ⇒ a lo sumo un predeterminado** |
+| `profile_id` | text | NULL (sin designación); FK compuesta (`scope_id`, `profile_id`) → `profiles` |
+| `revision` | int | NOT NULL, ≥ 1; sube en cada designación o remoción |
+| `updated_at` | timestamp | NOT NULL |
+
+Sin fila ⇒ nunca designado (`revision` lógica 0). La fila se crea en la primera designación y se conserva (con `profile_id` NULL al quitarla) para que `revision` sea monótona.
+
+`admin_events` ([§2.6](#26-admin_events-p-12)) se reutiliza: se agregan acciones (`profile.*`, `category.*`, `sensitive_type.*`, [API pública §10.8](public-api.md#108-eventos-de-trazabilidad)); la columna `action` es texto sin `CHECK`, así que no se altera la tabla. `target_type` ∈ `profile`, `category`, `sensitive_type`, `profile_version`, `default_profile`; `target_id` = id del recurso (`profile_id` o `profile_id/elemento`).
+
+### 7.2 Relaciones
+
+```text
+scopes 1──* profiles 1──* profile_categories
+                     1──* profile_sensitive_types
+                     1──* profile_versions
+scopes 1──0..1 scope_profile_defaults ──► profiles (scope_id, profile_id)
+```
+
+### 7.3 Integridad aplicada por el motor
+
+Igual que §2.8: en SQLite las FK dependen de `PRAGMA foreign_keys=ON` por conexión y un engine inyectado puede no activarlas; por eso **ninguna garantía depende solo de una FK o `CHECK`**. El motor valida en código: pertenencia (`scope_id` + `profile_id`) en cada consulta, estados permitidos, límites de cantidad, forma de los ids, rango/finitud de números y reglas de §6.2 del modelo. Las restricciones únicas parciales y la PK de `scope_profile_defaults` sí son garantía de base y se prueban bajo concurrencia en ambos backends.
+
+### 7.4 Reglas de acceso
+
+Se aplican las de §3 y además:
+
+1. Toda consulta de perfiles incluye `scope_id = ctx.scope_id`; toda consulta de categorías, tipos y versiones incluye `scope_id` **y** `profile_id` en el `WHERE` (nunca «por id de elemento solamente»). Un elemento de otro perfil es indistinguible de uno inexistente.
+2. Las escrituras del conjunto editable, la publicación, las transiciones de estado del perfil y la designación comienzan con un `UPDATE` condicional de la fila de `profiles` (con `status` y, según el caso, `draft_revision`/`current_version_number` en el `WHERE`) que además la bloquea; `rowcount = 0` se interpreta con una lectura posterior para elegir el error exacto. La comprobación y la escritura son atómicas ([API pública §10.7](public-api.md#107-concurrencia-publicación-e-idempotencia)).
+3. La publicación lee categorías y tipos `enabled` **dentro de la misma transacción**, después de bloquear la fila del perfil, de modo que la instantánea es consistente (PostgreSQL `READ COMMITTED` basta porque todo escritor del conjunto editable pasa antes por esa fila).
+4. Ninguna transacción abarca llamadas HTTP, inferencia ni E/S remota. Publicar es CPU y una escritura de ≤ 1 MiB.
+5. Los `IntegrityError` (PK, índices parciales) se traducen a `ConflictError`, `NameConflictError` o `PriorityConflictError`; nunca se propaga texto del driver.
+6. Dialectos: PostgreSQL usa `jsonb`; SQLite texto JSON. El `content_hash` se calcula en el motor sobre la serialización canónica, no con funciones de la base, de modo que es idéntico en ambos backends.
+
+### 7.5 Migración desde A01 (plan; no escrita)
+
+Revisión propuesta **`0002_profiles`**, solo hacia adelante, estilo **expandir** (no altera ni elimina nada existente):
+
+1. Crea las cinco tablas de §7.1 con sus índices y restricciones, en orden de dependencia. No usa `ALTER` de tablas existentes (evita reconstrucciones «batch» de SQLite).
+2. No migra datos: los alcances, clientes, claves, grants y eventos de A01 quedan intactos; **no** se crean perfiles para los alcances existentes y su comportamiento no cambia. Un alcance sin perfiles es un estado válido.
+3. Sube `schema_level` de 1 a 2. `min_runtime_level` **permanece en 1**: un runtime `0.1.0` puede seguir operando sobre el esquema 2 porque ignora tablas que no conoce.
+4. Se ejecuta con el procedimiento de §4 sin cambios: una transacción, un bloqueo, plan calculado tras el bloqueo, atómica, repetirla es `already_current`. Un arranque concurrente con varias revisiones pendientes (A01 y A02 juntas, p. ej. una base vacía) aplica `0001` y `0002` en la misma transacción.
+5. Objetos ajenos: la verificación de instalación/actualización de §4.6 se repite en la actualización 1→2 (tablas, vistas y secuencias ajenas, incluso con nombres próximos al prefijo, permanecen intactas).
+
+Compatibilidad schema/runtime ([§4.5](#45-compatibilidad-p-10)) tras A02: el runtime de A02 requiere `schema_level ≥ 2` (con 1 ⇒ `schema_incompatible`, hay que migrar antes); `min_runtime_level = 1` mantiene el despliegue gradual «migrar → actualizar».
+
+**Permisos nuevos y despliegue mixto.** Los permisos `profiles:read|write` se guardan como filas de `api_key_scope_grants` (columna `permission` de texto libre; no hay `CHECK`, así que no hay cambio de esquema). **El runtime de A01 (`0.1.0`) falla al cargar los grants de una clave que contenga un permiso desconocido** (`ScopePermission(...)` lanza `ValueError`). Por tanto: **no deben emitirse claves con `profiles:*` hasta que todos los runtimes del despliegue estén en la versión de A02.** Las claves ya emitidas no se amplían ni se reinterpretan (los grants son inmutables, D-27): para dar acceso HTTP a perfiles se emite una clave nueva. Endurecer la carga de grants con permisos desconocidos queda como mejora en el backlog.
+
+Operación: el despliegue de A02 sigue «migrar (credencial DDL) → actualizar API/workers». El servicio independiente migra al arrancar como en A01. No se introduce purga ni infraestructura nueva; el crecimiento de `profile_versions` es acotado por los [límites](installation-and-operations.md#11-a02--límites-y-observabilidad-especificado-no-implementado) (no hay retención automática).
+
+### 7.6 Diferencias PostgreSQL / SQLite relevantes para A02
+
+| Aspecto | PostgreSQL | SQLite |
+|---|---|---|
+| Arbitraje de carreras | bloqueo de la fila del perfil por `UPDATE`; los demás esperan y reevalúan el `WHERE` (`READ COMMITTED`) | un solo escritor: las escrituras de A02 inician como escritura inmediata; el segundo escritor espera `busy_timeout` o falla `database_unavailable (retryable)` |
+| Índices parciales únicos | sí | sí (≥ 3.8; piso 3.38) |
+| Números reales | `double precision`; JSON numérico exacto | `REAL`/texto; NaN → NULL (por eso se rechaza antes) |
+| FK compuestas | siempre aplicadas | solo con `foreign_keys=ON` (el motor valida igual) |
+| Tamaño de `snapshot` | `jsonb` (reordena claves) | texto; el `content_hash` no depende del almacenamiento |
+
+Las pruebas de concurrencia se escriben **por backend** (§6, última línea).

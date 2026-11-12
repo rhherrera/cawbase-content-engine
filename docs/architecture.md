@@ -99,3 +99,14 @@ Clasificación, detección, ranking, inferencia y mock (A03); PDF/DOCX; protecci
 ## 7. Extensión prevista
 
 Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabla con `scope_id`, repositorio que lo exige, operaciones por contexto, permisos en el catálogo y pruebas de acceso cruzado. Los nuevos extras (`inference`, `documents`) deben pasar las mismas comprobaciones de importación liviana.
+
+## 8. A02 — Perfiles, categorías y tipos sensibles (especificado; no implementado)
+
+> **Especificado para A02; no implementado.** La estructura de §3 es la real de `0.1.0`; lo siguiente es el plan. Modelo: [perfiles y catálogo](profiles-and-catalog.md).
+
+- A02 **no cambia los principios** (§1) ni la dirección de dependencias (§2): nuevos recursos de alcance siguiendo §7 (tabla con `scope_id`, operaciones por contexto, permisos en el catálogo, pruebas de acceso cruzado).
+- Módulos previstos, todos en el **núcleo liviano** (sin FastAPI ni Alembic): `operations/profiles.py`, `operations/profile_elements.py` (categorías y tipos), `operations/profile_versions.py` (publicación, listado, resolución) y `operations/profile_defaults.py`; `catalog.py` (datos del catálogo inicial, sin E/S, importado de forma perezosa); validación compartida en `validation.py`; tablas en `persistence/tables.py`; `http/router.py` agrega las rutas de [API pública §10.4](public-api.md#104-rutas-http-v1-extra-http) sin lógica propia (D-07); `migrations/versions/0002_profiles.py`.
+- No se agregan dependencias ni extras. No se cargan modelos. `import cawbase_content_engine` no importa el catálogo ni las operaciones de perfiles hasta que se usan (sin efectos al importar, D-11).
+- Flujo de **publicación**: host autoriza → `engine.scoped(ctx).publish_profile(…)` → una transacción: `UPDATE` condicional de la fila del perfil (bloqueo + comprobación de `draft_revision`) → lectura de elementos `enabled` → validación → serialización canónica y hash → `INSERT` de la versión → actualización de `current_version_number` → evento → commit. Sin llamadas remotas.
+- Flujo de **resolución**: `resolve_profile` es una lectura; devuelve la versión concreta que A03/A05 fijarán. A02 no ejecuta análisis, no incluye mock y no define el contrato de inferencia (A03).
+- Responsabilidad: el motor guarda y versiona configuración de análisis; la **asociación con organizaciones/proyectos, la herencia y la configuración efectiva por destino son de CAWbase** (que crea perfiles por scope según su dominio y fija la versión vía `resolve_profile`).

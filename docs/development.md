@@ -96,3 +96,10 @@ Auditoría de artefactos: `uv run python scripts/audit_artifacts.py dist/*` (arc
 ## 9. Commits y ramas
 
 Rama de implementación de A01: `feature/a01-product-foundation` (cerrada). Rama de especificación de A02: `feature/a02-profiles-categories-sensitive-types` (commits locales; crear commits locales **no** autoriza push ni publicar). `.DS_Store` y `docs/STAGE_3_PLAYBOOK.md` están en `.gitignore` (commit `d091b49`, del usuario) y no se agregan a Git; la segunda es una copia local de referencia que **ningún test, enlace ni artefacto necesita**. Un checkout limpio no la contiene y construye wheel y sdist idénticos.
+
+## 10. A02 — Proceso previsto (especificado; no implementado)
+
+- A02 está en la fase de **documentación**: no hay código, migración, pruebas ni mock. Rama: `feature/a02-profiles-categories-sensitive-types`. La aceptación futura se verifica con la matriz de [feature A02](features/A02-perfiles-categorias-y-tipos-sensibles.md#7-matriz-de-aceptación-futura) (criterios `AC-A02-nn`); ninguno se ha ejecutado.
+- Cada feature usa **sus propios** documentos de decisiones, especificación e informe: A02 → `docs/decisions/A02-decisions.md`, `docs/features/A02-…md` y, al implementarse, un informe `docs/a02-implementation-report.md`.
+- Cuando se implemente: los checks de §4 se mantienen; las pruebas de PostgreSQL siguen usando solo bases descartables `cce_t_*`; las pruebas de concurrencia de A02 se escriben por backend; se verifica el esquema 1→2 con objetos ajenos; se cuida que ningún fixture contenga secretos ni datos personales reales (usar dominios `example.test` y valores evidentemente falsos).
+- La importación liviana y el gate D-33 deben seguir cumpliéndose (el catálogo se importa de forma perezosa).

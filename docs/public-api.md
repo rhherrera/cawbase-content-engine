@@ -2,7 +2,7 @@
 
 > **Estado: A01 implementada en la versión 0.1.0, **cerrada y aceptada por el usuario** (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). Los resultados de pruebas conservan en el informe su atribución histórica a los commits donde se obtuvieron. A02 está **en especificación** (no implementada ni aceptada): lo marcado «especificado para A02; no implementado» no existe en el código.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
 
-Relacionado: [arquitectura](architecture.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
+Relacionado: [perfiles y catálogo (A02, especificado)](profiles-and-catalog.md) · [arquitectura](architecture.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 
 ## 1. Superficie pública y versionado
 
@@ -405,3 +405,245 @@ Los valores del ejemplo son ficticios. Los datos de `metadata` no deben contener
 ### 9.4 Códigos de estado generales
 
 `200/201` éxito · `401` autenticación · `403` permiso · `404` no accesible/no encontrado · `409` conflicto · `412` revisión · `413` cuerpo demasiado grande · `422` validación · `428` precondición requerida · `429` reservado (limitación delegada al proxy en A01) · `500` interno · `503` no listo, base no disponible o esquema incompatible.
+
+## 10. A02 — Perfiles, categorías y tipos sensibles (especificado; no implementado)
+
+> **Especificado para A02; no implementado.** Ninguno de los nombres, firmas ni rutas de esta sección existe en `0.1.0` ni debe presentarse como disponible. Modelo y semántica: [perfiles y catálogo](profiles-and-catalog.md). Decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de A01 (§1–§9) sigue vigente y no cambia; esta sección **solo agrega**.
+
+### 10.1 Convenciones heredadas de A01
+
+- Mismas operaciones del núcleo desde Python y HTTP (D-07); API `async`; `engine.scoped(ctx, transaction=None) -> ScopedOperations`; `scope_id` explícito, validado contra `ctx.scope_id` (otro ⇒ `ResourceNotAccessibleError`). Las operaciones **no** están en `AdminOperations`: un `AdminContext` no da acceso a perfiles ([seguridad](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-especificado-no-implementado)).
+- Transacción propia o `HostTransaction` ([§6](#6-transacciones)): cada operación en un savepoint, sin commit del motor sobre la transacción del host. Cada operación es **una** transacción corta; nada se mantiene abierto entre llamadas HTTP.
+- Paginación `limit`/`cursor` → `Page[T]` (por defecto 50, máximo 200). Orden: perfiles, categorías y tipos por su id ascendente; versiones por `version_number` **descendente**.
+- Alcance `disabled`: lecturas permitidas; escrituras ⇒ `ScopeDisabledError` (409); **resolver** ⇒ `ScopeDisabledError`.
+- Permisos de alcance **nuevos**: `profiles:read` y `profiles:write` ([catálogo](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-especificado-no-implementado)). `ScopePermission.PROFILES_READ` / `PROFILES_WRITE`.
+
+### 10.2 Semántica de edición (`PATCH`)
+
+| Entrada | Efecto |
+|---|---|
+| Campo **omitido** (Python: `UNSET`) | sin cambio |
+| Campo con valor | reemplaza el valor (las listas y objetos, como `examples`/`translations`, se reemplazan **completos**; no hay fusión) |
+| `null` (Python: `None`) | solo en campos anulables (`description`, `translations`, `priority`): borra el valor. En campos no anulables (`display_name`, `name`, `definition`, `mode`, umbrales) ⇒ `validation_failed` |
+| Campos desconocidos o de solo lectura (`profile_id`, `status`, `state`, `revision`, ids, `language`) | `validation_failed` |
+| Ningún campo | `validation_failed` |
+| Valores idénticos a los actuales, revisión correcta | `200`, sin escritura, sin incrementar revisión, sin evento |
+| `expected_revision`/`If-Match` distinto de la actual | `revision_conflict` (412) **siempre**, aunque los valores ya estén aplicados |
+
+HTTP: `If-Match: "<revision>"` obligatorio en `PATCH`, `PUT` y `DELETE` de recursos con revisión (428 `precondition_required` si falta). Las respuestas de `GET` y de escritura llevan `ETag: "<revision>"`. Las transiciones de estado (`disable`, `enable`, `delete`) son de **estado objetivo**: sin `If-Match`, repetibles, sin efecto si ya están en ese estado.
+
+### 10.3 Firmas Python (`ScopedOperations`)
+
+Todas `await`. `Page`, `UpsertResult` y `UNSET` como en A01. Tipos de resultado en §10.5.
+
+**Perfiles** (`profiles:write` salvo lecturas)
+
+| Método | Permiso | Resultado | Errores principales |
+|---|---|---|---|
+| `create_profile(scope_id, profile_id, display_name, *, description=None, language="es", initial_catalog="starter")` | write | `UpsertResult[Profile]` | `ConflictError`, `LimitExceededError`, `ScopeDisabledError`, `ValidationFailedError`. `initial_catalog` ∈ `"starter"` \| `"empty"` |
+| `get_profile(scope_id, profile_id, *, include_deleted=False)` | read | `Profile` | `ResourceNotFoundError` |
+| `list_profiles(scope_id, *, status=None, limit=50, cursor=None)` | read | `Page[Profile]` | `status`: colección de `active`/`disabled`/`deleted`; por defecto `active`+`disabled` |
+| `update_profile(scope_id, profile_id, *, expected_revision, display_name=UNSET, description=UNSET)` | write | `Profile` | `RevisionConflictError`, `ProfileDisabledError` |
+| `disable_profile` / `enable_profile` / `delete_profile` `(scope_id, profile_id)` | write | `Profile` | `ProfileIsDefaultError` (al desactivar/eliminar el predeterminado), `InvalidStateTransitionError` |
+
+**Ranking/resolución**
+
+| Método | Permiso | Resultado |
+|---|---|---|
+| `get_ranking_config(scope_id, profile_id)` | read | `RankingConfig` |
+| `update_ranking_config(scope_id, profile_id, *, expected_revision, mode=UNSET, eligibility_threshold=UNSET, tie_tolerance=UNSET)` | write | `RankingConfig`; `ProfileInvalidError` si `mode="resolution"` incumple [§6.2](profiles-and-catalog.md#62-validación-de-la-resolución) |
+
+**Categorías** y **tipos sensibles** (mismas operaciones; los tipos usan `sensitive_type` en el nombre y `type_id`, sin `priority`)
+
+| Método | Permiso | Resultado |
+|---|---|---|
+| `create_category(scope_id, profile_id, category_id, name, definition, *, examples=None, translations=None, priority=None)` | write | `UpsertResult[Category]` |
+| `get_category(scope_id, profile_id, category_id, *, include_deleted=False)` | read | `Category` |
+| `list_categories(scope_id, profile_id, *, state=None, limit=50, cursor=None)` | read | `Page[Category]`; `state`: colección de `enabled`/`disabled`/`deleted`; por defecto `enabled`+`disabled` |
+| `update_category(scope_id, profile_id, category_id, *, expected_revision, name=UNSET, definition=UNSET, examples=UNSET, translations=UNSET, priority=UNSET)` | write | `Category` |
+| `disable_category` / `enable_category` / `delete_category` `(scope_id, profile_id, category_id)` | write | `Category` |
+| `create_sensitive_type` / `get_sensitive_type` / `list_sensitive_types` / `update_sensitive_type` / `disable_sensitive_type` / `enable_sensitive_type` / `delete_sensitive_type` | igual | `SensitiveType` |
+
+Errores comunes de elementos: `NameConflictError`, `PriorityConflictError` (categorías), `ConflictError` (id existente con atributos distintos o id reservado por un elemento eliminado), `LimitExceededError`, `ProfileDisabledError`, `ResourceNotFoundError` (perfil inexistente o eliminado, o elemento que no pertenece a ese perfil: respuesta idéntica).
+
+**Versiones**
+
+| Método | Permiso | Resultado |
+|---|---|---|
+| `publish_profile(scope_id, profile_id, *, expected_draft_revision)` | write | `UpsertResult[ProfileVersion]` (`created=False` si no hay cambios que publicar o es una repetición) · `ProfileInvalidError`, `RevisionConflictError`, `LimitExceededError`, `ProfileDisabledError` |
+| `get_profile_version(scope_id, profile_id, version_number)` | read | `ProfileVersion` (con `snapshot`); funciona también con el perfil desactivado o eliminado |
+| `list_profile_versions(scope_id, profile_id, *, limit=50, cursor=None)` | read | `Page[ProfileVersionSummary]` (sin `snapshot`) |
+
+**Predeterminado y resolución**
+
+| Método | Permiso | Resultado | Errores |
+|---|---|---|---|
+| `get_default_profile(scope_id)` | read | `DefaultProfile` (`profile_id=None` y `revision=0` si nunca se designó) | — |
+| `set_default_profile(scope_id, profile_id, *, expected_revision)` | write | `DefaultProfile` | `ProfileNotSelectableError` (perfil `disabled`/`deleted`), `ProfileNotPublishedError`, `RevisionConflictError`. Mismo perfil ya predeterminado y revisión correcta ⇒ sin escritura |
+| `clear_default_profile(scope_id, *, expected_revision)` | write | `DefaultProfile` | `RevisionConflictError`. Sin designación y revisión correcta ⇒ sin escritura |
+| `resolve_profile(scope_id, *, profile_id=None, version_number=None)` | read | `ResolvedProfile` | `DefaultProfileNotSetError`, `ProfileNotSelectableError`, `ProfileNotPublishedError`, `ScopeDisabledError`, `ResourceNotFoundError`, `ValidationFailedError` |
+
+**Catálogo del paquete** (sin E/S ni permisos; no pertenece a ningún alcance): `cawbase_content_engine.starter_catalog() -> StarterCatalog`, función síncrona que devuelve los datos versionados del paquete; se importa de forma perezosa (no pesa en la importación del paquete).
+
+### 10.4 Rutas HTTP (`/v1`, extra `http`)
+
+Todas bajo `/v1/scopes/{scope_id}`; autenticación por API key; sin grant alguno sobre `{scope_id}` ⇒ 404 `resource_not_accessible`; grant sin el permiso requerido ⇒ 403 `permission_denied`. Un recurso inexistente (o de otro perfil) dentro de un alcance accesible ⇒ 404 `resource_not_found`, idéntico en ambos casos. Mismo orden de procesamiento que A01 (tamaño de cuerpo → autenticación → permiso/alcance → validación → operación).
+
+| Método y ruta | Permiso | Éxito | Notas |
+|---|---|---|---|
+| `POST /profiles` | write | `201` creado / `200` existente idéntico | cuerpo `{profile_id, display_name, description?, language?, initial_catalog?}`; `409 conflict` si difiere |
+| `GET /profiles` | read | `200 Page` | `status` (repetible o lista separada por comas), `limit`, `cursor` |
+| `GET /profiles/{profile_id}` | read | `200 Profile` + `ETag` | `?include_deleted=true` |
+| `PATCH /profiles/{profile_id}` | write | `200 Profile` | `If-Match` |
+| `POST /profiles/{profile_id}/disable` · `/enable` · `/delete` | write | `200 Profile` | estado objetivo |
+| `GET /profiles/{profile_id}/ranking` | read | `200 RankingConfig` + `ETag` | |
+| `PATCH /profiles/{profile_id}/ranking` | write | `200 RankingConfig` | `If-Match` (`ranking_revision`) |
+| `POST /profiles/{profile_id}/categories` | write | `201` / `200` | cuerpo `{category_id, name, definition, examples?, translations?, priority?}` |
+| `GET /profiles/{profile_id}/categories` | read | `200 Page` | `state` (repetible o lista), `limit`, `cursor` |
+| `GET /profiles/{profile_id}/categories/{category_id}` | read | `200 Category` + `ETag` | `?include_deleted=true` |
+| `PATCH /profiles/{profile_id}/categories/{category_id}` | write | `200 Category` | `If-Match` |
+| `POST …/categories/{category_id}/disable` · `/enable` · `/delete` | write | `200 Category` | estado objetivo |
+| `…/sensitive-types` (mismas seis rutas con `{type_id}`) | read/write | igual | sin `priority`; cuerpo de creación con `type_id` |
+| `POST /profiles/{profile_id}/publish` | write | `201` versión creada / `200` + `Idempotent-Replay: true` si ya existía o no había cambios | cuerpo `{expected_draft_revision}`; `412` si no coincide; `422 profile_invalid` |
+| `GET /profiles/{profile_id}/versions` | read | `200 Page` (sin `snapshot`) | |
+| `GET /profiles/{profile_id}/versions/{version_number}` | read | `200 ProfileVersion` | funciona con el perfil desactivado/eliminado |
+| `GET /default-profile` | read | `200 DefaultProfile` + `ETag` | siempre `200`, aunque no haya designación |
+| `PUT /default-profile` | write | `200 DefaultProfile` | cuerpo `{profile_id}`; `If-Match` |
+| `DELETE /default-profile` | write | `200 DefaultProfile` | quita la designación (no borra ningún perfil); `If-Match` |
+| `GET /resolved-profile` | read | `200 ResolvedProfile` | `?profile_id=&version=`; ver [resolución](profiles-and-catalog.md#8-resolver-un-perfil-y-una-versión-publicados) |
+
+No existen rutas administrativas (`/v1/admin/…`) de perfiles ni consultas entre alcances. No hay endpoints genéricos de filtros, búsqueda ni lotes. Límite de cuerpo: el mismo de A01 (64 KiB); los cuerpos de A02 (un elemento por solicitud) caben en él.
+
+Ejemplos ilustrativos (valores ficticios):
+
+```jsonc
+// POST /v1/scopes/proj-7f3a/profiles
+{ "profile_id": "general-es", "display_name": "Perfil general", "language": "es", "initial_catalog": "starter" }
+
+// 201
+{ "scope_id": "proj-7f3a", "profile_id": "general-es", "display_name": "Perfil general", "description": null,
+  "language": "es", "status": "active", "revision": 1, "draft_revision": 1, "current_version_number": null,
+  "is_default": false,
+  "ranking": { "mode": "ranking", "eligibility_threshold": 0, "tie_tolerance": 0, "revision": 1 },
+  "catalog_provenance": { "catalog_id": "cce-starter-sensitive-types", "catalog_version": 1, "copied_at": "2026-01-01T00:00:00Z" },
+  "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z", "deleted_at": null }
+
+// POST …/profiles/general-es/publish        { "expected_draft_revision": 1 }
+// 201
+{ "version": { "version_id": "pvr_…", "version_number": 1, "source_draft_revision": 1, "content_hash": "…",
+               "capabilities": { "classification": false, "detection": true }, "snapshot_bytes": 5120,
+               "published_at": "2026-01-01T00:00:00Z", "published_by": "key:k_…", "snapshot": { "…": "…" } },
+  "created": true }
+
+// 422 (publicar con resolución inválida; sin contenido de definiciones)
+{ "error": { "code": "profile_invalid", "message": "Profile configuration is not valid.", "request_id": "…",
+             "problems": [ { "code": "priority_missing", "category_id": "billing" } ] } }
+```
+
+Los valores de los ejemplos (ids, fechas, tamaños, hashes) son ficticios.
+
+### 10.5 Tipos de resultado (esquemas ilustrativos)
+
+```python
+class Profile:
+    scope_id; profile_id; display_name; description; language
+    status  # active | disabled | deleted
+    revision; draft_revision
+    current_version_number  # None hasta la primera publicación
+    is_default
+    ranking: RankingConfig
+    catalog_provenance: CatalogProvenance | None  # catalog_id, catalog_version, copied_at
+    created_at; updated_at; deleted_at
+
+
+class RankingConfig:
+    mode  # ranking | resolution
+    eligibility_threshold; tie_tolerance; revision
+
+
+class Category:
+    scope_id; profile_id; category_id; name; definition
+    examples  # Examples(positive: tuple[str, ...], negative: tuple[str, ...])
+    translations  # Mapping[str, Translation(name, definition)] | None
+    priority  # int | None
+    state  # enabled | disabled | deleted
+    revision; created_at; updated_at; deleted_at
+
+
+class SensitiveType:  # como Category, sin priority; con origin_entry: str | None
+    ...
+
+
+class ProfileVersionSummary:
+    scope_id; profile_id; version_id; version_number; source_draft_revision
+    content_hash  # hex SHA-256
+    capabilities  # {"classification": bool, "detection": bool}
+    snapshot_bytes; published_at; published_by
+
+
+class ProfileVersion(ProfileVersionSummary):
+    snapshot  # Mapping inmutable (profiles-and-catalog §7.1)
+
+
+class DefaultProfile:
+    scope_id; profile_id  # None si no hay
+    revision; updated_at  # revision 0 / updated_at None si nunca se designó
+
+
+class ResolvedProfile:
+    selection  # "explicit" | "default"
+    version: ProfileVersion
+```
+
+### 10.6 Códigos de error nuevos
+
+Se agregan a la [tabla de errores](#8-errores); el resto de códigos se reutiliza con su significado actual (`resource_not_found` también para recursos hijos dentro de un alcance accesible).
+
+| Código | Excepción | HTTP | Cuándo |
+|---|---|---|---|
+| `profile_disabled` | `ProfileDisabledError` | 409 | Edición del borrador, publicación o designación sobre un perfil `disabled` |
+| `profile_not_selectable` | `ProfileNotSelectableError` | 409 | Resolver o designar un perfil `disabled`/`deleted` (también con versión explícita) |
+| `profile_not_published` | `ProfileNotPublishedError` | 409 | Resolver o designar un perfil sin versión vigente |
+| `profile_is_default` | `ProfileIsDefaultError` | 409 | Desactivar o eliminar el perfil predeterminado sin reemplazar/quitar antes la designación |
+| `default_profile_not_set` | `DefaultProfileNotSetError` | 404 | Resolver sin `profile_id` cuando el alcance no tiene predeterminado |
+| `invalid_state_transition` | `InvalidStateTransitionError` | 409 | `enable`/`disable` sobre un recurso eliminado |
+| `name_conflict` | `NameConflictError` | 409 | Nombre ya usado por otro elemento no eliminado del mismo perfil |
+| `priority_conflict` | `PriorityConflictError` | 409 | Prioridad ya usada por otra categoría `enabled` del perfil |
+| `profile_invalid` | `ProfileInvalidError` | 422 | Publicar o pasar a `resolution` con configuración inválida. Lleva `problems`: lista de `{code, category_id?}` con códigos `no_enabled_elements`, `resolution_requires_categories`, `priority_missing`, `priority_duplicate`; **nunca** nombres ni definiciones |
+
+Reutilizados: `revision_conflict` (412; también para `expected_draft_revision` desactualizada), `precondition_required` (428), `validation_failed` (422), `limit_exceeded` (422/413), `scope_disabled` (409), `conflict` (409), `permission_denied` (403), `resource_not_accessible` (404), `resource_not_found` (404). Los mensajes son genéricos: no incluyen nombres, definiciones, ejemplos ni valores.
+
+### 10.7 Concurrencia, publicación e idempotencia
+
+Complementa [§7](#7-idempotencia-por-operación). Cada fila describe qué ocurre al **repetir** la operación o **perder la respuesta**; no hay idempotencia genérica ni reintentos ocultos.
+
+| Operación | Clave natural | Al repetir / perder la respuesta |
+|---|---|---|
+| `create_profile`, `create_category`, `create_sensitive_type` | `profile_id` (por alcance) / id (por perfil) | atributos idénticos a los **actuales** ⇒ devuelve el existente (`created=False`, HTTP 200). Distintos ⇒ `ConflictError`. Si se editó después, repetir la creación original da conflicto: el llamador lee. Un id eliminado sigue reservado (conflicto). En `create_profile`, `initial_catalog` idéntico a lo registrado (procedencia presente ⇔ `starter`) |
+| `update_*`, `update_ranking_config`, `set_default_profile`, `clear_default_profile`, `PUT/DELETE default-profile` | recurso + revisión | **estricto (D-30)**: revisión desactualizada ⇒ 412 aunque los valores ya estén aplicados; tras perder la respuesta el llamador relee y reconcilia. Revisión correcta y sin cambio efectivo ⇒ sin escritura |
+| `disable_*`, `enable_*`, `delete_*` | recurso | estado objetivo: ya en ese estado ⇒ éxito sin escritura, sin evento. `delete` repetido sobre eliminado ⇒ éxito. `enable`/`disable` sobre eliminado ⇒ `invalid_state_transition` |
+| `publish_profile` | (perfil, `expected_draft_revision`) | primera vez ⇒ crea la versión. Repetida con el borrador sin cambios ⇒ devuelve la **misma** versión (`created=False`); si el contenido es igual al de la versión vigente tampoco crea otra. Si el borrador cambió ⇒ 412. Respaldo: `UNIQUE (perfil, source_draft_revision)` |
+| `resolve_profile`, lecturas | — | sin efectos |
+
+**Revisión del conjunto editable.** `draft_revision` ([modelo §4](profiles-and-catalog.md#4-revisiones-e-a02-02)) cambia ante cualquier modificación efectiva del borrador; publicar la comprueba y captura una instantánea consistente en la misma transacción.
+
+**Carreras (resolución).** Toda escritura del conjunto editable, la publicación, las transiciones de estado del perfil y la designación del predeterminado toman primero **la fila del perfil** (`UPDATE` condicional por `scope_id`, `profile_id` y estado; en PostgreSQL bloquea la fila, en SQLite el único escritor serializa) y escriben en la misma transacción. Orden de bloqueo siempre perfil → elemento/versión/designación (sin interbloqueos entre ellas).
+
+| Carrera | Resultado |
+|---|---|
+| Edición ∥ edición (elementos distintos) | se serializan; ambas aplican; cada una incrementa `draft_revision` |
+| Edición ∥ edición (mismo elemento) | gana una; la otra recibe 412 (comparación y escritura atómicas por `revision` del elemento) |
+| Edición ∥ publicación | si gana la publicación, la edición aplica después (el borrador supera la versión). Si gana la edición, la publicación con `expected_draft_revision` vieja recibe 412 |
+| Publicación ∥ publicación | misma revisión ⇒ una crea y la otra devuelve esa versión; revisiones distintas ⇒ 412 en la rezagada |
+| Desactivar/eliminar elemento ∥ publicación | igual que una edición |
+| Desactivar/eliminar perfil ∥ edición/publicación | gana quien toma antes la fila; si gana la transición, la otra falla (`profile_disabled` o 404); si gana la publicación, la versión queda y el perfil pasa después a su estado |
+| Desactivar/eliminar perfil ∥ designación como predeterminado | la fila del perfil arbitra: si gana la designación, la transición falla con `profile_is_default`; si gana la transición, la designación falla con `profile_not_selectable`. Nunca queda un predeterminado inválido |
+| Designación ∥ designación | CAS por `revision` de la designación: una gana, la otra 412. Una fila por alcance (`PK scope_id`) garantiza un solo predeterminado |
+| Designación ∥ primera publicación | la designación exige versión publicada (condición en el `UPDATE`); si pierde la carrera, `profile_not_published` |
+| Deshabilitar alcance ∥ escritura | como A01: el estado del alcance se comprueba dentro de la transacción; una deshabilitación confirmada después no deshace una escritura ya confirmada |
+
+Con `HostTransaction` las filas bloqueadas permanecen bloqueadas hasta que el host confirme o revierta: el host mantiene su transacción corta. Un error recuperable revierte solo el savepoint de la operación (incluido el incremento de `draft_revision`).
+
+### 10.8 Eventos de trazabilidad
+
+Se reutiliza `admin_events` ([persistencia §2.6](persistence-and-migrations.md#26-admin_events-p-12)) sin renombrarlo: acciones `profile.created|updated|disabled|enabled|deleted|ranking_updated|published|default_set|default_cleared`, `category.created|updated|disabled|enabled|deleted`, `sensitive_type.<igual>`. `detail` contiene solo ids, nombres de campos modificados y revisiones/`version_number` (antes/después); **nunca** nombres, definiciones, ejemplos ni traducciones. Crear un perfil con catálogo inicial registra un solo evento (`profile.created`, con `catalog_version`), no uno por tipo copiado. Sin cambio efectivo ⇒ sin evento. Se escriben en la misma transacción que el cambio.

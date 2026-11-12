@@ -211,3 +211,72 @@ Alcanza únicamente los datos que A01 introduce.
 - TLS lo termina el proxy inverso/ingreso; el servicio no gestiona certificados en A01.
 - Sin caché de autenticación: cada solicitud lee la base (costo aceptado a cambio de revocación inmediata).
 - En SQLite, la seguridad entre aplicaciones que comparten archivo depende del sistema de archivos.
+
+## 9. A02 — Permisos y datos de perfiles (especificado; no implementado)
+
+> **Especificado para A02; no implementado.** En `0.1.0` el catálogo tiene **8** permisos. A02 especifica **2 adicionales** (10 en total) y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
+
+### 9.1 Catálogo ampliado
+
+| Permiso | Nivel | Estado | Habilita |
+|---|---|---|---|
+| `scope:read`, `scope:write`, `admin:scopes:read`, `admin:scopes:write`, `admin:clients:read`, `admin:clients:write`, `admin:grants:write`, `admin:diagnostics:read` | — | **implementados en A01** | Ver §3.1 (sin cambios) |
+| `profiles:read` | alcance | **especificado para A02; no implementado** | Leer perfiles, sus categorías y tipos sensibles, la configuración de ranking, las versiones publicadas y la designación predeterminada; **resolver** un perfil y versión |
+| `profiles:write` | alcance | **especificado para A02; no implementado** | Crear, editar, desactivar/reactivar y eliminar (lógicamente) perfiles, categorías y tipos; modificar el ranking; **publicar** versiones; designar y quitar el predeterminado |
+
+Reglas:
+
+- **Sin jerarquías implícitas.** `profiles:write` no incluye `profiles:read`: una clave que escribe y también necesita leer recibe ambos grants. No hay comodines.
+- `scope:read` y `scope:write` **conservan su significado**: no otorgan `profiles:*` automáticamente (ni al revés). `admin:*` (incluido `admin:grants:write` o `admin:scopes:read`) **no concede acceso al contenido de perfiles**: un `AdminContext` no puede invocar las operaciones de perfiles, y las rutas `/v1/admin/*` no exponen perfiles. Quien administra alcances no lee sus definiciones sin un grant de alcance explícito.
+- Se reutilizan `ScopeContext`, `ScopedOperations`, API keys y las [reglas de delegación D-27](#32-reglas-de-delegacion-d-27) sin cambios: un permiso `profiles:*` sobre un alcance es un grant de alcance como cualquier otro (subconjunto de lo que posee el emisor, o `admin:grants:write` para alcances existentes sin acceso directo). **No hay credenciales por perfil.**
+- **Los grants existentes son inmutables y no se reinterpretan.** Las claves emitidas antes de A02 no ganan `profiles:*`. Para ampliar el acceso HTTP se emite una clave nueva (y se revoca la anterior) conforme a las reglas vigentes. Ver el aviso de despliegue mixto en [persistencia §7.5](persistence-and-migrations.md#75-migración-desde-a01-plan-no-escrita).
+- Los contextos Python se construyen con los nuevos permisos: `engine.trusted_scope_context(scope_id, {ScopePermission.PROFILES_READ, …})`; el límite del contexto Python (§2.1) se mantiene.
+- Bootstrap y recuperación administrativa siguen emitiendo solo los seis `admin:*`: no incluyen permisos de alcance.
+
+### 9.2 Matriz Python y HTTP
+
+| Operación | Python: contexto y permiso | HTTP | Clave |
+|---|---|---|---|
+| Leer/listar perfiles, categorías, tipos, ranking, versiones | `ScopeContext` + `profiles:read` | `GET /v1/scopes/{id}/profiles…` | grant `profiles:read` en `{id}` |
+| Leer designación predeterminada / resolver | `ScopeContext` + `profiles:read` | `GET …/default-profile`, `GET …/resolved-profile` | `profiles:read` |
+| Crear, editar, cambiar estado de perfiles/categorías/tipos; ranking | `ScopeContext` + `profiles:write` | `POST/PATCH …/profiles…` | `profiles:write` |
+| Publicar | `ScopeContext` + `profiles:write` | `POST …/publish` | `profiles:write` |
+| Designar / quitar predeterminado | `ScopeContext` + `profiles:write` | `PUT/DELETE …/default-profile` | `profiles:write` |
+| Perfiles con `AdminContext` | **no disponible** (tipo distinto) | sin rutas `/v1/admin` | — |
+
+Reglas de respuesta: sin ningún grant sobre el alcance ⇒ 404 `resource_not_accessible` (idéntico exista o no); con algún grant pero sin el permiso requerido (p. ej. `scope:read` para listar perfiles) ⇒ 403 `permission_denied`. Un perfil, categoría, tipo o versión inexistente **o perteneciente a otro perfil o alcance** produce el mismo 404 `resource_not_found`: ninguna consulta se resuelve por id solo.
+
+### 9.3 Datos sensibles aportados por el consumidor
+
+Nombres, definiciones, ejemplos, traducciones e instantáneas **pueden contener información sensible** (los ejemplos describen justamente qué se considera sensible). Reglas:
+
+| Dato | Tratamiento |
+|---|---|
+| `display_name`, `description` del perfil; `name`, `definition`, `examples`, `translations`; `snapshot` de versiones | Datos del consumidor. **Nunca** en logs, errores, eventos, diagnósticos, métricas ni mensajes de validación; los errores citan el nombre del campo y el límite, no el valor. Se almacenan en la base en claro (el cifrado de datos en reposo es del despliegue) |
+| Ids (`profile_id`, `category_id`, `type_id`), `version_id`, `version_number`, revisiones, nombres de campos | Permitidos en logs y eventos. Los ids son elegidos por el consumidor: deben ser opacos o neutros, sin datos personales (igual que `scope_id`) |
+| `problems` de `profile_invalid` | Solo código e id de categoría |
+| `published_by` / `actor` | Etiqueta opaca del contexto (no un usuario final) |
+| Fixtures, ejemplos y catálogo del paquete | Sintéticos: nunca secretos ni datos personales reales |
+
+El motor **no escanea** el contenido de las definiciones en busca de datos reales y no promete evitar que el consumidor los cargue.
+
+### 9.4 Retención, eliminación y alcance deshabilitado
+
+| Dato | Retención en A02 | Desactivación / eliminación |
+|---|---|---|
+| `profiles`, `profile_categories`, `profile_sensitive_types` | indefinida | `disabled` (reversible) y `deleted` (lógica, terminal). **Sin purga física ni restauración** |
+| `profile_versions` | indefinida; **inmutables** | no se modifican ni eliminan, tampoco al desactivar/eliminar el perfil o sus elementos |
+| `scope_profile_defaults` | permanente por alcance | se quita la designación; la fila se conserva |
+| Eventos de A02 en `admin_events` | indefinida (Q-04 de A01 sigue abierta) | sin borrado |
+
+- **Eliminar lógicamente no borra el contenido**: las definiciones, ejemplos y traducciones permanecen en la fila (eliminada) y en **todas** las instantáneas que las incluyeron. Quien necesite retirar contenido sensible de la base debe esperar la política de purga (backlog B-A02-01): hoy solo es posible con intervención manual del DBA, fuera del motor.
+- Las copias de seguridad conservan estos datos según la política del operador.
+- **Alcance deshabilitado** (política de A01): las lecturas siguen permitidas, incluidas las versiones históricas; las escrituras se rechazan (`scope_disabled`); **resolver para un análisis nuevo se rechaza**. Consultar una versión histórica **no** equivale a autorizar su uso en una ejecución nueva.
+- Un perfil `disabled`/`deleted` no puede seleccionarse para ejecuciones nuevas ni con versión explícita; sus versiones siguen consultables con `profiles:read`.
+- El tratamiento de trabajos ya iniciados al desactivar/eliminar corresponde a A05; A02 no cancela nada retroactivamente (la selección se evalúa en la resolución, no durante la ejecución).
+
+### 9.5 Riesgos residuales añadidos
+
+- Un `profiles:read` expone todas las definiciones del alcance (sin granularidad por perfil: no hay credenciales por perfil).
+- Un host con acceso directo a la base (§2.1) puede leer y alterar las instantáneas; la inmutabilidad la garantiza el código del motor, no el motor de base de datos.
+- Las definiciones eliminadas lógicamente siguen en la base y en las versiones hasta que exista purga.
