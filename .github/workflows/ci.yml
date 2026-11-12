@@ -1,5 +1,10 @@
-# NOT YET EXECUTED ON GITHUB. This workflow was written together with the code but nothing has been
-# pushed, so no run exists. Local runs are documented in docs/a01-implementation-report.md.
+# NOT YET EXECUTED ON GITHUB: nothing has been pushed, so no run exists. Equivalent commands were run
+# locally on macOS and in a Linux container (docs/a01-implementation-report.md). Do not read this file as
+# evidence that CI passes.
+#
+# Actions are pinned to full commit SHAs (tag in the comment), as recommended by the setup-uv README.
+# Versions checked on 2026-11-11 against each action's latest GitHub release:
+#   actions/checkout v7.0.1, astral-sh/setup-uv v10.3.3, actions/upload-artifact v7.0.2.
 name: ci
 
 on:
@@ -17,8 +22,8 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --group dev --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check src tests examples scripts
@@ -30,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        postgres: ["15", "17", "18"]   # minimum supported, a middle release, latest (all upstream-supported)
+        postgres: ["15", "16", "17", "18"]   # every declared PostgreSQL major
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -44,10 +49,17 @@ jobs:
       CCE_TEST_POSTGRES_URL: postgresql+asyncpg://cce_admin:cce_test_pw@127.0.0.1:5432/postgres
       CCE_REQUIRE_POSTGRES: "1"   # a missing database is a failure, never a silent skip
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --group dev --frozen
-      - run: uv run pytest -q
+      - run: uv run pytest -q -rs --junitxml=reports/junit-pg${{ matrix.postgres }}.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: junit-postgres-${{ matrix.postgres }}
+          path: reports/
+          if-no-files-found: error
+          retention-days: 14
 
   tests-lowest-bounds:
     name: tests (lowest declared dependency versions)
@@ -65,17 +77,56 @@ jobs:
       CCE_TEST_POSTGRES_URL: postgresql+asyncpg://cce_admin:cce_test_pw@127.0.0.1:5432/postgres
       CCE_REQUIRE_POSTGRES: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv run --isolated --resolution lowest-direct --group dev pytest -q
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Record the versions actually resolved (do not infer them from the command)
+        run: |
+          mkdir -p reports
+          uv run --isolated --resolution lowest-direct --group dev python -c "import importlib.metadata as m; print({n: m.version(n) for n in ['sqlalchemy','pydantic','asyncpg','aiosqlite','alembic','fastapi','uvicorn','pytest','httpx']})" | tee reports/lowest-versions.txt
+      - run: uv run --isolated --resolution lowest-direct --group dev pytest -q -rs --junitxml=reports/junit-lowest.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: junit-lowest-bounds
+          path: reports/
+          if-no-files-found: error
+          retention-days: 14
 
   distribution:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cce_admin
+          POSTGRES_PASSWORD: cce_test_pw
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cce_admin" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CCE_TEST_POSTGRES_URL: postgresql+asyncpg://cce_admin:cce_test_pw@127.0.0.1:5432/postgres
+      CCE_REQUIRE_POSTGRES: "1"   # AC-07 runs the installed example against PostgreSQL
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uv sync --group dev --frozen
-      - name: Build wheel+sdist, install into clean environments outside the source tree
-        run: uv run pytest -m dist -q
-      - name: Import cost and loaded modules (recorded, not a gate)
-        run: uv run python scripts/measure_import.py --runs 15 | tee "$GITHUB_STEP_SUMMARY"
+      - name: Build wheel + sdist and audit them (no local files, no secrets)
+        run: |
+          uv build --out-dir dist
+          uv run python scripts/audit_artifacts.py dist/*
+          (cd dist && sha256sum * | tee SHA256SUMS)
+      - name: Install the artifacts into clean environments OUTSIDE the source tree and run the distribution tests
+        run: uv run pytest -m dist -q -rs --junitxml=reports/junit-dist.xml
+      - name: Import cost from the installed wheel in a clean venv (recorded, not a gate)
+        run: |
+          mkdir -p reports
+          uv run python scripts/measure_distribution.py --wheel "$(ls dist/*.whl)" --cold-runs 5 --warm-runs 15 | tee reports/measure-import-linux.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: distribution
+          path: |
+            dist/
+            reports/
+          if-no-files-found: error
+          retention-days: 14
