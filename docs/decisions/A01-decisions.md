@@ -1,6 +1,6 @@
 # A01 — Registro de decisiones
 
-> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Ver el [informe de implementación](../a01-implementation-report.md).
+> **Estado: A01 implementada (0.1.0), cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario).** Ver el [informe de implementación](../a01-implementation-report.md). Decisiones de la siguiente feature: [A02-decisions](A02-decisions.md).
 
 Este registro separa tres categorías. No mezclarlas.
 
@@ -21,6 +21,7 @@ Contratos que usan estas decisiones: [feature A01](../features/A01-base-del-prod
 
 | 4 | Revisión de validación (base `d091b49`): validación en Linux local, PostgreSQL 16, piso de SQLite, AC-26/AC-101/AC-07, CI y artefactos, mediciones. Correcciones I-10 a I-15 (§4.4) y la pregunta Q-06 (§5). No cambia decisiones aprobadas. |
 | 5 | El usuario resolvió Q-06 y Q-07 (D-32, D-33). La política de workers declara lo observado con Uvicorn ≥ 0.50; el gate de importación es la mediana en caliente. Se agregó el test del gate. |
+| 6 | Cierre de A01 (D-34): el usuario confirmó la aceptación sobre `1b5ffab` y la aprobación de GitHub Actions. Solo cambia el estado documental. |
 
 Esto numera revisiones **de esta especificación**; no es una revisión del playbook.
 
@@ -65,9 +66,10 @@ Esto numera revisiones **de esta especificación**; no es una revisión del play
 | D-28 | **(resuelve P-13)** Recurso `Scope` mínimo: `scope_id` opaco aportado por el host u operador, único e **inmutable**, creado por operación administrativa autorizada, con validación estricta de formato y tamaño; conocerlo o elegirlo no concede acceso; el contexto autorizado determina el alcance operativo; sin organizaciones, proyectos ni usuarios de CAWbase; sin perfiles ni categorías de A02. Modelo: [persistencia §2.2](../persistence-and-migrations.md#22-scopes--recurso-de-alcance-p-13). |
 | D-29 | **(resuelve P-14)** Arranque del servicio independiente: (1) validar configuración, (2) migrar automáticamente salvo desactivación explícita, (3) comprobar compatibilidad y acceso con las credenciales de runtime, (4) iniciar el servicio HTTP. Durante 1–3 el servicio no escucha (sin `/livez`/`/readyz`). Fallo, incompatibilidad o timeout ⇒ sin tráfico HTTP, error saneado y salida ≠ 0; sin opción de permanecer escuchando. Se conservan migración automática por defecto, `migrate_on_start=false`, `migration_database_url` y la ausencia de migración en importación, librería embebida, router montado y Lambda. Un lanzador prepara una vez y luego inicia workers que solo verifican; otras instancias coordinan por el bloqueo de D-24. Cerrar la conexión DDL no elimina credenciales de memoria/entorno: para separación estricta, migración externa. Contrato: [operación §4](../installation-and-operations.md#estados-de-arranque-y-readiness). |
 | D-30 | **(resuelve P-20, decisión del usuario)** Control optimista estricto: `expected_revision`/`If-Match` debe coincidir siempre con la revisión actual; si no coincide ⇒ 412 aunque los valores ya estén aplicados; si coincide y no hay cambios efectivos ⇒ respuesta sin escritura ni incremento; tras perder la respuesta el consumidor relee y reconcilia (no reintenta a ciegas); la comprobación y la escritura son atómicas (un único `UPDATE … WHERE revision = ? AND status = 'active'`). Implementación: `operations/scopes.py::update_scope`. |
-| D-31 | **(decisión del usuario)** GitHub Actions como CI de aceptación automatizada en Linux, con PostgreSQL real y SQLite. El workflow está escrito (`.github/workflows/ci.yml`); **no se hizo push y no se ejecutó en GitHub**. Cierra Q-02. |
+| D-31 | **(decisión del usuario)** GitHub Actions como CI de aceptación automatizada en Linux, con PostgreSQL real y SQLite. El workflow está en `.github/workflows/ci.yml`. Durante la implementación estaba escrito y sin ejecutar; el usuario confirmó después su aprobación (D-34). Cierra Q-02. |
 | D-32 | **(resuelve Q-06, decisión del usuario)** Política ante el fallo de un worker posterior a la preparación = **lo observado con Uvicorn ≥ 0.50**: un fallo de inicialización de un worker (incluido un reemplazo) detiene el servicio con código ≠ 0 (4 si es incompatibilidad de esquema), sin migrar ni reparar; la muerte de un worker tras servir la maneja el supervisor reiniciándolo (sin migrar), **sin límite ni *backoff* de reinicios**. Limitar o espaciar reinicios corresponde al orquestador (systemd, Kubernetes, etc.) y queda fuera de A01. No hay supervisión propia ni código nuevo. Contrato: [operación §4.2](../installation-and-operations.md#42-varios-workers-e-instancias). |
 | D-33 | **(resuelve Q-07, decisión del usuario)** La referencia de **300 ms** aplica a la **mediana de importaciones en caliente** (procesos nuevos con bytecode disponible); el máximo no es gate. La importación **en frío** (sin bytecode) se mide e informa **sin umbral**. Los **40 MiB** de tamaño instalado del entorno base se mantienen. Los valores dejan de ser «provisionales». Gate automatizado: `tests/test_distribution.py::test_installed_import_cost_meets_the_decided_references` (wheel en venv limpio, 15 muestras en caliente). Si un entorno de CI lo incumple se **informa**; los umbrales no se relajan por cuenta propia. |
+| D-34 | **(acta del usuario)** A01 queda **implementada, cerrada y aceptada**. Commit aceptado: `1b5ffab`. GitHub Actions pasó en `main` y en `feature/a01-product-foundation` sobre ese commit, según confirmación explícita del usuario (este repositorio no conserva URL, ID de run ni fecha de esa ejecución; no se inventan). No se reabre A01 ni se repiten sus pruebas. Las ejecuciones previas conservan su atribución a los commits donde se obtuvieron. A02 comienza como especificación: [A02-decisions](A02-decisions.md). |
 
 ## 3. Cambios respecto de la revisión 6
 
@@ -143,7 +145,7 @@ Adoptadas por el encargo de implementación de A01. **No son decisiones históri
 | P-16 | CLI `cawbase-content-engine` (`version`, `check`, `migrate`, `bootstrap-admin`, `recover-admin`, `serve`) | `tests/test_processes.py` |
 | P-17 | Sin caché de autenticación ni `last_used_at`; limitación de tasa delegada al despliegue (**límite documentado**: el motor no limita intentos) | Revisión de código; sin test de tasa (no existe la función) |
 | P-18 | `uv`, `ruff`, `mypy` (único verificador), `pytest` | [Desarrollo](../development.md) |
-| P-19 | GitHub Actions (D-31) | Workflow escrito; no ejecutado |
+| P-19 | GitHub Actions (D-31) | Workflow escrito durante la implementación; aprobado según confirmación del usuario (D-34) |
 
 ### 4.4 Decisiones tomadas durante la implementación
 
@@ -170,7 +172,7 @@ Adoptadas por el encargo de implementación de A01. **No son decisiones históri
 | ID | Pregunta | Cuándo |
 |---|---|---|
 | Q-01 | Licencia definitiva y publicación (D-05). | A10 |
-| Q-02 | ~~Proveedor de CI~~ **Cerrada por D-31 (GitHub Actions).** (P-19). Recomendación: GitHub Actions si el repositorio se aloja en GitHub; **no aprobado**, no se crean workflows. | Antes del prompt de implementación |
+| Q-02 | ~~Proveedor de CI~~ **Cerrada por D-31 (GitHub Actions).** (P-19). | Cerrada |
 | Q-03 | ~~¿Pepper o KMS para el hash de API keys?~~ **Cerrada por D-25: sin pepper ni KMS en A01.** | Cerrada |
 | Q-04 | ¿Política de retención/purga de `admin_events`? En A01 se conserva indefinidamente sin purga. | A05 (retención) |
 | Q-05 | ¿Soporte de otros drivers (`psycopg` 3)? Fuera de A01. | Posterior |

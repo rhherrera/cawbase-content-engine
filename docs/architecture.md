@@ -1,6 +1,6 @@
 # Arquitectura
 
-> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). La estructura de paquetes descrita es la real.
+> **Estado: A01 implementada en la versión 0.1.0, **cerrada y aceptada por el usuario** (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). Los resultados de pruebas conservan en el informe su atribución histórica a los commits donde se obtuvieron. A02 está **en especificación** (no implementada ni aceptada): lo marcado «especificado para A02; no implementado» no existe en el código.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). La estructura de paquetes descrita es la real.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 

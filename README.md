@@ -1,27 +1,24 @@
 # cawbase-content-engine
 
-> ## Estado: A01 implementado, probado en macOS y Linux local, no ejecutado en GitHub Actions, no aceptado
+> ## Estado: A01 cerrada y aceptada · A02 en especificación
 >
-> | Nivel | Estado |
+> | Feature | Estado |
 > |---|---|
-> | Implementado | Sí (`0.1.0`) |
-> | Probado en macOS | Sí: PostgreSQL 15–18 + SQLite |
-> | Probado en Linux local (Docker) | Sí: PostgreSQL 15–18 + SQLite, incluido SQLite 3.38.5 (piso declarado) |
-> | Probado en GitHub Actions | **No** (workflow preparado; no se hizo push) |
-> | Aceptado por el usuario | **No** |
+> | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
+> | **A02** — perfiles, categorías y tipos sensibles | **En especificación**: contrato documentado en la rama `feature/a02-profiles-categories-sensitive-types`; **no implementada, no probada, no aceptada**. Nada de A02 existe en el código ni en la versión del paquete (`0.1.0`) |
 >
-> Detalle y evidencia en el [informe de implementación](docs/a01-implementation-report.md). El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Quedan fuera A02 en adelante.
+> Detalle histórico de las pruebas de A01 en el [informe de implementación](docs/a01-implementation-report.md). El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente.
 
 Motor independiente de clasificación, detección y transformación de contenido, preparado para distribuirse como paquete Python y, más adelante, abrirse como código abierto. CAWbase será un consumidor del paquete; el motor no depende de CAWbase.
 
 - Distribución: `cawbase-content-engine` · Import Python: `cawbase_content_engine` · Python 3.13 · PostgreSQL y SQLite.
 - API pública asíncrona; núcleo liviano con extras opcionales; adaptador HTTP opcional con API keys.
 
-## Qué se está especificando (A01 — Base del producto e instalación independiente)
+## A01 — Base del producto e instalación independiente (cerrada)
 
 La primera feature define la base instalable: empaquetado, configuración e inicialización explícitas, persistencia y migraciones propias, contexto autorizado y aislamiento por alcance, adaptador HTTP con API keys, diagnóstico y readiness, errores, observabilidad y límites. Excluye clasificación, inferencia, documentos y todo lo propio de CAWbase.
 
-Estado de A01: **implementado; probado en macOS y Linux local; GitHub Actions sin ejecutar; no aceptado; no cerrado.**
+Estado de A01: **implementada, cerrada y aceptada** (commit `1b5ffab`).
 
 ## Probar rápidamente
 

@@ -4,7 +4,7 @@ Instrucciones para trabajar en este repositorio. Idioma de la documentación: es
 
 ## Estado actual
 
-- Fase: **A01 implementado (0.1.0)**, rama `feature/a01-product-foundation` (commits locales, sin push). Evidencia y niveles en `docs/a01-implementation-report.md`: probado en macOS y en Linux local (Docker); **GitHub Actions no ejecutado**; **no aceptado por el usuario**; la feature no está cerrada.
+- Fase: **A01 cerrada y aceptada por el usuario** (`0.1.0`; commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según su confirmación explícita). **A02 está en especificación** (rama `feature/a02-profiles-categories-sensitive-types`, commits locales, sin push): no está implementada ni aceptada. Evidencia histórica de A01 en `docs/a01-implementation-report.md`.
 - Checks que existen (ejecutarlos antes de afirmar nada): `uv run ruff check .`, `uv run ruff format --check src tests examples scripts`, `uv run mypy`, `uv run pytest -q -rs` (con `CCE_TEST_POSTGRES_URL` y `CCE_REQUIRE_POSTGRES=1` para PostgreSQL), `uv run pytest -m dist -q`, `bash scripts/linux_docker_validate.sh DIR` (Linux en Docker) y `bash scripts/sqlite_floor_validate.sh DIR`. Ver `docs/development.md`.
 - Distingue siempre: **especificado** ≠ **implementado** ≠ **probado en macOS** ≠ **probado en Linux local** ≠ **probado en GitHub Actions** ≠ **aceptado** (acta del usuario). Un *skip* no es una aprobación; una corrida Linux local no es una ejecución de Actions. Nunca declares cerrada una feature ni simules un acta.
 - Las pruebas de PostgreSQL usan solo servidores descartables y bases `cce_t_*` propias: nunca una base existente (p. ej. de CAWbase).
