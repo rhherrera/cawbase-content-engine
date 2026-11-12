@@ -1,11 +1,11 @@
 # cawbase-content-engine
 
-> ## Estado: A01 cerrada y aceptada · A02 implementada (`0.2.0`), sin aceptar
+> ## Estado: A01 y A02 cerradas y aceptadas · A03 especificada (no implementada)
 >
 > | Feature | Estado |
 > |---|---|
 > | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
-> | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | **Implementada** en la rama `feature/a02-profiles-categories-sensitive-types` (commits locales, **sin push**). Probada localmente (macOS) y en Linux local (Docker); **GitHub Actions no ejecutado sobre A02**; **no aceptada por el usuario** (la aceptación es suya). Evidencia y límites en el [informe de A02](docs/a02-implementation-report.md) |
+> | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `f4ad3e7`. GitHub Actions pasó sobre ese commit, según confirmación explícita del usuario. El merge `e149146` (PR #1) en `main` es posterior y no es el commit aceptado. Evidencia histórica y límites en el [informe de A02](docs/a02-implementation-report.md) |
 >
 > El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de alcance: A03 en adelante (inferencia, clasificación efectiva, mock).
 
@@ -20,9 +20,9 @@ La primera feature define la base instalable: empaquetado, configuración e inic
 
 Estado de A01: **implementada, cerrada y aceptada** (commit `1b5ffab`).
 
-## A02 — Perfiles, categorías y tipos sensibles (implementada, sin aceptar)
+## A02 — Perfiles, categorías y tipos sensibles (cerrada y aceptada)
 
-> **Implementada en `0.2.0`; no aceptada.** Sin inferencia, sin clasificación efectiva y sin mock: solo configura, versiona y resuelve la configuración de análisis. Ejemplo ejecutable: `uv run python examples/profiles_host.py`.
+> **Implementada en `0.2.0`; cerrada y aceptada (commit `f4ad3e7`).** Sin inferencia, sin clasificación efectiva y sin mock: solo configura, versiona y resuelve la configuración de análisis. Ejemplo ejecutable: `uv run python examples/profiles_host.py`.
 
 Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles propios; configuración editable separada de **versiones publicadas inmutables**; perfil predeterminado opcional por scope; catálogo inicial versionado de tipos sensibles copiado al crear el perfil; configuración de ranking/resolución; permisos `profiles:read|write` (2 nuevos sobre los 8 de A01). Entrada: [especificación de A02](docs/features/A02-perfiles-categorias-y-tipos-sensibles.md).
 

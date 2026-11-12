@@ -1,6 +1,6 @@
 # Persistencia y migraciones
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres de tablas y mecanismos descritos son los implementados (`src/cawbase_content_engine/persistence/`, `migrations/`).
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres de tablas y mecanismos descritos son los implementados (`src/cawbase_content_engine/persistence/`, `migrations/`).
 
 Relacionado: [API pública](public-api.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 
@@ -234,7 +234,7 @@ Las pruebas de concurrencia se escriben **por backend** con expectativas distint
 
 ## 7. A02 — Modelo persistente y migración (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** Las tablas y la revisión `0002_profiles` son las del código (`persistence/tables.py`, `migrations/versions/0002_profiles.py`); el nivel de esquema es 2. Semántica: [perfiles y catálogo](profiles-and-catalog.md); decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§6 (namespaces, propiedad, bloqueo, una transacción, objetos ajenos) **se mantiene sin cambios**.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** Las tablas y la revisión `0002_profiles` son las del código (`persistence/tables.py`, `migrations/versions/0002_profiles.py`); el nivel de esquema es 2. Semántica: [perfiles y catálogo](profiles-and-catalog.md); decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§6 (namespaces, propiedad, bloqueo, una transacción, objetos ajenos) **se mantiene sin cambios**.
 
 Mismos tipos lógicos que §2 (`text`, `int`, `bool`, `timestamp`, `json`, `bytes`) más `real` (`double precision` / `REAL`). Todos los nombres reciben el namespace fijo (schema o prefijo, §1), incluidos índices y restricciones. Las tablas heredan el modelo de pertenencia: **`scope_id` forma parte de toda clave primaria y toda clave foránea**.
 

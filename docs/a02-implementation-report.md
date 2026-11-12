@@ -1,6 +1,6 @@
 # A02 — Informe de implementación y validación
 
-> **Estado: A02 está implementada (`0.2.0`) en la rama `feature/a02-profiles-categories-sensitive-types` (commits locales, sin push). Probada localmente en macOS y en Linux local (Docker). GitHub Actions NO se ejecutó sobre A02. NO aceptada por el usuario. La feature NO está cerrada.** Este informe no es un acta de aceptación: la aceptación corresponde al usuario. Las cifras provienen de ejecuciones reales; lo que no se ejecutó se dice explícitamente.
+> **Estado vigente: A02 cerrada y aceptada por el usuario en `0.2.0` (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según la confirmación explícita del usuario; el merge `e149146` del PR #1 en `main` es posterior y no es el commit aceptado).** *Registro histórico de la evidencia (no se reescribe):* al redactar este informe A02 estaba implementada en la rama `feature/a02-profiles-categories-sensitive-types` (commits locales, sin push), probada localmente en macOS y en Linux local (Docker), con GitHub Actions no ejecutado sobre A02 y sin aceptación. Las cifras y ambientes de las secciones siguientes son los de esas ejecuciones y **no se reatribuyen** a `f4ad3e7` ni a ningún otro commit. La aceptación y la aprobación de GitHub Actions provienen de la confirmación del usuario; este informe no aporta URL, logs ni resultados de esa ejecución de Actions y no es un acta.
 
 Relacionado: [especificación](features/A02-perfiles-categorias-y-tipos-sensibles.md) · [decisiones](decisions/A02-decisions.md) · [modelo y catálogo](profiles-and-catalog.md) · [informe de A01](a01-implementation-report.md) · [desarrollo](development.md).
 
@@ -168,7 +168,7 @@ Medido con PostgreSQL 15–18 y `asyncpg` (`tests/test_a02_concurrency.py::TestD
 - Los registros de terceros en `DEBUG` pueden imprimir contenido (§2.6); no se prueba lo que un host configure fuera del motor.
 - Compatibilidad con A01: probada con una reproducción del cargador de A01, **no** con un binario A01 real ejecutándose contra el esquema 2.
 - Backlog no implementado (B-A02-01 a 13), incluida la tolerancia a permisos desconocidos (B-A02-12).
-- La aceptación del usuario sigue **pendiente** y no la emite este informe.
+- *Histórico al redactar:* la aceptación del usuario estaba pendiente. **Vigente:** el usuario aceptó A02 en `0.2.0` (commit `f4ad3e7`) y confirmó que GitHub Actions pasó sobre ese commit; este informe no emite el acta ni contiene evidencia de esa ejecución de Actions.
 
 ## 7. Cómo reproducir
 

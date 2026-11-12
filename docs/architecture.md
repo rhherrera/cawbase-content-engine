@@ -1,6 +1,6 @@
 # Arquitectura
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). La estructura de paquetes descrita es la real.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). La estructura de paquetes descrita es la real.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 
@@ -103,7 +103,7 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 ## 8. A02 — Perfiles, categorías y tipos sensibles (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** Estructura real. Modelo: [perfiles y catálogo](profiles-and-catalog.md).
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** Estructura real. Modelo: [perfiles y catálogo](profiles-and-catalog.md).
 
 - A02 **no cambia los principios** (§1) ni la dirección de dependencias (§2): nuevos recursos de alcance siguiendo §7 (tabla con `scope_id`, operaciones por contexto, permisos en el catálogo, pruebas de acceso cruzado).
 - Módulos, todos en el **núcleo liviano** (sin FastAPI ni Alembic): `operations/profiles.py` (perfiles, ranking, predeterminado y resolución), `operations/elements.py` (categorías y tipos, una implementación parametrizada por clase), `operations/versions.py` (instantánea, proyección efectiva, publicación, consulta de versiones), `operations/profile_common.py` (bloqueos, mapeo de filas, eventos), `operations/profile_facade.py` (validación, permisos y despacho: mixin de `ScopedOperations`); `catalog.py` (datos del catálogo inicial, sin E/S, importado de forma perezosa); validación compartida en `validation.py`; tablas en `persistence/tables.py`; `http/router.py` agrega las rutas de [API pública §10.4](public-api.md#104-rutas-http-v1-extra-http) sin lógica propia (D-07); `migrations/versions/0002_profiles.py`.

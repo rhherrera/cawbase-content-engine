@@ -1,6 +1,6 @@
 # API pública (Python y HTTP)
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
 
 Relacionado: [perfiles y catálogo (A02)](profiles-and-catalog.md) · [arquitectura](architecture.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 
@@ -408,7 +408,7 @@ Los valores del ejemplo son ficticios. Los datos de `metadata` no deben contener
 
 ## 10. A02 — Perfiles, categorías y tipos sensibles (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** Los nombres, firmas y rutas de esta sección siguen el código (`src/cawbase_content_engine/operations/profile_facade.py`, `http/router.py`); los bloques de código son ilustrativos. Modelo y semántica: [perfiles y catálogo](profiles-and-catalog.md). Decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de A01 (§1–§9) sigue vigente y no cambia; esta sección **solo agrega**.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** Los nombres, firmas y rutas de esta sección siguen el código (`src/cawbase_content_engine/operations/profile_facade.py`, `http/router.py`); los bloques de código son ilustrativos. Modelo y semántica: [perfiles y catálogo](profiles-and-catalog.md). Decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de A01 (§1–§9) sigue vigente y no cambia; esta sección **solo agrega**.
 
 ### 10.1 Convenciones heredadas de A01
 

@@ -1,6 +1,6 @@
 # Seguridad y aislamiento
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [instalación y operación](installation-and-operations.md).
 
@@ -214,7 +214,7 @@ Alcanza únicamente los datos que A01 introduce.
 
 ## 9. A02 — Permisos y datos de perfiles (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** El catálogo pasa de **8** permisos (A01) a **10**: A02 agrega 2 y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** El catálogo pasa de **8** permisos (A01) a **10**: A02 agrega 2 y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
 
 ### 9.1 Catálogo ampliado
 

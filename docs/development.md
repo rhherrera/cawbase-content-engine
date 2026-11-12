@@ -1,6 +1,6 @@
 # Desarrollo
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
 
 Relacionado: [feature A01](features/A01-base-del-producto-instalacion-independiente.md) · [instalación y operación](installation-and-operations.md) · [CLAUDE.md](../CLAUDE.md).
 
@@ -99,7 +99,7 @@ Rama de implementación de A01: `feature/a01-product-foundation` (cerrada). Rama
 
 ## 10. A02 — Proceso previsto (implementado)
 
-- A02 está **implementada** (`0.2.0`) en la rama `feature/a02-profiles-categories-sensitive-types`, sin mock ni inferencia. Los criterios `AC-A02-nn` de la [matriz](features/A02-perfiles-categorias-y-tipos-sensibles.md#7-matriz-de-aceptación) se trazan a pruebas en el [informe de A02](a02-implementation-report.md). Suites nuevas: `tests/test_a02_profiles.py`, `test_a02_concurrency.py` (PostgreSQL y SQLite reales; incluye interbloqueos reales), `test_a02_http.py`, `test_a02_migration.py`; ejemplo ejecutable: `examples/profiles_host.py`.
+- A02 está **implementada, cerrada y aceptada** (`0.2.0`; commit aceptado `f4ad3e7`; Actions según confirmación del usuario), sin mock ni inferencia. Los criterios `AC-A02-nn` de la [matriz](features/A02-perfiles-categorias-y-tipos-sensibles.md#7-matriz-de-aceptación) se trazan a pruebas en el [informe de A02](a02-implementation-report.md). Suites nuevas: `tests/test_a02_profiles.py`, `test_a02_concurrency.py` (PostgreSQL y SQLite reales; incluye interbloqueos reales), `test_a02_http.py`, `test_a02_migration.py`; ejemplo ejecutable: `examples/profiles_host.py`.
 - Cada feature usa **sus propios** documentos de decisiones, especificación e informe: A02 → `docs/decisions/A02-decisions.md`, `docs/features/A02-…md` y, al implementarse, un informe `docs/a02-implementation-report.md`.
 - Los checks de §4 se mantienen; las pruebas de PostgreSQL siguen usando solo bases descartables `cce_t_*`; las pruebas de concurrencia de A02 se escriben por backend; se verifica el esquema 1→2 con objetos ajenos; se cuida que ningún fixture contenga secretos ni datos personales reales (usar dominios `example.test` y valores evidentemente falsos).
 - La importación liviana y el gate D-33 deben seguir cumpliéndose (el catálogo se importa de forma perezosa).

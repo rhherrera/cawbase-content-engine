@@ -1,6 +1,6 @@
 # Instalación y operación
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [desarrollo](development.md).
 
@@ -232,7 +232,7 @@ Metodología, versiones y plataforma de cada medición están en el [informe de 
 
 ## 11. A02 — Límites y observabilidad (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** Valores iniciales (E-A02-07), configurables mediante `Limits` (nombres de campo en [API pública §10.9](public-api.md#109-notas-de-implementación-020)); no se relajó ningún umbral de A01. Los límites de A01 (§7.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB: los cuerpos de A02 (un elemento por solicitud) caben en él.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** Valores iniciales (E-A02-07), configurables mediante `Limits` (nombres de campo en [API pública §10.9](public-api.md#109-notas-de-implementación-020)); no se relajó ningún umbral de A01. Los límites de A01 (§7.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB: los cuerpos de A02 (un elemento por solicitud) caben en él.
 
 ### 11.1 Límites
 
