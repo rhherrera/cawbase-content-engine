@@ -15,6 +15,7 @@ Este registro separa categorías; no mezclarlas.
 | Rev. | Contenido |
 |---|---|
 | 1 | Primera redacción (solo documental): D-A04-01 a 03 aprobadas; E-A04-01 a 22; diferencias con el playbook; backlog. Registro del cierre y aceptación de A03 en los documentos de A03 (no es una decisión de A04). |
+| 2 | Precisiones previas a los experimentos (sin cambiar `D-A04-nn`): alcance temporal, nuevas disposiciones (`P` estructural inspeccionado) y condiciones de cobertura, Unicode, unidad PDF = página, campos DOCX. E-A04-23 a 27. |
 
 ## 1. Fuente, precedencia y herencia
 
@@ -50,7 +51,7 @@ Este registro separa categorías; no mezclarlas.
 | ID | Elección | Justificación |
 |---|---|---|
 | E-A04-01 | Seis capas separadas: inventario, extracción, mapeo, cobertura de extracción, cobertura de inferencia, transformación y verificación | Cada afirmación (§ contrato 9) tiene un responsable y evidencia distintos; ninguna implica otra |
-| E-A04-02 | Cuatro disposiciones por elemento: **S** soportado, **E** eliminable (D-A04-02), **N** no cubierto y declarado, **R** rechazo | Satisface «ninguno ignorado como cubierto» sin exigir soportar todo; `N` impide declarar protección completa |
+| E-A04-02 | Disposiciones por elemento (revisada por E-A04-23: S, E, P, N, R) | Satisface «ninguno ignorado como cubierto» sin exigir soportar todo |
 | E-A04-03 | Estructuras conceptuales versionadas (`document-structures/1`), no clases ni endpoints | El encargo prohíbe código y APIs anticipadas |
 | E-A04-04 | Identidad = SHA-256 del archivo exacto + identificador y versión del extractor + hash de su configuración; el mapa no es transferible | Evita aplicar un mapa a otro archivo o a uno modificado |
 | E-A04-05 | Unidad de texto = punto de código (como A03); conversión explícita desde UTF-16/glifos/bytes en cada biblioteca | PyMuPDF/PDFium/XML usan unidades distintas; los errores de unidad son silenciosos |
@@ -71,6 +72,11 @@ Este registro separa categorías; no mezclarlas.
 | E-A04-20 | Límites de experimento conservadores (contrato §16), no límites productivos de A05 | Protegen la máquina y acotan el análisis |
 | E-A04-21 | Procesamiento local, sin red, sin macros/scripts/referencias externas | Seguridad de los experimentos |
 | E-A04-22 | Restitución mecánica = prueba de viabilidad con correspondencias sintéticas locales; no es contrato de A06 | Fuera de alcance: criptografía, custodia, autorización |
+| E-A04-23 | Cinco disposiciones: **S** cubierto, **E** eliminación autorizada, **P** estructural preservado e inspeccionado, **N** no cubierto, **R** rechazo (sustituye a las cuatro de E-A04-02) | Los recursos estructurales no deben impedir la cobertura solo por existir, pero tampoco quedar exentos de inspección |
+| E-A04-24 | Dos indicadores: `textual_subset_complete` y `document_coverage_complete`, independientes de la ausencia de residuos y de la detección real | Condición inequívoca de cobertura sin prometer detección |
+| E-A04-25 | Unidad PDF = página; separadores sintetizados por operadores de posicionamiento; intervalos con concatenación artificial no se transforman; sin segmentación semántica | Resuelve la contradicción entre unidades, orden y columnas sin nueva segmentación |
+| E-A04-26 | Distinguir punto de código, unidad UTF-16, grafema y glifo; relaciones con dirección explícita | Un punto fuera del BMP son 2 unidades UTF-16 y no equivale a 1 glifo |
+| E-A04-27 | Campos DOCX: se extrae el resultado; una selección dentro de él se rechaza (sin evaluador de campos) | Reemplazar el resultado no protege un valor que la instrucción pueda regenerar |
 
 ## 4. Diferencias respecto del playbook (revisión 6)
 

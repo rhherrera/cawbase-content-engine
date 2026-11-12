@@ -1,6 +1,6 @@
 # A04 — Viabilidad y contrato de documentos
 
-> **Estado: DOCUMENTADA (solo documentación). Experimentos PENDIENTES; viabilidad NO demostrada; ninguna biblioteca validada; sin código, dependencias, versión (`0.3.0`), esquema ni permisos nuevos.** Ningún soporte de PDF/DOCX existe en `0.3.0`. Este documento define alcance, exclusiones, experimentos y aceptación; el contrato permanente vive en [procesamiento de documentos](../document-processing.md). No hay informe de viabilidad: se creará **después** de ejecutar los experimentos (estructura en §8).
+> **Estado: DOCUMENTADA; precisiones documentales aplicadas antes de ejecutar los experimentos (revisión 2). Los experimentos se implementan y ejecutan en la entrega siguiente; hasta que exista `docs/a04-feasibility-report.md`, viabilidad NO demostrada y ninguna biblioteca validada. Sin cambios en `src`, dependencias del paquete, versión (`0.3.0`), esquema ni permisos.** Ningún soporte de PDF/DOCX existe en `0.3.0`. Este documento define alcance, exclusiones, experimentos y aceptación; el contrato permanente vive en [procesamiento de documentos](../document-processing.md). No hay informe de viabilidad: se creará **después** de ejecutar los experimentos (estructura en §8).
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md)); estas **prevalecen** sobre el playbook donde difieren.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a04-document-feasibility-contract` (desde `ae19ef3`, merge de A03).
@@ -12,7 +12,7 @@
 
 **Esta entrega (documental) incluye:** contrato permanente (seis capas, identidad, mapeo, unidades, cobertura); matrices de soporte/rechazo DOCX y PDF; evaluación de bibliotecas y licencias con fuentes oficiales; batería de experimentos con fixtures y controles negativos; criterios de aceptación verificables antes de ejecutar; estructura del informe futuro.
 
-**Excluye (hoy y en A04):** código, fixtures reales, generación de documentos, instalación de dependencias, ejecución de experimentos o suites. Fuera de alcance de la feature: A05 (trabajos, colas, endpoints documentales, almacenamiento, cargas, consulta, retención, idempotencia, recuperación); A06 (sustituciones y correspondencias productivas, criptografía, custodia, restauración autorizada); A07/A08 (protección/restauración completas); A09 (modelo real, calidad de detección, tokenizer, segmentación por modelo); integración con CAWbase, infraestructura y publicación. No se promete soporte universal ni pipeline productivo.
+**Alcance temporal.** La exclusión de código experimental, fixtures, instalación de dependencias y ejecución de experimentos corresponde **solo a la entrega documental anterior** (commits `901e228` y `f638b13`). A04 **sí incluye** los experimentos autorizados en la entrega siguiente (código y fixtures bajo `experiments/a04/`, entorno experimental independiente, ejecución e informe), siempre separados del runtime y de los distribuibles. **Excluye siempre en A04:** cualquier implementación productiva de A05–A08 y, a continuación, fuera de alcance de la feature: A05 (trabajos, colas, endpoints documentales, almacenamiento, cargas, consulta, retención, idempotencia, recuperación); A06 (sustituciones y correspondencias productivas, criptografía, custodia, restauración autorizada); A07/A08 (protección/restauración completas); A09 (modelo real, calidad de detección, tokenizer, segmentación por modelo); integración con CAWbase, infraestructura y publicación. No se promete soporte universal ni pipeline productivo.
 
 ## 2. Decisiones
 
@@ -72,7 +72,7 @@ Cada experimento: entradas, hipótesis, procedimiento, verificaciones y resultad
 
 - **Entradas:** 8–12 PDF sintéticos ≤ 20 páginas: valor fragmentado en operadores `TJ`; múltiples columnas; página rotada 90/180/270 y texto con matriz rotada; fuentes simples y Type0 con `ToUnicode`, y un caso sin `ToUnicode`; Form XObject compartido entre páginas; imagen y página mixta; texto como trazados (control).
 - **Hipótesis:** extractor(es) independientes coinciden en el texto; geometría y objetos de contenido permiten localizar; el mapeo insuficiente se detecta.
-- **Procedimiento:** extracción con dos vías (p. ej. PDFium y pypdf), conversión de unidades a puntos de código, localización por página/objeto/operador.
+- **Procedimiento:** unidad = página (contrato §5); extracción con dos vías (p. ej. PDFium y pypdf), conversión de unidades a puntos de código, localización por página/objeto/operador; intervalos con separador sintetizado o concatenación artificial deben marcarse no transformables.
 - **Verificaciones:** coincidencia de textos entre vías o discrepancias explicadas; ocurrencias resueltas a objeto de contenido (no solo caja); detección del Form XObject compartido; `ToUnicode` ausente ⇒ rechazo/fallo.
 - **Esperado:** subconjunto `S` demostrado o `limitación observada` por fila de matriz.
 
@@ -80,7 +80,7 @@ Cada experimento: entradas, hipótesis, procedimiento, verificaciones y resultad
 
 - **Entradas:** texto con compuesto/descompuesto (`é` vs `e`+U+0301), fuera del BMP (😀), ZWJ, `\r\n`, tabulaciones, ligaduras `fi`/`ffi` en PDF y ocurrencias idénticas.
 - **Hipótesis:** los índices en puntos de código se conservan en ambos formatos; las relaciones 1:n están representadas; la selección parcial de una ligadura falla.
-- **Verificaciones:** `[start,end)` coincide con `len(str)` de Python; separadores sintetizados no localizables; ocurrencias idénticas se distinguen por posición; la selección parcial de una ligadura produce `localization_ambiguous`.
+- **Verificaciones:** distinguir puntos de código, unidades UTF-16, grafemas y glifos (un punto fuera del BMP son 2 unidades UTF-16 y su relación con glifos no es fija); direcciones `n:1`/`1:n` representadas; `[start,end)` coincide con `len(str)` de Python; separadores sintetizados no localizables; ocurrencias idénticas se distinguen por posición; la selección parcial de una ligadura produce `localization_ambiguous`.
 - **Esperado:** conversión de unidades correcta o limitación enumerada.
 
 ### EXP-04 — Unidades por A03 y su mock
@@ -148,7 +148,11 @@ Estado actual de todos los criterios: **pendiente** (se evalúan al ejecutar los
 | AC-A04-11 | Rechazos reproducibles para cada familia excluida; cobertura incompleta nunca presentada como éxito de protección completa (CN-07) | EXP-07 | pendiente |
 | AC-A04-12 | Ausencia de las ocurrencias seleccionadas distinguida de ausencia global; la global solo se exige con todas las ocurrencias incluidas (CN-02, CN-03) | EXP-05, 08 | pendiente |
 | AC-A04-13 | Comentarios/metadatos: clases eliminadas registradas, estructura válida, sin copias residuales (CN-05) | EXP-06 | pendiente |
-| AC-A04-14 | Unidades A03 con alcance local, sin agregación; `AnalysisResult` sin cambios | EXP-04 | pendiente |
+| AC-A04-14 | Unidades A03 con alcance local, sin agregación; `AnalysisResult` sin cambios; `scope_note` y metadatos documentales fuera de `AnalysisResult` | EXP-04 | pendiente |
+| AC-A04-21 | `textual_subset_complete` y `document_coverage_complete` (contrato §2.1) se calculan sin ambigüedad; recursos `P` inspeccionados con lista de permitidas; imágenes, destinos, instrucciones de campos y texto alternativo permanecen `N` | EXP-01, 02, 07 | pendiente |
+| AC-A04-22 | Unicode: puntos de código, unidades UTF-16, grafemas y glifos distinguidos; direcciones `n:1`/`1:n` demostradas; PDF: unidad = página, intervalos ambiguos o con concatenación artificial no se transforman | EXP-02, 03 | pendiente |
+| AC-A04-23 | Campos DOCX: una selección dentro de un resultado de campo se rechaza (sin evaluador de campos) | EXP-05, 07 | pendiente |
+| AC-A04-24 | Límites de descompresión comprobados sobre tamaños declarados **y** sobre bytes realmente producidos (aborto al superar) | EXP-07 | pendiente |
 | AC-A04-15 | Bibliotecas con versión fijada y licencias transitivas, binarios y fuentes registrados; cumplimiento de D-A04-01 | Informe de viabilidad | pendiente |
 | AC-A04-16 | Evidencia con commit, SO, Python, bibliotecas, hashes de fixtures y salidas, comandos y resultados; macOS, Linux local y GitHub Actions **por separado**, sin aprobación cruzada | Informe de viabilidad | pendiente |
 | AC-A04-17 | Conclusiones **por separado** para DOCX/PDF y para eliminación/sustitución/restitución: viable en el subconjunto probado / viable con restricciones enumeradas / no viable o evidencia insuficiente | Informe de viabilidad | pendiente |

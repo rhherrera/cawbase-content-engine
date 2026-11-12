@@ -19,16 +19,27 @@ Decisiones aprobadas que rigen: **D-A04-01** (dependencias para productos cerrad
 
 Cuatro afirmaciones que **no se infieren entre sí**: (a) *todo el texto extraído fue evaluado*; (b) *todo el contenido relevante fue extraído*; (c) *todos los hallazgos seleccionados pueden transformarse*; (d) *la transformación pasó las verificaciones previstas*. Los resultados parciales útiles **no autorizan** presentar el documento completo como protegido. El mock acredita ingeniería del contrato, nunca calidad de detección; la ausencia de los valores sintéticos seleccionados **no** acredita ausencia universal de datos sensibles.
 
-## 2. Disposición de cada elemento (E-A04-02)
+## 2. Disposición de cada elemento (E-A04-02, revisada por E-A04-23)
 
-| Código | Nombre | Significado | Efecto en el resultado |
+| Código | Nombre | Significado | Efecto en la cobertura |
 |---|---|---|---|
-| **S** | Soportado | Se identifica, se extrae, se localiza y puede transformarse | Contribuye a la cobertura de extracción |
-| **E** | Eliminable (D-A04-02) | Comentarios y metadatos descriptivos/personales: se eliminan registrando clases, sin restauración | El informe lista las clases eliminadas |
-| **N** | No cubierto, declarado | Se inventaría y se **preserva**, pero **no** se extrae ni transforma | La cobertura de extracción declara el elemento; **impide** afirmar protección completa |
-| **R** | Rechazo | El documento no se procesa (o la unidad no se transforma) y se informa el motivo | Error tipado conceptual; nunca éxito parcial silencioso |
+| **S** | Contenido cubierto | Contenido textual (o visual con texto) cuya cobertura es **necesaria**: se identifica, se extrae, se localiza y puede (o se declara que no puede) transformarse | Es el **subconjunto textual evaluado** |
+| **E** | Eliminación autorizada | Comentarios y metadatos descriptivos/personales autorizados por D-A04-02: se eliminan registrando clases, sin restauración | No impide cobertura; el informe lista las clases eliminadas |
+| **P** | Recurso estructural preservado y validado | Estilos, numeración, configuración, fuentes, árbol de páginas, relaciones, tablas de referencias: se **preservan** y se **inspeccionan** (§2.2) | No impide cobertura **solo por existir**, pero no queda exento de inspección |
+| **N** | Contenido no cubierto | Contenido o payload que puede portar información relevante y para el que no hay extracción/cobertura (imágenes, destinos de enlaces, instrucciones de campos, texto alternativo, ecuaciones, trazados, porciones desconocidas o no evaluadas) | Se preserva y se **declara**; impide la cobertura completa del documento |
+| **R** | Rechazo | El documento (o la unidad) no se procesa; se informa el motivo | Error tipado conceptual; nunca éxito parcial silencioso |
 
-Un elemento **jamás queda sin disposición**: si el inventario no puede clasificarlo, es `R` («estructura desconocida»). Si una precondición no puede verificarse, **no se asume**.
+Un elemento **jamás queda sin disposición**: si el inventario no puede clasificarlo es `N` (si puede preservarse sin riesgo de alterar el significado) o `R` («estructura desconocida»). Las **porciones desconocidas o no evaluadas mantienen su disposición conservadora**. Si una precondición no puede verificarse, **no se asume**. Imágenes, destinos de enlaces, instrucciones de campos y texto alternativo **no** se reclasifican como `P` («inocuos»): son `N`, y una búsqueda de valores conocidos en ellos (verificación de residuos) **no demuestra cobertura de detección** sobre esos contenidos.
+
+### 2.1 Condiciones de cobertura (inequívocas)
+
+- **`textual_subset_complete`** (cobertura completa del subconjunto textual evaluado) es verdadera si y solo si: (1) todo elemento `S` del inventario fue extraído en una unidad con texto exacto y mapa **consistente** con el archivo (hash) — sin porción `S` no extraída, ilegible o con mapeo insuficiente; (2) no hay elementos `R`; (3) todo elemento `P` fue inspeccionado conforme a §2.2 sin reclasificarse; y (4) cada unidad fue evaluada por A03 con cobertura `complete = true` en las capacidades requeridas.
+- **`document_coverage_complete`** es verdadera si y solo si `textual_subset_complete` **y** no existe ningún elemento `N` ni porción desconocida. Un documento con una imagen, un destino de enlace, una instrucción de campo o un texto alternativo **nunca** tiene `document_coverage_complete = true`.
+- Ambos indicadores son **independientes** de la ausencia de residuos (verificación de la salida, capa 6) y **no prometen detección real**: significan «todo lo declarado `S` se extrajo y se entregó a A03 y A03 declaró cobertura completa de su alcance». El mock no mide detección.
+
+### 2.2 Inspección de recursos estructurales (`P`)
+
+Un `P` no está exento: se enumeran las **cadenas, propiedades, relaciones y payloads** que pueda contener (DOCX: nombres de estilo, `w:lvlText` de numeración, `w:docVars`, rsid, nombres de fuente, `Target` de relaciones, atributos de `settings`, partes de tema; PDF: diccionarios de página/recursos, nombres de fuente, `/Info`/XMP fuera de lo `E`, outlines, nombres de destinos, valores de diccionarios desconocidos). Cada cadena o propiedad debe pertenecer a una **lista de permitidas** (propiedades estructurales conocidas con valor de forma válida: números, identificadores de fuente/estilo, booleanos, enumerados); una cadena libre fuera de esa lista se reclasifica `N` (o `R` si es un payload), y **no** cuenta como `P`. La lista de permitidas y su resultado se registran en el informe.
 
 ## 3. Identidad y versionado (E-A04-04)
 
@@ -55,6 +66,7 @@ DocumentInventory { identity, parts[], elements[ {element_id, kind, location, di
                     embedded_payloads[], findings_of_preconditions[ {check, result} ] }
 
 ExtractionUnit    { unit_id, kind, text, scope_note, ordinal, source_refs[] }
+                  # scope_note y demás metadatos documentales viven aquí, NUNCA en AnalysisResult (A03 no cambia)
                   # text = exactamente lo que se entrega a A03 (§8); unit_id estable dentro de la identidad
 
 SourceMap         { identity, units[ { unit_id, segments[ SegmentRef ] } ] }
@@ -64,24 +76,36 @@ SegmentRef        { unit_start, unit_end,                # [start,end) en puntos
 PieceRef (DOCX)   { part_name, node_path, run_or_text_index, char_start, char_end, relation: "1:1"|"n:1"|"1:n" }
 PieceRef (PDF)    { page_index, object_ref, content_stream_ref, operator_index, glyph_range, geometry{quad, rotation}, relation }
 
-ExtractionCoverage{ identity, covered_elements[], declared_not_covered[ {element_id, disposition N, reason} ],
-                    rejected[], complete: bool }        # complete = nada N ni R en elementos relevantes
+ExtractionCoverage{ identity, covered_elements[], preserved_structural[ {element_id, inspected: bool} ],
+                    authorized_removals[], declared_not_covered[ {element_id, reason} ], rejected[],
+                    textual_subset_complete: bool, document_coverage_complete: bool }   # definiciones: §2.1
 InferenceCoverage { unit_id, per_capability: A03 Coverage }   # reutiliza la cobertura de A03 por unidad
 TransformPlan     { identity, selections[ {unit_id, type_id, start, end, replacement_class} ], preconditions[] }
 VerificationReport{ checks[ {id, result, evidence_ref} ], residue_scan, fidelity, mechanical_restore? }
 ```
 
-`complete` de `ExtractionCoverage` es **independiente** de `Coverage.complete` de A03 (que solo describe el texto de una unidad). No se agregan porcentajes que oculten huecos.
+Los indicadores de `ExtractionCoverage` son **independientes** de `Coverage.complete` de A03 (que solo describe el texto de una unidad) y de la ausencia de residuos. No se agregan porcentajes que oculten huecos.
 
 ## 5. Unidades Unicode y orden de extracción
 
-- **Unidad:** punto de código Unicode (como `len(str)` en Python y como A03). No bytes, no unidades UTF-16, no índices de glifos.
+- **Unidad:** punto de código Unicode (como `len(str)` en Python y como A03). No bytes, no unidades UTF-16, no grafemas, no índices de glifos. Son cuatro nociones **distintas** y ninguna se deduce de otra:
+
+| Noción | Qué cuenta | Ejemplo (`😀`, `é` descompuesta, `ﬁ`) |
+|---|---|---|
+| Punto de código | escalar Unicode (`len(str)`) | `😀` = 1; `e`+U+0301 = 2; `ﬁ` (U+FB01) = 1 |
+| Unidad UTF-16 | unidad de 16 bits (XML/Java/JS, UCS-2 de algunas APIs) | `😀` = **2** (par sustituto); `e`+U+0301 = 2; `ﬁ` = 1 |
+| Grafema | unidad percibida por el usuario | `😀` = 1; `e`+U+0301 = 1; `ﬁ` = 1 |
+| Glifo | forma dibujada por la fuente | **sin correspondencia fija**: `😀` puede ser 1 glifo, 2 o un sustituto de fuente; `e`+U+0301 puede ser 1 glifo compuesto o 2; `ﬁ` ≥ 1 |
+
+Un punto de código fuera del BMP ocupa dos unidades UTF-16 y **no** se asume 1 glifo.
 - **Conversión explícita:** cada biblioteca expresa índices en su unidad (XML: caracteres del nodo; PDFium: índices de carácter de su textpage, con límites de UCS-2 documentados para `get_text_range`; pypdf: cadenas Python; QPDF/pikepdf: bytes de operandos). La capa de extracción **convierte y registra** la conversión; una conversión no demostrada ⇒ el segmento es `no localizable`.
 - **Texto exacto:** lo entregado a A03 es el `unit.text` sin normalización posterior (ni NFC/NFKC, ni recorte). Cambiar el texto invalida el mapa.
-- **Relaciones no uno-a-uno**, todas representadas: separadores sintetizados (`kind=synthesized`, sin piezas, no seleccionables), saltos de línea/párrafo, tabulaciones, ligaduras (1 glifo → n puntos de código: `relation=1:n`), puntos de código compuestos/descompuestos, fuera del BMP (1 punto = 2 unidades UTF-16 = 1 glifo), cadenas fragmentadas en varios runs/operadores (`n:1`/varias piezas).
+- **Relaciones no uno-a-uno**, todas representadas con su **dirección** `relation = <puntos de código> : <piezas/glifos del original>`: separadores sintetizados (`kind=synthesized`, sin piezas, no seleccionables), saltos de línea/párrafo, tabulaciones; **ligadura** (un glifo/código de fuente → varios puntos de código: `n:1`, p. ej. `fi` ← 1 glifo); **glifo compuesto o descomposición** (varios puntos de código ← 1 glifo `n:1`, o 1 punto de código → varios glifos `1:n`); **código de fuente que mapea a un par sustituto** (1 punto de código fuera del BMP ← 1 código `1:1` a nivel de punto de código, aunque el `ToUnicode` lo exprese en dos unidades UTF-16); cadenas fragmentadas en varios runs/operadores (un intervalo → varias piezas). Una selección que cubre **parte** de una pieza indivisible (`n:1`, p. ej. media ligadura o un punto de código dentro de un código de fuente de varios puntos) no es localizable ⇒ fallo.
 - **Un intervalo → varias piezas** cuando corresponde (un valor repartido entre runs o entre operadores `TJ`).
 - **Ambigüedad o localización insuficiente ⇒ fallo explícito de la transformación** (`localization_ambiguous`, conceptual): sin búsqueda aproximada, sin elegir la primera coincidencia, sin «reparar» offsets. Un hallazgo cuya ocurrencia idéntica no seleccionada existe en otra pieza se localiza **por posición**, no por contenido.
 - **Orden determinista** (no necesariamente el de lectura): DOCX — orden de documento del cuerpo (`w:body`), luego encabezados/pies por orden de sección y tipo (default, first, even), luego notas al pie y notas al final por identificador; dentro de celdas, fila a fila y celda a celda. PDF — por página (índice ascendente) y, dentro de la página, orden de ejecución del flujo de contenido (con Form XObjects expandidos en el punto de uso). Se **promete estabilidad**, no coincidencia con el orden semántico (columnas, tablas, texto rotado pueden diferir).
+- **Unidad PDF = la página (E-A04-25).** El texto de la unidad es la concatenación, en orden de ejecución, de las cadenas decodificadas de los operadores de visualización de texto, con **separadores sintetizados** (`kind=synthesized`, un `\n`) insertados entre dos visualizaciones consecutivas separadas por cualquier operador de posicionamiento (`Td`, `TD`, `Tm`, `T*`, `BT`) o por un cambio de objeto/Form XObject; dentro de un `TJ` no se sintetiza ningún espacio por el kerning. **No se introduce segmentación semántica**: columnas, tablas y bloques se concatenan en orden de flujo.
+- **Resolución de intervalos a piezas:** un intervalo `[start,end)` de la unidad se resuelve por **posición** a las cadenas/operadores que lo contienen (varias piezas si cruza operandos de un mismo `TJ` o visualizaciones consecutivas). Un intervalo que **incluye un separador sintetizado**, o que une piezas de objetos de contenido, líneas o columnas distintos (**concatenación artificial**), o cuyas piezas no tienen mapeo `ToUnicode` fiable, es **ambiguo para transformar** ⇒ fallo (`localization_ambiguous`); el hallazgo sigue siendo válido como detección. Si el texto de la página excede los límites de A03 (§8), la página se rechaza (`límite excedido`): no se parte semánticamente.
 
 ## 6. DOCX: referencias
 
@@ -92,7 +116,7 @@ VerificationReport{ checks[ {id, result, evidence_ref} ], residue_scan, fidelity
 
 ## 7. PDF: referencias
 
-- **Página:** índice, `MediaBox`/`CropBox`, `/Rotate`, herencia de recursos.
+- **Página** (también unidad de extracción, §5): índice, `MediaBox`/`CropBox`, `/Rotate`, herencia de recursos.
 - **Geometría:** cuadrilátero en coordenadas de página no rotada y en coordenadas de visualización, con la matriz de transformación aplicada (CTM, `Tm`, `Tz`, `Ts`, rotación de página). **Una caja geométrica no demuestra por sí sola que se pueda eliminar el contenido correcto**: es un indicio de localización, no un mapa de eliminación.
 - **Caracteres/glifos:** código de carácter del flujo, fuente, `ToUnicode`/codificación, glifos por carácter (ligaduras 1→n). Sin `ToUnicode` fiable ⇒ mapeo insuficiente (`R`/fallo).
 - **Objetos de contenido:** flujo de contenido (referencia de objeto + posición del operador `Tj/TJ/'/"`), pertenencia a **Form XObject** (un mismo objeto usado en varias páginas o varias veces: modificar el objeto modifica **todos** los usos).
@@ -111,10 +135,11 @@ Se reutiliza **sin modificar** el contrato de A03: `analyze_text` y el mock, `Mo
 | Afirmación | Condición mínima | No se deduce |
 |---|---|---|
 | «Todo el texto extraído fue evaluado» | todas las unidades con cobertura A03 `complete=true` por capacidad requerida | que se extrajo todo el contenido relevante |
-| «Todo el contenido relevante fue extraído» | `ExtractionCoverage.complete` (ningún `N`/`R` relevante) | que fue evaluado ni que es localizable |
+| «El subconjunto textual evaluado fue extraído por completo» | `textual_subset_complete` (§2.1) | detección real, ausencia de residuos, ni cobertura de `N` |
+| «Todo el contenido relevante fue extraído» | `document_coverage_complete` (§2.1): además ningún `N` ni porción desconocida | que fue evaluado ni que es localizable |
 | «Todos los hallazgos seleccionados pueden transformarse» | cada selección tiene localización sin ambigüedad y precondiciones verificadas | que la transformación pasó verificación |
 | «La transformación pasó las verificaciones previstas» | todos los checks de la aceptación | que no haya otros datos sensibles |
-| «Documento protegido completo» | **las cuatro** anteriores | — (en esta etapa nunca se emite como conclusión de producto) |
+| «Documento protegido completo» | **todas** las anteriores | — (en esta etapa nunca se emite como conclusión de producto) |
 
 **Ausencia de las ocurrencias seleccionadas ≠ ausencia global del valor.** La ausencia global solo puede exigirse cuando **todas** las ocurrencias del valor están incluidas en la transformación prevista. Sin OCR, las regiones de imagen o trazados capaces de contener texto quedan **fuera** de toda garantía de cobertura visual; la existencia de una capa de texto u OCR no declara cobertura visual completa.
 
@@ -128,13 +153,13 @@ Se reutiliza **sin modificar** el contrato de A03: `analyze_text` y el mock, `Mo
 | Contenido incrustado (OLE, paquetes, adjuntos) | `R` | D-A04-02 |
 | Estructura desconocida o sin regla de cobertura | `R` | Si no puede cubrirse, no se asume |
 | Escaneado (sin texto extraíble; página = imagen) | `R` (sin OCR no hay extracción) | B-A04-03 |
-| Mixto (texto + imágenes/trazados capaces de contener texto) | procesable solo con las regiones de imagen/trazado **declaradas `N`**; nunca cobertura completa | cobertura visual no verificable |
+| Mixto (texto + imágenes/trazados capaces de contener texto) | procesable solo con las regiones de imagen/trazado **declaradas `N`**; `document_coverage_complete` nunca es verdadero | cobertura visual no verificable |
 | Excede un límite del experimento (§16) | `R` («límite excedido») | sin truncamiento silencioso |
 | Precondición no verificable | `R`/fallo | no se asume |
 
 ## 11. Matriz de soporte DOCX
 
-Estado de evidencia de **toda** la matriz en esta entrega: **pendiente** (valores posibles: `pendiente` | `demostrado` | `limitación observada`). Experimentos: ver [A04 §6](features/A04-viabilidad-y-contrato-de-documentos.md#6-batería-de-experimentos). Aceptación previa de documento: no cifrado, sin firmas, sin macros, sin revisiones, ZIP/XML válidos sin reparación.
+Disposiciones: **S** cubierto, **E** eliminación autorizada, **P** estructural preservado e inspeccionado (§2.2), **N** no cubierto, **R** rechazo (§2). Estado de evidencia de **toda** la matriz en esta entrega: **pendiente** (valores posibles: `pendiente` | `demostrado` | `limitación observada`). Experimentos: ver [A04 §6](features/A04-viabilidad-y-contrato-de-documentos.md#6-batería-de-experimentos). Aceptación previa de documento: no cifrado, sin firmas, sin macros, sin revisiones, ZIP/XML válidos sin reparación.
 
 | ID | Elemento | Identificación / precondición | Extracción y localización | Transformación prevista | Conserva / elimina | Disp. | Rechazo y motivo | Exp. | Evidencia |
 |---|---|---|---|---|---|---|---|---|---|
@@ -145,7 +170,7 @@ Estado de evidencia de **toda** la matriz en esta entrega: **pendiente** (valore
 | DX-05 | Encabezados y pies y variantes (default/first/even; vinculados a la sección anterior) | Referencias `w:headerReference`/`w:footerReference` y `w:titlePg`, `w:evenAndOddHeaders` | Una unidad por parte referenciada, en el orden de §5 | Como DX-01 en cada parte | Conserva referencias y variantes | S | Parte de encabezado/pie **sin referencia** ⇒ R (contenido huérfano) | EXP-01 | pendiente |
 | DX-06 | Notas al pie / notas al final | `footnotes.xml`, `endnotes.xml`, `w:footnoteReference` | Una unidad por nota (excepto separadores) | Como DX-01 | Conserva referencias y numeración | S | Separadores personalizados con texto ⇒ R | EXP-01 | pendiente |
 | DX-07 | Hipervínculos | `w:hyperlink`, relaciones externas | Texto visible: S. **Destino** (relación): no extraído | Texto visible como DX-01; destino no se modifica | Conserva destino; se **escanea** en la verificación de residuos | S (texto) / N (destino) | Destino que contiene un valor seleccionado ⇒ fallo de verificación | EXP-01, 08 | pendiente |
-| DX-08 | Campos: resultado | `w:fldSimple`, `w:fldChar` begin/separate/end | Texto del resultado: S | Sustituir el resultado | Conserva la estructura del campo | S | — | EXP-01 | pendiente |
+| DX-08 | Campos: resultado | `w:fldSimple`, `w:fldChar` begin/separate/end | Texto del resultado: extraído y mapeado (S, para que A03 lo evalúe) | **No se transforma**: sustituir el resultado visible no protege un valor que la instrucción pueda regenerar, y no se implementa un evaluador de campos | Conserva el campo | S (extracción) | Una selección dentro de un resultado de campo ⇒ fallo explícito (`field_result_not_transformable`); el documento no se declara transformado | EXP-01, 05 | pendiente |
 | DX-09 | Campos: instrucciones | `w:instrText`, `w:fldSimple/@w:instr` | No extraído | No se modifica | Conserva | N | Campos con referencia externa (`INCLUDETEXT`, `INCLUDEPICTURE`, `LINK`, `DDE`, `AUTOTEXT`…) ⇒ R | EXP-01, 07 | pendiente |
 | DX-10 | Comentarios | `comments.xml`, `commentsExtended`, `commentsIds`, `commentRangeStart/End`, `commentReference`, `people.xml` | Inventariados; texto no se entrega a A03 | **Eliminar** parte(s), anclajes y relaciones | Elimina clase «comentarios» (autor, fecha, texto); conserva el texto anotado; quita relaciones y `[Content_Types]` huérfanos | E | Respuestas/hilos desconocidos ⇒ R | EXP-06 | pendiente |
 | DX-11 | Revisiones | `w:ins`, `w:del`, `w:moveFrom/To`, `w:rPrChange`, `w:pPrChange`, `w:sectPrChange`, `w:tblPrChange` | — | — | No se aceptan ni rechazan cambios | R | D-A04-02: revisiones pendientes | EXP-07 | pendiente |
@@ -153,12 +178,12 @@ Estado de evidencia de **toda** la matriz en esta entrega: **pendiente** (valore
 | DX-13 | Cuadros de texto | `w:txbxContent`, `mc:AlternateContent` (Choice/Fallback), VML | — | — | — | R | Contenido duplicado en Choice/Fallback sin regla de cobertura (B-A04-02) | EXP-07 | pendiente |
 | DX-14 | Controles de contenido | `w:sdt` | Con contenido de texto simple: texto de `w:sdtContent` | Como DX-01 | Conserva el `w:sdtPr` | S (texto simple) | Con `w:dataBinding`/`customXml` o de tipo estructurado desconocido ⇒ R | EXP-01, 07 | pendiente |
 | DX-15 | Propiedades del documento | `docProps/core.xml`, `app.xml`, `custom.xml` | Inventariadas (creador, última modificación, título, empresa, propiedades personalizadas) | **Eliminar/vaciar** campos descriptivos/personales | Elimina clases «autoría», «título/asunto/palabras clave», «empresa/administrador», «propiedades personalizadas»; **conserva** campos estructurales (versión de aplicación, estadísticas no descriptivas) | E | — | EXP-06 | pendiente |
-| DX-16 | Partes XML auxiliares estructurales | `styles`, `numbering`, `settings`, `fontTable`, `theme`, `webSettings` | Escaneadas en la verificación de residuos | No se modifican | Conserva | N | `settings` con `attachedTemplate` externo ⇒ R | EXP-08 | pendiente |
+| DX-16 | Partes XML estructurales | `styles`, `numbering`, `settings`, `fontTable`, `theme`, `webSettings` | Inspección de cadenas/propiedades/relaciones (§2.2): lista de permitidas | No se modifican | Conserva | P | Cadena libre fuera de la lista ⇒ N; `settings` con `attachedTemplate` externo, `docVars` o payload ⇒ N/R | EXP-01, 08 | pendiente |
 | DX-17 | Partes personalizadas / glosario | `customXml/*`, `glossary/*` | — | — | — | R | Pueden alojar datos sin regla de cobertura | EXP-07 | pendiente |
 | DX-18 | Miniatura | `docProps/thumbnail.*` | Inventariada | **Eliminar** | Elimina clase «miniatura»; quita relación y tipo de contenido | E | — | EXP-06 | pendiente |
 | DX-19 | Imágenes (recurso ordinario) | `word/media/*`, `a:blip` | No hay OCR; el texto dentro de la imagen **no está cubierto** | No se modifican | Conserva; se verifica que sea una imagen y no un payload (tipo real) | N | Tipo real distinto del declarado ⇒ R | EXP-01, 07 | pendiente |
 | DX-20 | Texto alternativo de imágenes y formas | `wp:docPr/@descr/@title` | No extraído | No se modifica | Conserva; escaneado en residuos | N | Contiene un valor seleccionado ⇒ fallo de verificación | EXP-08 | pendiente |
-| DX-21 | Fuentes incrustadas (recurso ordinario) | `word/fonts/*` (ofuscadas) | — | No se modifican | Conserva | N | Fuente no válida ⇒ R | EXP-07 | pendiente |
+| DX-21 | Fuentes incrustadas (recurso ordinario) | `word/fonts/*` (ofuscadas) | Se valida tipo real y tamaño; no se extrae texto | No se modifican | Conserva | P | Tipo real distinto o fuente inválida ⇒ R | EXP-07 | pendiente |
 | DX-22 | Gráficos | `word/charts/*` (+ libro incrustado) | — | — | — | R | Incluye texto y datos; con libro incrustado es objeto incrustado | EXP-07 | pendiente |
 | DX-23 | Ecuaciones | `m:oMath`, `m:t` | — | — | Conserva | N | — | EXP-01 | pendiente |
 | DX-24 | SmartArt / diagramas | `word/diagrams/*` | — | — | — | R | Sin regla de cobertura | EXP-07 | pendiente |
@@ -168,7 +193,7 @@ Estado de evidencia de **toda** la matriz en esta entrega: **pendiente** (valore
 
 ## 12. Matriz de soporte PDF
 
-Estado de evidencia: **pendiente** en toda la matriz. El subconjunto objetivo para la primera viabilidad es acotado: PDF no cifrado, sin firmas, sin actualizaciones incrementales, con fuentes que exponen `ToUnicode`, texto latino con página sin rotar y rotada en múltiplos de 90°. **La transformación de texto en PDF es el punto de mayor riesgo técnico**: se decide con los experimentos, no se asume.
+Disposiciones como en §11. Estado de evidencia: **pendiente** en toda la matriz. El subconjunto objetivo para la primera viabilidad es acotado: PDF no cifrado, sin firmas, sin actualizaciones incrementales, con fuentes que exponen `ToUnicode`, texto latino con página sin rotar y rotada en múltiplos de 90°. **La transformación de texto en PDF es el punto de mayor riesgo técnico**: se decide con los experimentos, no se asume.
 
 | ID | Elemento | Identificación / precondición | Extracción y localización | Transformación prevista | Conserva / elimina | Disp. | Rechazo y motivo | Exp. | Evidencia |
 |---|---|---|---|---|---|---|---|---|---|
@@ -176,7 +201,7 @@ Estado de evidencia: **pendiente** en toda la matriz. El subconjunto objetivo pa
 | PX-02 | Fuentes y codificaciones sin `ToUnicode` fiable, CID sin mapeo, Type3 | Verificación del mapeo | — | — | — | R | Mapeo insuficiente (D-A04-03) | EXP-02, 07 | pendiente |
 | PX-03 | Ligaduras | Un glifo → varios puntos de código | `relation=1:n`; seleccionar parte de una ligadura no es localizable | Sustituir el glifo completo solo si la selección lo abarca entero | Conserva | S (condicionado) | Selección parcial de ligadura ⇒ fallo (`localization_ambiguous`) | EXP-03 | pendiente |
 | PX-04 | Texto rotado (rotación de página 90/180/270 y matriz de texto) | `/Rotate`, `Tm` | Geometría en coordenadas de visualización | Como PX-01 | Conserva rotación | S (a confirmar) | Ángulos no múltiplos de 90° o inclinación ⇒ N (extraído sin transformar) | EXP-02 | pendiente |
-| PX-05 | Múltiples columnas | Texto en bloques separados | Orden por flujo de contenido (no semántico); advertido | Como PX-01 | Conserva | S (a confirmar) | Frases cortadas entre columnas: un hallazgo no cruza unidades de distinta columna | EXP-02 | pendiente |
+| PX-05 | Múltiples columnas | Texto en bloques separados | Unidad = página; orden de flujo (no semántico); sin segmentación por columnas (§5) | Como PX-01 dentro de una misma cadena/`TJ` | Conserva | S (a confirmar) | Un hallazgo que une piezas de columnas/líneas distintas (concatenación artificial) ⇒ no transformable | EXP-02 | pendiente |
 | PX-06 | Contenido repetido y Form XObjects | `Do` sobre `/Subtype /Form`, mismo objeto en varias páginas | Un uso del objeto = un segmento por uso; la pieza apunta al objeto compartido | Modificar el objeto afecta todos los usos | — | S solo si **todos** los usos están seleccionados | Uso parcial de un objeto compartido ⇒ fallo (no se clona implícitamente) | EXP-02, 08 | pendiente |
 | PX-07 | Texto invisible (`Tr 3`, recortado, fuera de página, color de fondo) | Análisis de estado gráfico | Inventariado | — | — | R | Contenido que no se ve; sin regla de cobertura | EXP-07 | pendiente |
 | PX-08 | Imágenes (recurso ordinario) | `/Subtype /Image`, XObject o inline | No hay OCR: texto en imagen **no cubierto** | No se modifican | Conserva; declaradas por página | N | Imagen a página completa sin texto extraíble (escaneado) ⇒ R | EXP-02, 07 | pendiente |
@@ -190,8 +215,8 @@ Estado de evidencia: **pendiente** en toda la matriz. El subconjunto objetivo pa
 | PX-16 | Acciones | `/OpenAction`, `/AA`, `/A` (`JavaScript`, `Launch`, `SubmitForm`, `ImportData`, `GoToR`, `Rendition`) | — | — | — | R (las listadas) / N (`GoTo` interno y `URI`: preservadas e inspeccionadas) | Ejecutable o con referencia externa | EXP-07 | pendiente |
 | PX-17 | Estructura etiquetada y texto alternativo | `/StructTreeRoot`, `/Alt`, `/ActualText`, `/E` | Inventariados | — | Estructura sin `/Alt`/`/ActualText`: se conserva | N | Con `/Alt` o `/ActualText`: R (duplican texto sin mapeo) | EXP-07, 08 | pendiente |
 | PX-18 | Cifrado, firmas, actualizaciones incrementales, reparación del parser | `/Encrypt`, `/Sig`, `/ByteRange`, `DocMDP`, varios `%%EOF`/`/Prev`, avisos de reconstrucción | — | — | — | R | D-A04-02; revisiones previas conservarían el contenido «eliminado» (E-A04-16) | EXP-07 | pendiente |
-| PX-19 | Fuentes incrustadas (recurso ordinario) | `FontFile*` | — | Las fuentes del sustituto deben estar disponibles en el documento | Conserva | N | Falta del glifo del sustituto ⇒ fallo | EXP-02, 05 | pendiente |
-| PX-20 | Estructura del archivo: flujos comprimidos, object streams, linearización, PDF/A y PDF/UA | Lectura del archivo | Se normaliza al leer | Se reescribe con la biblioteca estructural | Se **declara** la pérdida de linearización y de conformidad PDF/A/PDF/UA (no se promete preservar) | N | — | EXP-05, 08 | pendiente |
+| PX-19 | Fuentes (recurso ordinario) | `/FontDescriptor`, `FontFile*`, codificación | Se valida el diccionario de fuente y los glifos disponibles; no se extrae texto de ellas | Los glifos del sustituto deben estar disponibles en la fuente | Conserva | P | Falta del glifo del sustituto ⇒ fallo; programa de fuente inválido ⇒ R | EXP-02, 05 | pendiente |
+| PX-20 | Estructura del archivo: árbol de páginas, recursos, flujos comprimidos, object streams, linearización, PDF/A y PDF/UA | Lectura del archivo; inspección §2.2 | Se normaliza al leer | Se reescribe con la biblioteca estructural | Se **declara** la pérdida de linearización y de conformidad PDF/A/PDF/UA (no se promete preservar) | P | Diccionario con cadenas libres no permitidas ⇒ N; estructura desconocida ⇒ R | EXP-05, 08 | pendiente |
 
 ## 13. Comentarios y metadatos eliminables (D-A04-02)
 
