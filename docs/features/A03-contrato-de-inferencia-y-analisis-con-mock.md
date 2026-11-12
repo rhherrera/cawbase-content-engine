@@ -1,6 +1,6 @@
 # A03 — Contrato de inferencia y análisis con mock
 
-> **Estado: ESPECIFICADA; no implementada, no probada, no aceptada.** Solo documentación en la rama `feature/a03-inference-contract-mock` (commits locales, sin push). El paquete sigue en `0.2.0`. Este documento define alcance, decisiones y aceptación; el contrato completo vive en [inferencia y análisis](../inference-and-analysis.md). No existe informe de implementación (se crea al implementar).
+> **Estado: IMPLEMENTADA en `0.3.0` (rama `feature/a03-inference-contract-mock`, commits locales, sin push); NO aceptada por el usuario; no cerrada.** Este documento define alcance, decisiones y aceptación; el contrato completo vive en [inferencia y análisis](../inference-and-analysis.md). La trazabilidad de cada criterio a pruebas y los resultados reales por ambiente están en el [informe de implementación](../a03-implementation-report.md).
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores registradas en [A01-decisions](../decisions/A01-decisions.md), [A02-decisions](../decisions/A02-decisions.md) y [A03-decisions](../decisions/A03-decisions.md) (estas últimas **prevalecen** sobre el playbook donde difieren; ver su [tabla de diferencias](../decisions/A03-decisions.md#4-diferencias-respecto-del-playbook-revisión-6)).
 - Repositorio: `cawbase-content-engine` · rama: `feature/a03-inference-contract-mock`.
@@ -40,12 +40,12 @@ Elecciones técnicas derivadas (`E-A03-01` a `E-A03-18`; **no son decisiones de 
 | Tema | Documento permanente |
 |---|---|
 | **Contrato completo**: fronteras, entrada, texto/contexto, límites, preparación y versiones, copia defensiva, interfaz del adaptador, validación de salida, estados, cobertura, clasificación, hallazgos, mock, errores, timeout, HTTP, persistencia y ciclo de vida | [Inferencia y análisis](../inference-and-analysis.md) |
-| Firma `analyze_text`, ruta HTTP, tabla de errores nuevos, resumen | [API pública §11](../public-api.md#11-a03--análisis-de-texto-especificado) |
-| Permiso `analysis:execute` (11 permisos), matriz, datos sensibles, restricción de despliegue | [Seguridad §10](../security-and-isolation.md#10-a03--permiso-y-datos-del-análisis-especificado) |
-| Ausencia de tablas y de migración; niveles de esquema/runtime | [Persistencia §8](../persistence-and-migrations.md#8-a03--sin-modelo-persistente-especificado) |
-| Límites, configuración del adaptador, observabilidad, readiness vs. capacidad | [Operación §12](../installation-and-operations.md#12-a03--límites-observabilidad-y-ciclo-de-vida-especificado) |
-| Módulos y flujos | [Arquitectura §9](../architecture.md#9-a03--inferencia-y-análisis-especificado) |
-| Proceso de implementación previsto | [Desarrollo §11](../development.md#11-a03--proceso-previsto-especificado) |
+| Firma `analyze_text`, ruta HTTP, tabla de errores nuevos, resumen | [API pública §11](../public-api.md#11-a03--análisis-de-texto-implementado) |
+| Permiso `analysis:execute` (11 permisos), matriz, datos sensibles, restricción de despliegue | [Seguridad §10](../security-and-isolation.md#10-a03--permiso-y-datos-del-análisis-implementado) |
+| Ausencia de tablas y de migración; niveles de esquema/runtime | [Persistencia §8](../persistence-and-migrations.md#8-a03--sin-modelo-persistente-implementado) |
+| Límites, configuración del adaptador, observabilidad, readiness vs. capacidad | [Operación §12](../installation-and-operations.md#12-a03--límites-observabilidad-y-ciclo-de-vida-implementado) |
+| Módulos y flujos | [Arquitectura §9](../architecture.md#9-a03--inferencia-y-análisis-implementado) |
+| Proceso de implementación previsto | [Desarrollo §11](../development.md#11-a03--proceso-previsto-implementado) |
 | Semántica de perfiles, versiones y ranking que A03 consume | [Perfiles y catálogo](../profiles-and-catalog.md) |
 | Decisiones aprobadas, elecciones derivadas, diferencias con el playbook y backlog | [A03-decisions](../decisions/A03-decisions.md) |
 
@@ -64,14 +64,14 @@ Elecciones técnicas derivadas (`E-A03-01` a `E-A03-18`; **no son decisiones de 
 - Sin persistencia: repetir una solicitud la ejecuta de nuevo; no hay reanudación ni consulta posterior.
 - El límite de 64 KiB del cuerpo HTTP puede alcanzarse antes que el límite lógico de caracteres con escapes JSON.
 
-## 6. Qué se entregará al implementar
+## 6. Qué se entregó
 
-Código del núcleo (permiso, errores, selección compartida, `analyze_text`, validador, adaptador y mock cargados de forma perezosa), ruta HTTP, pruebas (SQLite y PostgreSQL reales), ejemplo, actualización de la documentación al código real e informe `a03-implementation-report.md`, sin dependencias pesadas. Versión del paquete: **la fija la implementación** (no se cambia en esta fase). Hoy: nada de esto existe.
+Código del núcleo (permiso, errores, selección compartida, `analyze_text`, validador, adaptador y mock cargados de forma perezosa), ruta HTTP con detección de desconexión, composición del mock en el servicio independiente, pruebas (SQLite y PostgreSQL reales), ejemplo ejecutable (`examples/analysis_host.py`), documentación alineada e informe, sin dependencias nuevas ni migración. Versión del paquete: `0.3.0`. No se hizo push ni se publicó nada.
 
 <a id="matriz-aceptacion-a03"></a>
 ## 7. Matriz de aceptación (para la implementación posterior)
 
-Casos verificables; **no se escriben pruebas ahora**. «PG» = PostgreSQL real, «SQ» = SQLite real, «—» = independiente del backend. Las pruebas de PostgreSQL usan solo servidores/bases descartables (`cce_t_*`). Las pruebas de esta matriz se hacen con el **mock** y con adaptadores de prueba que devuelven salidas crudas arbitrarias; no miden calidad real.
+Casos verificables; las pruebas que los cubren y sus resultados reales por ambiente están en el [informe](../a03-implementation-report.md#matriz-ac-a03-trazable). «PG» = PostgreSQL real, «SQ» = SQLite real, «—» = independiente del backend. Las pruebas de PostgreSQL usan solo servidores/bases descartables (`cce_t_*`). Las pruebas de esta matriz se hacen con el **mock** y con adaptadores de prueba que devuelven salidas crudas arbitrarias; no miden calidad real.
 
 ### 7.1 Python/HTTP, permisos y aislamiento
 
@@ -150,7 +150,7 @@ Casos verificables; **no se escriben pruebas ahora**. «PG» = PostgreSQL real, 
 
 ## 8. Evidencia requerida para la aceptación
 
-Al implementar, un informe `docs/a03-implementation-report.md` que distinga **implementado / probado en macOS / probado en Linux local / probado en GitHub Actions / aceptado**, con resultados reales por criterio y por commit y lo no ejecutado dicho explícitamente. Un *skip* no es una aprobación; una corrida local no es una ejecución de Actions; el acta es del usuario. Hoy: **nada de esto existe**; esta fase solo especifica.
+El [informe de A03](../a03-implementation-report.md) distingue **implementado / probado en macOS / probado en Linux local / probado en GitHub Actions / aceptado**, con resultados reales por criterio y por commit y lo no ejecutado dicho explícitamente. Un *skip* no es una aprobación; una corrida local no es una ejecución de Actions; el acta es del usuario.
 
 ## 9. Backlog
 

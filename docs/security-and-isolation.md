@@ -283,13 +283,13 @@ El motor **no escanea** el contenido de las definiciones en busca de datos reale
 - Un host con acceso directo a la base (§2.1) puede leer y alterar las instantáneas; la inmutabilidad la garantiza el código del motor, no el motor de base de datos.
 - Las definiciones eliminadas lógicamente siguen en la base y en las versiones hasta que exista purga.
 
-## 10. A03 — Permiso y datos del análisis (especificado)
+## 10. A03 — Permiso y datos del análisis (implementado)
 
-> **Especificado; NO implementado en `0.2.0`.** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
+> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
 
-### 10.1 Catálogo ampliado — propuesto
+### 10.1 Catálogo ampliado
 
-El catálogo pasaría de **10** permisos (8 de A01 + 2 de A02) a **11**: A03 agrega uno de alcance.
+El catálogo pasa de **10** permisos (8 de A01 + 2 de A02) a **11**: A03 agrega uno de alcance.
 
 | Permiso | Nivel | Habilita |
 |---|---|---|
@@ -297,7 +297,7 @@ El catálogo pasaría de **10** permisos (8 de A01 + 2 de A02) a **11**: A03 agr
 
 Sin jerarquías ni comodines: `profiles:read`, `profiles:write`, `scope:read|write` y `admin:*` **no** conceden análisis, y `analysis:execute` no concede ninguno de ellos. `AdminContext` no ejecuta análisis. Se reutilizan `ScopeContext`, grants inmutables, API keys y delegación (D-27: subconjunto del emisor; `admin:grants:write` para scopes sin acceso directo). Las claves emitidas antes no ganan el permiso ni se reinterpretan.
 
-### 10.2 Matriz Python y HTTP — propuesto
+### 10.2 Matriz Python y HTTP
 
 | Operación | Python | HTTP | Clave HTTP |
 |---|---|---|---|

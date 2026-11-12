@@ -112,12 +112,12 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 - Flujo de **resolución**: `resolve_profile` es una lectura; devuelve la versión concreta que A03/A05 fijarán. A02 no ejecuta análisis, no incluye mock y no define el contrato de inferencia (A03).
 - Responsabilidad: el motor guarda y versiona configuración de análisis; la **asociación con organizaciones/proyectos, la herencia y la configuración efectiva por destino son de CAWbase** (que crea perfiles por scope según su dominio y fija la versión vía `resolve_profile`).
 
-## 9. A03 — Inferencia y análisis (especificado)
+## 9. A03 — Inferencia y análisis (implementado)
 
-> **Especificado; NO implementado en `0.2.0`.** Los módulos y flujos son **propuestos / no disponibles**. Contrato: [inferencia y análisis](inference-and-analysis.md).
+> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Estructura real. Contrato: [inferencia y análisis](inference-and-analysis.md).
 
 - **Dos fronteras:** la API pública de análisis (autorizada, asociada a scope y perfil persistido) y la interfaz del **adaptador de inferencia** (recibe una solicitud ya preparada; devuelve una salida cruda sujeta a validación). El adaptador no consulta tablas, no resuelve perfiles, no aplica permisos y no decide ganadoras; el núcleo valida, calcula ranking/resolución/cobertura y fija la procedencia.
-- **Módulos propuestos** (carga perezosa; `import cawbase_content_engine` no los importa): `inference/` (tipos y protocolo, validación de salida, mock), `operations/selection.py` (selección de versión publicada **compartida** con `resolve_profile`, sin permisos y no pública), `operations/analysis.py` (fachada de `analyze_text`, mixin de `ScopedOperations`). La ruta HTTP vive en el adaptador HTTP; el núcleo sigue sin depender de FastAPI ni de Alembic.
+- **Módulos** (carga perezosa; `import cawbase_content_engine` no los importa): `inference/` (tipos y protocolo, validación de salida, mock), `operations/selection.py` (selección de versión publicada **compartida** con `resolve_profile`, sin permisos y no pública), `operations/analysis.py` (fachada de `analyze_text`, mixin de `ScopedOperations`). La ruta HTTP vive en el adaptador HTTP; el núcleo sigue sin depender de FastAPI ni de Alembic.
 - **Flujo:** autoriza → valida entrada → prepara (lectura corta propia, fija la versión, copia defensiva) → **libera la conexión** → invoca al adaptador (timeout, cancelable) → valida → construye el resultado. Ninguna conexión ni transacción del motor se retiene durante la inferencia; `HostTransaction` se rechaza.
 - **Ownership:** el adaptador (y sus recursos) es del host y se compone explícitamente en `ContentEngine(config, inference=InferenceSetup(adapter))`; el motor no lo inicia ni lo cierra. Sin estado mutable compartido entre solicitudes. El motor funciona para A01/A02 sin inferencia.
-- **Sin persistencia:** A03 no añade tablas ni migración ([persistencia §8](persistence-and-migrations.md#8-a03--sin-modelo-persistente-especificado)).
+- **Sin persistencia:** A03 no añade tablas ni migración ([persistencia §8](persistence-and-migrations.md#8-a03--sin-modelo-persistente-implementado)).

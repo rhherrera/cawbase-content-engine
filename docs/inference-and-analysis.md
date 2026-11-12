@@ -1,8 +1,8 @@
 # Contrato de inferencia y análisis con mock (A03)
 
-> **Estado: A03 ESPECIFICADA; no implementada, no probada, no aceptada.** Ningún nombre, firma, ruta, código de error, permiso, campo o límite de este documento existe todavía en el código (`0.2.0`): todo se rotula **propuesto / no disponible** hasta que se implemente y se pruebe. Las decisiones de producto son `D-A03-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A03-nn` (adoptadas por criterio al redactar, revisables, **no** decisiones de producto). Ver [A03-decisions](decisions/A03-decisions.md) y la [especificación de feature](features/A03-contrato-de-inferencia-y-analisis-con-mock.md) (alcance, dependencias y matriz de aceptación). A01 y A02 están implementadas y aceptadas; este documento no las modifica.
+> **Estado: A03 IMPLEMENTADA en `0.3.0` (rama `feature/a03-inference-contract-mock`, commits locales, sin push); NO aceptada por el usuario; no cerrada.** Este documento describe el código real; evidencia por ambiente en el [informe de A03](a03-implementation-report.md). Las decisiones de producto son `D-A03-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A03-nn` y las precisiones/decisiones de implementación `P-A03-nn`/`I-A03-nn` (no son decisiones de producto). Ver [A03-decisions](decisions/A03-decisions.md) y la [especificación de feature](features/A03-contrato-de-inferencia-y-analisis-con-mock.md). A01 y A02 están implementadas y aceptadas; este documento no las modifica.
 
-Este documento conserva el contrato completo de A03. Los demás documentos permanentes solo lo referencian ([API §11](public-api.md#11-a03--análisis-de-texto-especificado), [seguridad §10](security-and-isolation.md#10-a03--permiso-y-datos-del-análisis-especificado), [persistencia §8](persistence-and-migrations.md#8-a03--sin-modelo-persistente-especificado), [operación §12](installation-and-operations.md#12-a03--límites-observabilidad-y-ciclo-de-vida-especificado), [arquitectura §9](architecture.md#9-a03--inferencia-y-análisis-especificado)).
+Este documento conserva el contrato completo de A03. Los demás documentos permanentes solo lo referencian ([API §11](public-api.md#11-a03--análisis-de-texto-implementado), [seguridad §10](security-and-isolation.md#10-a03--permiso-y-datos-del-análisis-implementado), [persistencia §8](persistence-and-migrations.md#8-a03--sin-modelo-persistente-implementado), [operación §12](installation-and-operations.md#12-a03--límites-observabilidad-y-ciclo-de-vida-implementado), [arquitectura §9](architecture.md#9-a03--inferencia-y-análisis-implementado)).
 
 ## 0. Resumen
 
@@ -46,12 +46,12 @@ llamador ──► ScopedOperations.analyze_text / POST …/analyze-text
 
 El cliente **no** puede enviar ni influir en la procedencia.
 
-## 2. API pública de análisis (propuesto / no disponible)
+## 2. API pública de análisis
 
 ### 2.1 Firma Python
 
 ```python
-# Ejemplo ilustrativo — propuesto / no disponible en 0.2.0
+# Ejemplo ilustrativo — implementado en 0.3.0
 class ScopedOperations:
     async def analyze_text(
         self,
@@ -62,6 +62,7 @@ class ScopedOperations:
         version_number: int | None = None,
         capabilities: Collection[str] = ("classification", "detection"),
         context: str | None = None,
+        request_id: str | None = None,       # correlación; HTTP pasa el X-Request-ID
     ) -> AnalysisResult: ...
 
 class ContentEngine:
@@ -114,7 +115,7 @@ Texto opcional que acompaña al objetivo para desambiguar (p. ej. el título del
 
 ### 2.6 Límites iniciales (E-A03-06)
 
-Valores iniciales, configurables mediante `Limits` (campos nuevos propuestos; **no se amplían** los límites de otras rutas: el cuerpo HTTP sigue en 64 KiB y los límites de A02 no cambian). No son una medida de capacidad de ningún modelo.
+Valores iniciales, configurables mediante `Limits` (campos de `Limits`; **no se amplían** los límites de otras rutas: el cuerpo HTTP sigue en 64 KiB y los límites de A02 no cambian). No son una medida de capacidad de ningún modelo.
 
 | Límite (`Limits`) | Valor | Se mide en |
 |---|---|---|
@@ -181,10 +182,10 @@ Reglas de selección heredadas (sin cambios): sin `profile_id` ⇒ predeterminad
 
 Así, mutar el `dict` de una versión leída por el llamador, o cualquier objeto que reciba o devuelva el adaptador, no altera el análisis ni sus validaciones. Los parámetros del llamador (`capabilities`, `text`, `context`) se copian a valores inmutables en la entrada.
 
-## 4. Interfaz del adaptador de inferencia (propuesto / no disponible)
+## 4. Interfaz del adaptador de inferencia
 
 ```python
-# Ejemplo ilustrativo — propuesto / no disponible en 0.2.0
+# Ejemplo ilustrativo — implementado en 0.3.0
 class InferenceAdapter(Protocol):
     @property
     def descriptor(self) -> AdapterDescriptor: ...          # síncrono, sin E/S
@@ -214,9 +215,9 @@ Objeto congelado; solo contiene lo necesario:
 | `auxiliary_context` | `str` o `null`; **dato no confiable; no cubierto** (§2.4) |
 | `capabilities` | solo las capacidades **ejecutables** (pedidas ∩ configuradas), ordenadas (`classification` < `detection`) |
 | `language` | idioma del perfil (`es`/`en`) |
-| `categories` | si `classification` ejecutable: tuplas `{category_id, name, definition, examples, translations}` de las categorías **habilitadas de la versión fijada**, ordenadas por id. **Sin prioridad** |
+| `categories` | si `classification` ejecutable: tuplas `ElementDefinition(element_id, name, definition, examples_positive, examples_negative, translations)` de las categorías **habilitadas de la versión fijada**, ordenadas por id. **Sin prioridad** |
 | `sensitive_types` | si `detection` ejecutable: ídem para los tipos |
-| `definitions_digest` | SHA-256 (hex) de la serialización canónica (JSON UTF-8, claves ordenadas, sin espacios) de las definiciones enviadas (capacidades ejecutables: ids, nombres, definiciones, ejemplos, traducciones; **sin** prioridades, ranking ni procedencia). Cambia si cambia cualquier definición enviada |
+| `definitions_digest` | SHA-256 (hex) del JSON canónico (UTF-8, claves ordenadas, separadores `,`/`:`, sin escapes ASCII) de `{"language", "categories", "sensitive_types"}`: el **idioma** del perfil y, de las capacidades ejecutables (una capacidad omitida aporta lista vacía), `{id, name, definition, examples:{positive,negative}, translations}` por elemento, ordenado por id. **Sin** prioridades, modo, umbral, tolerancia ni procedencia: cambiar solo el ranking no invalida un fixture; cambiar cualquier definición o el idioma sí. Las capacidades ejecutables forman parte de la clave del fixture por separado |
 | `limits` | `max_findings`, `max_finding_chars`, `max_regions`, `max_output_bytes` |
 
 **No** se envían: scope, perfil, versión, hash de la versión, modo/umbral/tolerancia, prioridades, permisos, credenciales, conexión ni identidad del cliente. `definitions_digest` es lo que asocia de forma verificable una respuesta a una configuración (§7).
@@ -436,7 +437,7 @@ Reglas (D-A02-05 sin cambios; E-A03-11 para los bordes numéricos):
 
 Los motivos son códigos acotados; ninguno incluye texto del contenido.
 
-## 7. Adaptador mock determinista (propuesto / no disponible)
+## 7. Adaptador mock determinista
 
 Adaptador de **fixtures sintéticos**. No es un clasificador ni un detector: no hay heurísticas, expresiones regulares presentadas como detección general, clasificación por palabras clave ni inferencia ficticia.
 
@@ -468,7 +469,7 @@ Un fixture asocia de forma verificable una entrada a un resultado crudo (o a un 
 - **Sin coincidencia** ⇒ `inference_fixture_not_found`. Dos fixtures con la misma clave ⇒ error de configuración al cargar (`configuration_invalid`).
 - **Extensible:** no se acopla a los seis tipos iniciales ni a categorías de ningún benchmark; los ids, nombres y definiciones salen de la versión fijada, de modo que sirve para categorías y tipos personalizados.
 - `outcome.kind`: `output` (salida cruda a devolver; **puede ser inválida** para ejercitar el validador, y el núcleo la rechazará), `unavailable` (+ `reason ∈ {loading, stopped, unreachable, transient_failure}`), `hang` (no responde: provoca `inference_timeout`), `crash` (excepción inesperada ⇒ `internal_error`).
-- Un helper de pruebas (`build_fixture(text, …)`) construye salidas calculando offsets y fragmentos desde el texto, de modo que las posiciones de los fixtures válidos están **verificadas por construcción**.
+- Utilidades de autoría (públicas, puras): `build_inference_request(resolved, text=…, context=…, capabilities=…)` devuelve el `InferenceRequest` exacto que el motor enviaría (su clave fija el fixture); `MockFixture.for_request(fixture_id, request, outcome)` lo ata a un resultado; `locate(text, fragmento, occurrence=0)` y `full_coverage(ids, text)` (en `cawbase_content_engine.inference`) calculan offsets y cobertura desde el texto, de modo que las posiciones de los fixtures válidos están **verificadas por construcción**. Los fixtures se copian al cargarse y cada llamada devuelve una copia profunda del resultado.
 - **Determinismo:** mismo fixture + misma entrada ⇒ mismo **resultado semántico**. Quedan fuera de esa garantía `request_id` y cualquier tiempo operativo. No es una promesa de determinismo de un modelo real.
 - `configuration_id` = `fxs-` + 16 hex del SHA-256 del conjunto canónico de fixtures.
 - **No** hay API pública (Python ni HTTP) para inyectar respuestas arbitrarias: los fixtures se cargan al componer el adaptador (código del host o archivo del operador).
@@ -535,9 +536,10 @@ Lista acotada (≤ 20) de objetos `{"code": …, "capability": "classification"|
 - **Timeout finito** configurable por el operador (`InferenceSetup.timeout_s`, predeterminado 30 s; 0 < t ≤ 600 s). Mide solo la invocación del adaptador (la lectura de preparación se rige por `statement_timeout_ms`). No hay parámetro por solicitud (ni en Python ni en HTTP: equivalencia).
 - Al vencer, el núcleo cancela la tarea de `infer` y levanta `inference_timeout`; nunca devuelve éxito ni «sin hallazgos».
 - **Cancelación cooperativa:** si el llamador cancela (`asyncio.CancelledError`; en HTTP, desconexión del cliente o cierre del servidor) la cancelación se propaga: el núcleo cancela la tarea del adaptador y **no** produce resultado. Una cancelación del llamador **nunca** se convierte en éxito, en «sin hallazgos» ni en un error de timeout.
-- **Límites de la garantía:** el motor solo puede cancelar la espera local y, si el adaptador lo implementa, avisarle por cancelación de la corrutina. Un futuro servidor remoto puede seguir procesando trabajo ya iniciado; A03 no promete detenerlo ni su coste. El motor no mantiene transacciones abiertas, así que cancelar no deja estado en la base.
+- **Implementación:** el adaptador se invoca **en la tarea del llamador** bajo `asyncio.timeout`, de modo que la cancelación y el vencimiento le llegan por cancelación de su corrutina y no se crean tareas locales huérfanas con adaptadores cooperativos. Un `TimeoutError` levantado por el propio adaptador también produce `inference_timeout`. En HTTP, Starlette no cancela el manejador al desconectarse el cliente: la ruta ejecuta la operación como tarea y sondea `request.is_disconnected()` (cada 50 ms); si el cliente se fue, cancela la tarea, espera a que termine y responde con estado 499 sin cuerpo (nadie lo lee).
+- **Límites de la garantía:** un adaptador arbitrario que **bloquea el bucle de eventos** o **ignora la cancelación** queda fuera de esta garantía (el timeout no podría ni dispararse).  el motor solo puede cancelar la espera local y, si el adaptador lo implementa, avisarle por cancelación de la corrutina. Un futuro servidor remoto puede seguir procesando trabajo ya iniciado; A03 no promete detenerlo ni su coste. El motor no mantiene transacciones abiertas, así que cancelar no deja estado en la base.
 
-## 9. Contrato HTTP (propuesto / no disponible)
+## 9. Contrato HTTP
 
 `POST /v1/scopes/{scope_id}/analyze-text` — extra `http`, mismas operaciones del núcleo (D-07). La ruta se registra con el router de A01/A02 (`create_router(engine)`) siempre; sin inferencia configurada responde `503 inference_not_configured` tras autenticar. No se crea ruta bajo `/v1/admin`.
 
@@ -574,7 +576,7 @@ Implicación de niveles: ningún cambio de esquema ⇒ `SCHEMA_LEVEL`/`RUNTIME_L
 - **Sin estado compartido mutable** entre solicitudes en el motor; cada solicitud crea sus propias estructuras (`PreparedAnalysis`, `InferenceRequest`).
 - **Núcleo sin FastAPI ni Alembic:** el módulo de análisis y el validador viven en el núcleo; solo la ruta HTTP usa el extra `http`. Sin dependencias pesadas ni extras vacíos por anticipación (no se agrega extra «inference»).
 - El motor se usa para A01/A02 sin configurar inferencia.
-- Módulos propuestos: `inference/` (tipos y protocolo, validación, mock), `operations/selection.py` (selección compartida), `operations/analysis.py` (fachada de `analyze_text`).
+- Módulos: `inference/` (`adapter.py` contrato y tipos, `prepared.py`, `output.py` validador, `build.py` ranking/resolución/cobertura, `results.py`, `service.py`, `mock.py`) (tipos y protocolo, validación, mock), `operations/selection.py` (selección compartida), `operations/analysis.py` (fachada de `analyze_text`).
 
 ### 10.3 Observabilidad y datos sensibles
 
