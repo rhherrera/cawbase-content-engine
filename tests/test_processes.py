@@ -119,7 +119,7 @@ class TestCli:
     async def test_end_to_end_cli(self, db, tmp_path):  # AC-46, AC-95, AC-97
         backend, url = db
         env = env_for(url)
-        assert cli(env, "version").stdout.strip() == "0.2.0"
+        assert cli(env, "version").stdout.strip() == "0.3.0"
         check = cli(env, "check")
         assert check.returncode == 4 and json.loads(check.stdout)["reason"] == "schema_missing"
         mig = cli(env, "migrate")

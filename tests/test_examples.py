@@ -60,3 +60,21 @@ def test_standalone_service_example():
     assert r.returncode == 0, r.stdout + r.stderr
     assert '"scope_id":"demo"' in r.stdout and "unauthenticated -> 401" in r.stdout
     assert "cce1." not in r.stdout + r.stderr
+
+
+def test_analysis_example(tmp_path):  # AC-A03-01, 02, 53
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "examples" / "analysis_host.py"), str(tmp_path / "a.db")],
+        capture_output=True,
+        text=True,
+        env=clean_env(),
+        timeout=120,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "status: completed | provenance: mock simulated = True" in r.stdout
+    assert "selected: finance | reason: priority_tiebreak" in r.stdout
+    assert (
+        "analysis:execute cannot read profiles: denied" in r.stdout
+        and "no fixture: inference_fixture_not_found" in r.stdout
+    )
+    assert "cce1." not in r.stdout + r.stderr

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -27,6 +28,7 @@ from ..models import ApiKeyGrants, ApiKeyInfo, IssuedApiKey
 from ..operations.scopes import UNSET
 
 log = logging.getLogger("cawbase_content_engine.http")
+_DISCONNECT_POLL_S = 0.05
 
 
 def _envelope(exc: EngineError, request_id: str) -> JSONResponse:
@@ -70,6 +72,28 @@ class _EngineRoute(APIRoute):
             return response
 
         return handler
+
+
+async def _until_disconnect(request: Request, awaitable: Any) -> Any:
+    """Run ``awaitable`` and cancel it if the client disconnects (Starlette does not cancel the handler).
+
+    Returns ``None`` when cancelled by a disconnect. The inner task is always awaited after cancelling,
+    so no local task outlives the request with cooperative adapters.
+    """
+    task = asyncio.ensure_future(awaitable)
+    try:
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=_DISCONNECT_POLL_S)
+            if done:
+                return task.result()
+            if await request.is_disconnected():
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+                return None
+    except asyncio.CancelledError:  # the server is cancelling this handler
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        raise
 
 
 def _json(model: Any, status: int = 200, headers: dict[str, str] | None = None) -> JSONResponse:
@@ -548,6 +572,31 @@ def create_router(engine: ContentEngine) -> APIRouter:
             version_number=None if version is None else intp(version, "version"),
         )
         return _json({"selection": res.selection, "version": dump(res.version)})
+
+    @router.post("/v1/scopes/{scope_id}/analyze-text")
+    async def analyze_text(scope_id: str, request: Request) -> Response:
+        raw = await _read_body(request, max_body)
+        o = await ops(request, scope_id)
+        d = _parse_object(raw)
+        only(d, {"text", "profile_id", "version_number", "capabilities", "context"})
+        kwargs: dict[str, Any] = {}
+        if "capabilities" in d:
+            kwargs["capabilities"] = d["capabilities"]
+        result = await _until_disconnect(
+            request,
+            o.analyze_text(
+                scope_id,
+                text=d.get("text"),
+                profile_id=d.get("profile_id"),
+                version_number=d.get("version_number"),
+                context=d.get("context"),
+                request_id=request.state.request_id,
+                **kwargs,
+            ),
+        )
+        if result is None:  # the client went away: the work was cancelled, nobody reads a response
+            return Response(status_code=499)
+        return _json(result.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
 
     return router
 

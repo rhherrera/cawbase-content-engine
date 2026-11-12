@@ -100,12 +100,12 @@ def test_base_install_is_light_and_separate_from_http(artifacts, tmp_path):  # A
     base = make_env(tmp_path, "base", str(artifacts["wheel"]))
     pkgs = installed(base, cwd)
     assert not ({"fastapi", "uvicorn", "starlette", "alembic", "asyncpg", "aiosqlite", "httpx"} & pkgs), pkgs
-    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.2.0"
+    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.3.0"
     for mod in ("fastapi", "alembic", "cawbase_content_engine.http"):
         assert py(base, "-c", f"import {mod}", cwd=cwd, check=False).returncode != 0, mod
     # the CLI is available and degrades with a clear message instead of a traceback
     cli = [str(base / "cawbase-content-engine")]
-    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.2.0"
+    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.3.0"
     r = run(
         [*cli, "migrate"],
         cwd=cwd,

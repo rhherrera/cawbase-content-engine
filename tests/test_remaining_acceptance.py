@@ -248,6 +248,13 @@ class TestDiagnosticsLimitsErrors:
             "name_conflict": 409,
             "priority_conflict": 409,
             "profile_invalid": 422,
+            # A03
+            "capabilities_not_configured": 409,
+            "inference_not_configured": 503,
+            "inference_unavailable": 503,
+            "inference_timeout": 504,
+            "inference_output_invalid": 502,
+            "inference_fixture_not_found": 501,
         }
         no_http = {
             "configuration_invalid",
