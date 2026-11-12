@@ -321,7 +321,7 @@ Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistingu
 
 ## 11. A04 — Consideraciones de seguridad documentales (solo documentado)
 
-> **A04 está DOCUMENTADA y EXPERIMENTADA (experimentos acotados sobre documentos sintéticos; [informe de viabilidad](a04-feasibility-report.md)); pendiente de aceptación del usuario; ningún soporte documental en `0.3.0`.** Sin permisos nuevos (el catálogo sigue en 11) ni cambios de aislamiento.
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Sin permisos nuevos (el catálogo sigue en 11) ni cambios de aislamiento.
 
 - Los documentos son **entrada no confiable** (observado: bombas ZIP/Flate abortadas por bytes realmente producidos, DOCTYPE rechazado, parser XML sin entidades externas; ver [informe](a04-feasibility-report.md)): los experimentos (ejecutados) corrieron localmente, con el procesamiento **sin red** (en Linux, `--network none`), sin activar macros, scripts ni referencias externas, con límites de tamaño, páginas, partes, descompresión, duración y memoria ([contrato §16](document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20)) y con endurecimiento del parser XML.
 - Rechazos iniciales (D-A04-02): cifrado, firmas, revisiones, objetos incrustados y estructuras no cubiertas; reparación del parser nunca es éxito normal.

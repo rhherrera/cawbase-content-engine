@@ -124,7 +124,7 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 ## 10. A04 — Documentos (solo documentado; no implementado)
 
-> **A04 está DOCUMENTADA y EXPERIMENTADA (experimentos acotados sobre documentos sintéticos; [informe de viabilidad](a04-feasibility-report.md)); pendiente de aceptación del usuario; ningún soporte documental en `0.3.0`.** Contrato: [procesamiento de documentos](document-processing.md); especificación: [A04](features/A04-viabilidad-y-contrato-de-documentos.md).
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Contrato: [procesamiento de documentos](document-processing.md); especificación: [A04](features/A04-viabilidad-y-contrato-de-documentos.md).
 
 - La estructura de §3 **no cambia**: no hay módulo, extra ni dependencia documental. Los futuros módulos de documentos (extracción, mapeo, transformación) seguirán la regla de §2: viven en extras, dependen del núcleo y **no** se importan desde `__init__` compartidos; el núcleo no depende de bibliotecas PDF/DOCX.
 - El mapa documental es una estructura **separada** de `AnalysisResult` (A03 no cambia). Los scripts y artefactos experimentales (`experiments/a04/`, con entorno y lock propios) están fuera de `src/` y de los distribuibles ([contrato §17](document-processing.md#17-artefactos-experimentales-implementados)); `exclude = ["experiments"]` en la sección sdist del `pyproject.toml` impide que el sdist los incluya. Los experimentos importan el motor solo como consumidor (contrato A03 y mock), sin modificarlo.

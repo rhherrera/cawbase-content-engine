@@ -1,6 +1,6 @@
 # A04 — Viabilidad y contrato de documentos
 
-> **Estado: DOCUMENTADA y EXPERIMENTADA; pendiente de aceptación del usuario.** Los experimentos EXP-01 a 10 y los controles CN-01 a 07 se implementaron (`experiments/a04/`) y se ejecutaron en macOS y en Linux local (Docker); resultados, hashes, renders y conclusiones en el [informe de viabilidad](../a04-feasibility-report.md). La viabilidad se demostró **solo dentro del subconjunto probado, con documentos sintéticos y restricciones enumeradas**; no hay soporte documental en `0.3.0`, no se ejecutó GitHub Actions, y ninguna conclusión habilita A07/A08 sin decisión del usuario.
+> **Estado: DOCUMENTADA, EXPERIMENTADA y CERRADA Y ACEPTADA POR EL USUARIO como investigación de viabilidad acotada** (evidencia sobre el código `b7608e7` e informe `0342cb4`; no implica soporte productivo, calidad de detección, soporte universal ni aprobación de Actions). Condición posterior: [D-A04-04](../decisions/A04-decisions.md#2-decisiones-aprobadas) (comprobación representativa al inicio de A08). Los experimentos EXP-01 a 10 y los controles CN-01 a 07 se implementaron (`experiments/a04/`) y se ejecutaron en macOS y en Linux local (Docker); resultados, hashes, renders y conclusiones en el [informe de viabilidad](../a04-feasibility-report.md). La viabilidad se demostró **solo dentro del subconjunto probado, con documentos sintéticos y restricciones enumeradas**; no hay soporte documental en `0.3.0`, no se ejecutó GitHub Actions, y ninguna conclusión habilita A07/A08 sin decisión del usuario.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md)); estas **prevalecen** sobre el playbook donde difieren.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a04-document-feasibility-contract` (desde `ae19ef3`, merge de A03).
@@ -158,7 +158,7 @@ Los criterios se fijaron **antes** de ejecutar; la columna «Estado» refleja el
 | AC-A04-17 | Conclusiones **por separado** para DOCX/PDF y para eliminación/sustitución/restitución: viable en el subconjunto probado / viable con restricciones enumeradas / no viable o evidencia insuficiente | Informe de viabilidad | cumplido (informe §5) |
 | AC-A04-18 | Esfuerzo de la vía PDF evaluado (EXP-10) y reportado | EXP-10 | cumplido (informe §6) |
 | AC-A04-19 | Ningún cambio de versión, esquema, permisos ni contratos de A03; sin extras ni APIs anticipadas **en esta entrega documental** | Revisión del diff de esta entrega | cumplido: sin cambios en `src`, versión, esquema, permisos, contratos de A03 ni dependencias/`uv.lock` del paquete; único cambio en `pyproject.toml`: `exclude = ["experiments"]` del sdist (verificado con `uv build`) |
-| AC-A04-20 | Un resultado negativo no habilita A07/A08 ni cierra A04 sin decisión del usuario | Informe de viabilidad + decisión del usuario | **pendiente de decisión del usuario** |
+| AC-A04-20 | Un resultado negativo no habilita A07/A08 ni cierra A04 sin decisión del usuario | Informe de viabilidad + decisión del usuario | cumplido: el usuario aceptó el cierre y no habilitó A07/A08 por saltarse A05/A06; condición D-A04-04 para A08 |
 
 ## 8. Estructura del informe de viabilidad
 

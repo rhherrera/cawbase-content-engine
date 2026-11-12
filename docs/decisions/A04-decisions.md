@@ -1,6 +1,6 @@
 # A04 — Registro de decisiones
 
-> **Estado: A04 DOCUMENTADA y EXPERIMENTADA (experimentos acotados ejecutados en macOS y Linux local sobre documentos sintéticos); pendiente de aceptación del usuario.** Conclusiones de viabilidad en el [informe](../a04-feasibility-report.md): no son una aceptación ni habilitan A07/A08 por sí solas. Las decisiones `D-A04-nn` fueron **aprobadas por el usuario** y no cambian; las elecciones técnicas `E-A04-nn` no son decisiones de producto. Ningún soporte documental existe en `0.3.0`.
+> **Estado: A04 CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada** (evidencia sobre el código experimental `b7608e7` e informe `0342cb4`). No implica soporte documental productivo en el motor, calidad de detección, soporte universal ni aprobación de GitHub Actions. Las decisiones `D-A04-nn` fueron **aprobadas por el usuario**; las elecciones técnicas `E-A04-nn` no son decisiones de producto.
 
 Contratos que usan estas decisiones: [especificación de A04](../features/A04-viabilidad-y-contrato-de-documentos.md) · [procesamiento de documentos](../document-processing.md).
 
@@ -17,6 +17,7 @@ Este registro separa categorías; no mezclarlas.
 | 1 | Primera redacción (solo documental): D-A04-01 a 03 aprobadas; E-A04-01 a 22; diferencias con el playbook; backlog. Registro del cierre y aceptación de A03 en los documentos de A03 (no es una decisión de A04). |
 | 2 | Precisiones previas a los experimentos (sin cambiar `D-A04-nn`): alcance temporal, nuevas disposiciones (`P` estructural inspeccionado) y condiciones de cobertura, Unicode, unidad PDF = página, campos DOCX. E-A04-23 a 27. |
 | 3 | Ejecución de los experimentos (rev. 3): E-A04-28 a 33 (derivadas de lo observado) y B-A04-11 a 19. Ninguna `D-A04-nn` cambia. |
+| 4 | Cierre y aceptación de A04 por el usuario; D-A04-04 (comprobación representativa de PDF al inicio de A08). Sin cambios en D-A04-01 a 03 ni en el código. |
 
 ## 1. Fuente, precedencia y herencia
 
@@ -46,6 +47,14 @@ Este registro separa categorías; no mezclarlas.
 - Sustitutos ilegibles, desbordamientos, pérdida colateral de contenido o mapeo insuficiente producen **fallo explícito**.
 - **No** convertir el documento completo en imágenes como alternativa silenciosa. **No** prometer identidad visual exacta ni recuperación byte a byte.
 - La inspección visual identifica renderizador, versión y fuentes; **no** promete resultados idénticos entre Word, LibreOffice u otros lectores.
+
+### D-A04-04 — Comprobación representativa de PDF al inicio de A08
+
+- Aprobada por el usuario al aceptar el cierre de A04. **Al inicio de A08, antes de implementar su pipeline productivo, debe ejecutarse una comprobación representativa con PDF producidos por herramientas habituales**, con contenido sintético o documentos públicos de uso permitido (no se requieren documentos privados).
+- Debe incluir fuentes **Type0/CID con subconjuntos**, **object streams**, **`/Contents` en arreglo** y variaciones habituales del **estado de texto**; medir qué documentos se procesan, cuáles se rechazan y por qué, y verificar eliminación, sustitución y fidelidad en los casos procesables.
+- Los **criterios de utilidad y aceptación del corpus se definen antes de ejecutarlo**. Si el subconjunto soportado resulta insuficiente, **se revisa con el usuario el alcance o la estrategia antes de continuar A08**. No autoriza dependencias comerciales ni reducir garantías silenciosamente.
+- **No reabre A04 ni bloquea A05.** A07 y A08 conservan las dependencias del playbook: el cierre de A04 no permite saltarse A05/A06.
+- Atiende los riesgos B-A04-11, 12 y 13 en lo que A08 necesite; el resto del backlog sigue fuera de alcance.
 
 ## 3. Elecciones técnicas derivadas
 
@@ -122,4 +131,4 @@ Lo no listado permanece vigente.
 
 ## 6. Preguntas abiertas y tensiones
 
-Ninguna bloquea la documentación. Dependencias en otras features: trabajos y almacenamiento (A05), sustituciones y restauración productivas (A06), protección/restauración DOCX/PDF completas (A07/A08), modelo real y segmentación (A09), licencia definitiva y publicación (A10). Si los experimentos concluyen «no viable» o «evidencia insuficiente» para un área, **decide el usuario** (no se cierra A04 con una imposibilidad material por inercia).
+Ninguna bloquea la documentación. Dependencias en otras features: trabajos y almacenamiento (A05), sustituciones y restauración productivas (A06), protección/restauración DOCX/PDF completas (A07/A08), modelo real y segmentación (A09), licencia definitiva y publicación (A10). El usuario aceptó el cierre de A04 y adoptó D-A04-04 para el riesgo de fuentes reales en PDF.

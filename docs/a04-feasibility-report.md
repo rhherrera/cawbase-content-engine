@@ -1,6 +1,6 @@
 # Informe de viabilidad de A04 — documentos DOCX y PDF
 
-> **Estado: experimentos EJECUTADOS en macOS y en Linux local (Docker) sobre documentos SINTÉTICOS; A04 PENDIENTE de aceptación del usuario. GitHub Actions NO se ejecutó para A04.** La viabilidad se demostró **solo dentro del subconjunto probado y con las restricciones enumeradas**; este informe no es un acta de aceptación, no habilita por sí solo A07/A08 y no acredita protección universal. El mock no mide calidad de detección y la ausencia de los valores sintéticos seleccionados no acredita ausencia universal de datos sensibles. No hay soporte documental en `0.3.0`.
+> **Estado: experimentos EJECUTADOS en macOS y en Linux local (Docker) sobre documentos SINTÉTICOS; A04 **CERRADA Y ACEPTADA por el usuario** como investigación de viabilidad acotada (ver §10). GitHub Actions NO se ejecutó para A04.** La viabilidad se demostró **solo dentro del subconjunto probado y con las restricciones enumeradas**; este informe no es un acta de aceptación, no habilita por sí solo A07/A08 y no acredita protección universal. El mock no mide calidad de detección y la ausencia de los valores sintéticos seleccionados no acredita ausencia universal de datos sensibles. No hay soporte documental en `0.3.0`.
 
 Relacionado: [especificación](features/A04-viabilidad-y-contrato-de-documentos.md) · [contrato](document-processing.md) · [decisiones](decisions/A04-decisions.md) · código y evidencia: [`experiments/a04/`](../experiments/a04/README.md) · [resumen de cada comprobación](../experiments/a04/outputs/results-summary.md).
 
@@ -13,7 +13,7 @@ Relacionado: [especificación](features/A04-viabilidad-y-contrato-de-documentos.
 | 3 | Probado en macOS | Sí: 468 comprobaciones pasan, 0 fallan, 13 pendientes (renders DOCX: no hay LibreOffice en macOS) |
 | 4 | Probado en Linux local (Docker, Debian 12 aarch64) | Sí: 481 pasan, 0 fallan, 0 pendientes; procesamiento con `--network none` |
 | 5 | Probado en GitHub Actions | **No** (ningún flujo se ejecutó ni se infiere de los otros ambientes) |
-| 6 | Aceptado por el usuario | **Pendiente** |
+| 6 | Aceptado por el usuario | **Sí**, como investigación de viabilidad acotada (§10); no implica soporte productivo, calidad de detección, soporte universal ni aprobación de Actions |
 
 macOS y Linux son ambientes distintos y se informan por separado. Las 91 huellas de fixtures y salidas coincidieron entre ambos (observación, no aprobación cruzada).
 
@@ -149,5 +149,11 @@ La vía `pikepdf`/QPDF, sin intérprete PDF general y sin dependencia comercial,
 - **A05 (trabajos, archivos):** no está bloqueada. Debe conservar el contrato de identidad (el mapa se liga a `file_sha256`, versión y configuración del extractor), la unidad (párrafo DOCX / página PDF), los motivos de rechazo cerrados y límites **de producto** propios (los de §16 son de experimento); debe tratar el documento como entrada no confiable (bombas por bytes producidos, DOCTYPE).
 - **A07 (DOCX):** puede apoyarse en lo demostrado dentro del subconjunto, con rechazos de D-A04-02 y las restricciones de §5; requiere definir en su alcance el tratamiento del formato del sustituto, los resultados de campos y las partes `N` (imágenes, destinos de enlace, texto alternativo).
 - **A08 (PDF):** viable **con restricciones** sobre el subconjunto probado, pero **la cobertura de fuentes reales (Type0/CID con subconjuntos) está sin evidencia y es la principal incertidumbre material**: sin ella, un conjunto grande de PDF reales se rechazaría. No hay un bloqueo demostrado; es evidencia insuficiente.
-- **Decisión del usuario (no imprescindible para continuar, pero necesaria para cerrar A04):** aceptar o no el cierre de A04 con estas conclusiones y decidir si antes de A08 se exige una comprobación con un corpus de PDF reales (B-A04-11/12) o se acepta el riesgo de rechazo por fuentes no soportadas. **No se cierra A04 ni se habilita A07/A08 sin esa decisión** (AC-A04-20).
+- **Decisión del usuario (no imprescindible para continuar, pero necesaria para cerrar A04):** aceptar o no el cierre de A04 con estas conclusiones y decidir si antes de A08 se exige una comprobación con un corpus de PDF reales (B-A04-11/12) o se acepta el riesgo de rechazo por fuentes no soportadas. **Resuelto:** el usuario aceptó el cierre y adoptó la condición D-A04-04 (§10).
 - **Backlog:** [B-A04-01 a 19](decisions/A04-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).
+
+## 10. Cierre y decisión posterior (registrado tras la revisión del usuario)
+
+El usuario declaró A04 **cerrada y aceptada como investigación de viabilidad acotada**, con las restricciones y limitaciones de este informe. La aceptación comprende la evidencia sobre el código experimental `b7608e7` y este informe (`0342cb4`); **no** implica soporte documental productivo en el motor, calidad de detección, soporte universal ni aprobación de GitHub Actions (no ejecutado). Se conservan todas las limitaciones, incluidos el formato interno de runs DOCX no restituido, el kerning PDF no restituido, los renders DOCX pendientes en macOS y la ausencia de ejecución en Actions.
+
+**D-A04-04 (aprobada):** al inicio de A08, antes de su pipeline productivo, se ejecutará una comprobación representativa con PDF de herramientas habituales (Type0/CID con subconjuntos, object streams, `/Contents` en arreglo, estado de texto), con criterios definidos antes de ejecutarla; si el subconjunto resulta insuficiente, se revisa el alcance con el usuario. Texto completo en [A04-decisions](decisions/A04-decisions.md). No reabre A04 ni bloquea A05; A07 y A08 conservan sus dependencias (A05/A06).
