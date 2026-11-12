@@ -11,8 +11,11 @@ import asyncio
 import json
 import logging
 import os
+import shutil
 import sys
+import tempfile
 import time
+import uuid
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -35,6 +38,34 @@ from .router import create_health_router, create_router
 log = logging.getLogger("cawbase_content_engine.service")
 
 EXIT_OTHER, EXIT_CONFIG, EXIT_MIGRATION, EXIT_COMPAT = 1, 2, 3, 4
+
+#: Internal launcher->worker channel (not configuration): a private directory where a worker that
+#: fails to initialize records the exit code the service must report. Uvicorn itself reports its own
+#: code 3 ("startup failure") for every kind of worker failure, which would be indistinguishable from
+#: a migration failure (also 3 in this service); and a multi-worker launcher would otherwise return 0
+#: after the supervisor stops because a worker could not start.
+_STATE_ENV = "_CCE_WORKER_STATE_DIR"
+_FAILED_MARKER = "worker-startup-failed"
+
+
+def _record_worker_failure(exc: BaseException) -> None:
+    code = exit_code_for(exc)
+    log.error(
+        "worker_startup_failed",
+        extra={
+            "event": "worker_startup_failed",
+            "error_code": getattr(exc, "code", None),
+            "exit_code": code,
+            "error_class": type(exc).__name__,
+        },
+    )
+    directory = os.environ.get(_STATE_ENV)
+    if directory:
+        try:
+            with open(os.path.join(directory, _FAILED_MARKER), "w") as fh:
+                fh.write(str(code))
+        except OSError:
+            pass
 
 
 def _bool(env: Mapping[str, str], name: str, default: bool) -> bool:
@@ -111,9 +142,14 @@ def configure_logging(settings: ServiceSettings) -> None:
     handler.setFormatter(
         _JsonFormatter() if settings.log_format == "json" else logging.Formatter("%(levelname)s %(name)s %(message)s")
     )
-    root = logging.getLogger("cawbase_content_engine")
-    root.handlers[:] = [handler]
-    root.setLevel(settings.log_level)
+    # The service also routes uvicorn's own (error/lifecycle) logger through this handler: supervisor
+    # messages ("Child process ... died") become visible, and the formatter prints only the message
+    # (never ``exc_info``), so worker start-up tracebacks cannot leak into the service log.
+    for name in ("cawbase_content_engine", "uvicorn", "uvicorn.error"):
+        target = logging.getLogger(name)
+        target.handlers[:] = [handler]
+        target.setLevel(settings.log_level)
+        target.propagate = False
 
 
 async def prepare(settings: ServiceSettings) -> None:
@@ -158,7 +194,11 @@ def create_service_app(engine: ContentEngine, *, enable_openapi: bool = False) -
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        await engine.start()
+        try:
+            await engine.start()
+        except BaseException as exc:
+            _record_worker_failure(exc)
+            raise
         try:
             yield
         finally:
@@ -186,9 +226,11 @@ def create_service_app(engine: ContentEngine, *, enable_openapi: bool = False) -
                     if state_name == "degraded_database"
                     else ("schema_incompatible" if state_name == "schema_incompatible" else "engine_not_ready")
                 )
+                request_id = uuid.uuid4().hex
                 return JSONResponse(
-                    {"error": {"code": code, "message": "The service is not ready.", "request_id": ""}},
+                    {"error": {"code": code, "message": "The service is not ready.", "request_id": request_id}},
                     status_code=503,
+                    headers={"X-Request-ID": request_id},
                 )
         return await call_next(request)
 
@@ -222,13 +264,31 @@ def serve(settings: ServiceSettings) -> int:
     for name in ("MIGRATION_DATABASE_URL", "MIGRATION_DATABASE_URL_FILE"):
         os.environ.pop(ENV_PREFIX + name, None)
     os.environ[ENV_PREFIX + "MIGRATE_ON_START"] = "false"  # workers must never migrate
-    uvicorn.run(
-        "cawbase_content_engine.http.service:app_factory",
-        factory=True,
-        host=settings.host,
-        port=settings.port,
-        workers=settings.workers,
-        log_config=None,
-        access_log=False,
-    )
-    return 0
+    state_dir = tempfile.mkdtemp(prefix="cce-service-")  # private (0700)
+    os.environ[_STATE_ENV] = state_dir
+    returncode = 0
+    try:
+        try:
+            uvicorn.run(
+                "cawbase_content_engine.http.service:app_factory",
+                factory=True,
+                host=settings.host,
+                port=settings.port,
+                workers=settings.workers,
+                log_config=None,
+                access_log=False,
+            )
+        except SystemExit as exc:  # single worker: uvicorn exits with its own code 3 on startup failure
+            returncode = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else EXIT_OTHER)
+        marker = os.path.join(state_dir, _FAILED_MARKER)
+        if os.path.exists(marker):
+            try:
+                with open(marker) as fh:
+                    returncode = int(fh.read().strip())
+            except (OSError, ValueError):
+                returncode = EXIT_OTHER
+            log.error("service_stopped_after_worker_startup_failure", extra={"exit_code": returncode})
+    finally:
+        os.environ.pop(_STATE_ENV, None)
+        shutil.rmtree(state_dir, ignore_errors=True)
+    return returncode
