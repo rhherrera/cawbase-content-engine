@@ -1,0 +1,7 @@
+== SQLite 3.38.5 (built from sqlite.org/2022/sqlite-autoconf-3380500.tar.gz)
+in-process: python 3.13.18 | sqlite3.sqlite_version = 3.38.5 | aiosqlite 0.22.1
+pytest with sqlite3 3.38.5: exit=0 | 331 passed, 7 skipped, 7 deselected in 88.57s (0:01:28)
+== SQLite 3.37.2 (built from sqlite.org/2022/sqlite-autoconf-3370200.tar.gz)
+in-process: python 3.13.18 | sqlite3.sqlite_version = 3.37.2 | aiosqlite 0.22.1
+below-floor start() with sqlite3 3.37.2: exit=0 | REFUSED: SQLite 3.38 or newer is required (this runtime links 3.37.2).
+== done

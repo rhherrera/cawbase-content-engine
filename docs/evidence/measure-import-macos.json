@@ -1,0 +1,64 @@
+{
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "python": "3.13.16",
+  "cold_first_import (bytecode cleared before each sample)": {
+    "samples": 5,
+    "median_ms": 938.8,
+    "min_ms": 860.5,
+    "max_ms": 3262.9,
+    "all_ms": [
+      3262.9,
+      938.8,
+      975.9,
+      860.5,
+      862.7
+    ]
+  },
+  "warm_import (new processes, bytecode available)": {
+    "samples": 15,
+    "median_ms": 231.3,
+    "min_ms": 223.3,
+    "max_ms": 324.1,
+    "all_ms": [
+      232.8,
+      225.6,
+      223.3,
+      262.8,
+      225.1,
+      259.8,
+      324.1,
+      305.2,
+      231.1,
+      228.4,
+      242.2,
+      231.3,
+      237.3,
+      223.3,
+      230.0
+    ]
+  },
+  "installed_size_kib_excluding_pycache": 17960,
+  "installed_distributions": [
+    "SQLAlchemy==2.1.8",
+    "annotated-types==0.8.0",
+    "cawbase-content-engine==0.1.0",
+    "greenlet==3.5.6",
+    "pydantic==2.14.3",
+    "pydantic_core==2.50.4",
+    "typing-inspection==0.4.5",
+    "typing_extensions==4.16.0"
+  ],
+  "third_party_top_level_modules_loaded_on_import": [
+    "annotated_types",
+    "cawbase_content_engine",
+    "cython_runtime",
+    "greenlet",
+    "pydantic",
+    "pydantic_core",
+    "sitecustomize",
+    "sqlalchemy",
+    "typing_extensions",
+    "typing_inspection"
+  ]
+}

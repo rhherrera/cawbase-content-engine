@@ -1,0 +1,63 @@
+{
+  "platform": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+  "machine": "aarch64",
+  "python": "3.13.18",
+  "cold_first_import (bytecode cleared before each sample)": {
+    "samples": 5,
+    "median_ms": 875.2,
+    "min_ms": 808.0,
+    "max_ms": 930.1,
+    "all_ms": [
+      922.6,
+      930.1,
+      818.4,
+      875.2,
+      808.0
+    ]
+  },
+  "warm_import (new processes, bytecode available)": {
+    "samples": 15,
+    "median_ms": 197.8,
+    "min_ms": 179.5,
+    "max_ms": 228.7,
+    "all_ms": [
+      197.8,
+      211.2,
+      192.0,
+      185.1,
+      228.7,
+      204.9,
+      205.3,
+      214.9,
+      179.5,
+      184.4,
+      200.1,
+      184.2,
+      180.1,
+      180.0,
+      201.1
+    ]
+  },
+  "installed_size_kib_excluding_pycache": 28126,
+  "installed_distributions": [
+    "SQLAlchemy==2.1.8",
+    "annotated-types==0.8.0",
+    "cawbase-content-engine==0.1.0",
+    "greenlet==3.5.6",
+    "pydantic==2.14.3",
+    "pydantic_core==2.50.4",
+    "typing-inspection==0.4.5",
+    "typing_extensions==4.16.0"
+  ],
+  "third_party_top_level_modules_loaded_on_import": [
+    "annotated_types",
+    "cawbase_content_engine",
+    "cython_runtime",
+    "greenlet",
+    "pydantic",
+    "pydantic_core",
+    "sqlalchemy",
+    "typing_extensions",
+    "typing_inspection"
+  ]
+}

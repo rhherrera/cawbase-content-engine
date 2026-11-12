@@ -1,0 +1,9 @@
+macOS (host) runs on the working tree whose src/ and tests/ equal commit 7ffbe2a:
+mac-static: Success: no issues found in 34 source files
+mac-pg15: 331 passed, 7 skipped, 7 deselected in 105.28s (0:01:45)
+mac-pg16: 331 passed, 7 skipped, 7 deselected in 117.56s (0:01:57)
+mac-pg17: 331 passed, 7 skipped, 7 deselected in 111.41s (0:01:51)
+mac-pg18: 331 passed, 7 skipped, 7 deselected in 114.12s (0:01:54)
+mac-lowest: 331 passed, 7 skipped, 7 deselected in 131.10s (rerun after pyyaml>=6.0.2; first attempt failed building pyyaml 6.0)
+mac-sqlite-only: 203 passed, 135 skipped, 7 deselected in 48.56s
+mac-dist: 7 passed, 338 deselected in 31.59s

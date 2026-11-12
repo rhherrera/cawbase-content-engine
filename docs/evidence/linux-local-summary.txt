@@ -1,0 +1,27 @@
+== snapshot: head (repo HEAD at launch: 7ffbe2a96a2edacd3606f0fd36671e83701a89fc)
+== platform
+Linux 7.0.14-linuxkit aarch64 | Debian GNU/Linux 12 (bookworm)
+python 3.13.18 | sqlite3.sqlite_version (in this process) 3.40.1
+uv 0.13.7 (aarch64-unknown-linux-gnu)
+== static
+ruff-check: exit=0 | All checks passed!
+ruff-format: exit=0 | 57 files already formatted
+mypy: exit=0 | Success: no issues found in 34 source files
+== suites (CCE_REQUIRE_POSTGRES=1; a missing PostgreSQL is a failure)
+PostgreSQL server 15: 15.19
+pytest-pg15: exit=0 | 330 passed, 8 skipped, 7 deselected in 90.57s (0:01:30)
+PostgreSQL server 16: 16.15
+pytest-pg16: exit=0 | 330 passed, 8 skipped, 7 deselected in 85.27s (0:01:25)
+PostgreSQL server 17: 17.11
+pytest-pg17: exit=0 | 330 passed, 8 skipped, 7 deselected in 83.40s (0:01:23)
+PostgreSQL server 18: 18.6
+pytest-pg18: exit=0 | 330 passed, 8 skipped, 7 deselected in 82.82s (0:01:22)
+== lowest declared bounds (installed versions printed from the resolved environment)
+lowest versions: {'sqlalchemy': '2.0.36', 'pydantic': '2.9.0', 'asyncpg': '0.30.0', 'aiosqlite': '0.20.0', 'alembic': '1.14.0', 'fastapi': '0.115.0', 'uvicorn': '0.50.0', 'pytest': '8.3.0', 'pytest-asyncio': '0.24.0', 'httpx': '0.27.0'}
+pytest-lowest: exit=0 | 330 passed, 8 skipped, 7 deselected in 100.55s (0:01:40)
+== distribution (wheel + sdist installed into clean venvs outside the tree; AC-07 uses PostgreSQL 17)
+pytest-dist: exit=0 | 7 passed, 338 deselected in 13.73s
+artifact-audit: exit=0 | audited 2 artifact(s): 0 finding(s)
+== import measurements from the installed wheel (clean venv, Linux)
+measure-base: exit=0 | cold median/max/n = 875.2/930.1/5 ms; warm median/max/n = 197.8/228.7/15 ms; size 28126 KiB
+== done
