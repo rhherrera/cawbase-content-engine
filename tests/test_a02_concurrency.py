@@ -86,14 +86,16 @@ class TestLimitsUnderConcurrency:
         ops = await ops_for(e, "a")
         await ops.create_profile("a", "p", "P", **NO_CATALOG)
         out = await results(*[ops.create_category("a", "p", f"c{n}", f"C{n}", "d") for n in range(10)])
-        assert len([r for r in out if not isinstance(r, Exception)]) == 3
+        created = [r.value.category_id for r in out if not isinstance(r, Exception)]
+        assert len(created) == 3  # which three win is up to the scheduler: never assume ids
         assert all(isinstance(r, LimitExceededError) for r in out if isinstance(r, Exception))
+        survivor = created[0]
         # versions: sequentially publish up to the limit, then race the next ones
         for n in range(2):
-            await ops.update_category("a", "p", "c0", expected_revision=n + 1, definition=f"v{n}")
+            await ops.update_category("a", "p", survivor, expected_revision=n + 1, definition=f"v{n}")
             p = await ops.get_profile("a", "p")
             await ops.publish_profile("a", "p", expected_draft_revision=p.draft_revision)
-        await ops.update_category("a", "p", "c0", expected_revision=3, definition="v3")
+        await ops.update_category("a", "p", survivor, expected_revision=3, definition="v3")
         p = await ops.get_profile("a", "p")
         out = await results(
             *[ops.publish_profile("a", "p", expected_draft_revision=p.draft_revision) for _ in range(5)]
