@@ -11,7 +11,8 @@ does that for you):
 * warm  = new processes with bytecode already available (the steady state).
 
 Cold and warm are reported separately, with sample count, median, min and max. Nothing is compared
-against a threshold here: provisional references live in docs/installation-and-operations.md.
+against a threshold here; the decided gate (D-33: warm median <= 300 ms, installed size <= 40 MiB) is
+asserted by tests/test_distribution.py::test_installed_import_cost_meets_the_decided_references.
 """
 
 from __future__ import annotations
@@ -73,12 +74,14 @@ def main() -> None:
     ap.add_argument("--cold-runs", type=int, default=5)
     ap.add_argument("--warm-runs", type=int, default=15)
     args = ap.parse_args()
-    cold, modules = [], []
+    cold, warm, modules = [], [], []
     for _ in range(args.cold_runs):
         clear_bytecode()
         ms, modules = one_sample()
         cold.append(ms)
-    warm = [one_sample()[0] for _ in range(args.warm_runs)]
+    for _ in range(args.warm_runs):
+        ms, modules = one_sample()
+        warm.append(ms)
     third_party = [m for m in modules if m not in sys.stdlib_module_names and not m.startswith("_")]
     dists = sorted(f"{d.metadata['Name']}=={d.version}" for d in metadata.distributions())
     print(

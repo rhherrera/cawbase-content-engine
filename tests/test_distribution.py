@@ -239,3 +239,21 @@ def test_python_example_from_installed_wheel_runs_on_sqlite_and_postgres(artifac
         return sorted(rows)
 
     assert "scopes" in asyncio.run(tables())
+
+
+def test_installed_import_cost_meets_the_decided_references(artifacts, tmp_path):  # AC-04, D-33
+    """Gate decided in D-33: WARM median <= 300 ms and installed size <= 40 MiB. The COLD first import is
+    measured and reported but has no threshold. Samples are logged in the failure message, never relaxed."""
+    cwd = tmp_path / "elsewhere"
+    cwd.mkdir()
+    env = make_env(tmp_path, "measure", str(artifacts["wheel"]))
+    script = cwd / "measure_import.py"
+    shutil.copy(ROOT / "scripts" / "measure_import.py", script)
+    data = json.loads(py(env, str(script), "--cold-runs", "3", "--warm-runs", "15", cwd=cwd).stdout)
+    warm = data["warm_import (new processes, bytecode available)"]
+    cold = data["cold_first_import (bytecode cleared before each sample)"]
+    assert warm["samples"] == 15 and cold["samples"] == 3
+    assert warm["median_ms"] <= 300, data
+    assert data["installed_size_kib_excluding_pycache"] <= 40 * 1024, data
+    forbidden = {"fastapi", "starlette", "uvicorn", "alembic", "asyncpg", "aiosqlite", "httpx"}
+    assert not forbidden & set(data["third_party_top_level_modules_loaded_on_import"])
