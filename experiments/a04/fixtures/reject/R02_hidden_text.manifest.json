@@ -1,7 +1,7 @@
 {
   "fixture_id": "R02_hidden_text",
   "file": "R02_hidden_text.docx",
-  "sha256": "3b22919faba9db341bb2dc9f3628a96dd1a26330575d9a8ccf17146551c4f651",
+  "sha256": "a5f8c58462f923a5a124350df3f17873a3330d98bb49abd59e5763ae2f3b78ee",
   "kind": "docx",
   "expected": {
     "reject": [

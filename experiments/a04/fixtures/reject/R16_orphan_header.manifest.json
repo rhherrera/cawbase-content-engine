@@ -1,7 +1,7 @@
 {
   "fixture_id": "R16_orphan_header",
   "file": "R16_orphan_header.docx",
-  "sha256": "3f14273d05afa44ec1b0f8e0b5f36a66462348f6328b378c1899e39889cba7f8",
+  "sha256": "a7b5708baaf5caf33bc8e0e7d857f28d45f83f637eca86f76ffda87092671aed",
   "kind": "docx",
   "expected": {
     "reject": [

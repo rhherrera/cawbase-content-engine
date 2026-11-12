@@ -1,7 +1,7 @@
 {
   "fixture_id": "R11_macros",
   "file": "R11_macros.docx",
-  "sha256": "01482556ae5e78a246d30bb5b5ab920853955ee01ed82e123937f0f60b9d685f",
+  "sha256": "e2ea6e3739cc5828e1100b8b80691b03b720174d8d868b56eebd19296057686f",
   "kind": "docx",
   "expected": {
     "reject": [

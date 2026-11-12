@@ -1,7 +1,7 @@
 {
   "fixture_id": "R10_signed",
   "file": "R10_signed.docx",
-  "sha256": "f26a236a5d2ea279ca0441469b4955b27c232ae47be3fd7a2997e94c40a6956f",
+  "sha256": "055695204881c0a97fbc570a56d9d4b2434ff6b1b822ca326dddc3718ce80c11",
   "kind": "docx",
   "expected": {
     "reject": [

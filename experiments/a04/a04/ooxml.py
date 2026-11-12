@@ -195,7 +195,9 @@ def build_docx(
     )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("[Content_Types].xml", xml(ct))
+        zi0 = zipfile.ZipInfo("[Content_Types].xml", date_time=(2026, 1, 1, 0, 0, 0))
+        zi0.compress_type = zipfile.ZIP_DEFLATED
+        z.writestr(zi0, xml(ct))
         for name in ["_rels/.rels"] + [n for n in parts if n != "_rels/.rels"]:
             zi = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
             zi.compress_type = zipfile.ZIP_DEFLATED

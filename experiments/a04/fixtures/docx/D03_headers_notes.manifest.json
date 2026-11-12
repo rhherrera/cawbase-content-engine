@@ -2,7 +2,7 @@
   "fixture_id": "D03_headers_notes",
   "kind": "docx",
   "file": "D03_headers_notes.docx",
-  "sha256": "30a5d955b480111ecb39a7d9546a331486bb82751c9ea44bbb50aa2be16abdb9",
+  "sha256": "1e34c272bf1e4009237f4dde201e94baef2fa823f03d8d299684d2c103289263",
   "note": "default/first/even headers+footers, titlePg, evenAndOddHeaders, footnote, endnote",
   "values": {
     "v1": "Ana Ejemplo",

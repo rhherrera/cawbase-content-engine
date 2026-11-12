@@ -2,7 +2,7 @@
   "fixture_id": "D04_unicode",
   "kind": "docx",
   "file": "D04_unicode.docx",
-  "sha256": "42265607b1ec1e683176b6bf46f10bb9e6a03c5261a40683a6f6734b1fca01eb",
+  "sha256": "fa52a3f0884900c3da0f1fcec64e41a6a3c1627ea6702bf3a2c22593d54368d5",
   "note": "NFC and NFD forms, emoji outside the BMP, ZWJ sequence, tab, line break, repeated identical value",
   "values": {
     "v4": "Zoë Café",

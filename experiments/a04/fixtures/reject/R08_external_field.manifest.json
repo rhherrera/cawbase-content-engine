@@ -1,7 +1,7 @@
 {
   "fixture_id": "R08_external_field",
   "file": "R08_external_field.docx",
-  "sha256": "0e569bda26c927e3f91bde57ce6ebe9f095f21abbaf3bf6e5c82d53aeb131ba0",
+  "sha256": "4920e8730236fa1e976d54434f2594580ed5a1d8a8b9584643c77ce5613ad12a",
   "kind": "docx",
   "expected": {
     "reject": [

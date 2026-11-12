@@ -1,7 +1,7 @@
 {
   "fixture_id": "R23_media_type_mismatch",
   "file": "R23_media_type_mismatch.docx",
-  "sha256": "e9905db29ad145611dccada540e8d94194fb29e5c96c2cee114ec7734b2428f3",
+  "sha256": "9b333f1e132885058de4499e05948cdf19cfa98457b57a053816cf3c1a11bc03",
   "kind": "docx",
   "expected": {
     "reject": [

@@ -2,7 +2,7 @@
   "fixture_id": "D02_tables",
   "kind": "docx",
   "file": "D02_tables.docx",
-  "sha256": "8fb92bce54206a0051fb82dd581f5cd17314572c3ae580efc0dc38864d5751f9",
+  "sha256": "4fe1df9614dede261c6e58809b1a4eb3cbb3393bdf24ac216f5cbd4f1aed4d7b",
   "note": "simple table, nested table (depth 2), gridSpan and vMerge",
   "values": {
     "v1": "Ana Ejemplo",

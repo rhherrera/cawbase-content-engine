@@ -2,7 +2,7 @@
   "fixture_id": "D09_no_values",
   "kind": "docx",
   "file": "D09_no_values.docx",
-  "sha256": "f93b66796b66e0fc1e47e75f94549531e03b9c7cafa4a1fe0ccb9af5538d4ad4",
+  "sha256": "04802ee548bc2a670307bf8a7dcba35ec1650bfeb60036dec086c7395e2b0a71",
   "note": "document without the selected values (selection references values that do not occur)",
   "values": {},
   "expected_units": [

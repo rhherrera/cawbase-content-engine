@@ -1,7 +1,7 @@
 {
   "fixture_id": "R03_text_box",
   "file": "R03_text_box.docx",
-  "sha256": "0b25d7a79217fe6e844cbcc311cc7af7990bfec6bafb77b46b7a581167bd2b83",
+  "sha256": "57ed891d75cb87880b674d84042183c8402ac1d69b92f65b160df47d4aeecc20",
   "kind": "docx",
   "expected": {
     "reject": [

@@ -29,7 +29,7 @@ bash experiments/a04/run_macos.sh      # macOS (needs Poppler: pdftotext/pdfinfo
 bash experiments/a04/run_linux.sh      # Linux in Docker: network only to install pinned wheels/packages; processing runs with --network none
 ```
 
-Regenerate fixtures (deterministic; hashes are checked by `run_all.py`):
+Regenerate fixtures (byte-deterministic, **except** `reject/Q01_encrypted.pdf` whose RC4/AES salt is random: the committed copy is authoritative; hashes are checked by `run_all.py`):
 
 ```bash
 cd experiments/a04

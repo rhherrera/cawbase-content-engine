@@ -1,7 +1,7 @@
 {
   "fixture_id": "R22_equation_partial",
   "file": "R22_equation_partial.docx",
-  "sha256": "08d2268ffa99d3d127c0474982d6bd3cd309a2a80a8c0124383af510d189c507",
+  "sha256": "bf331a4d67fac9204caba3837ea8faceedda589fc8a4e54949b2dafc5e598a9a",
   "kind": "docx",
   "expected": {
     "partial": [

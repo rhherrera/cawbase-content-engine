@@ -1,7 +1,7 @@
 {
   "fixture_id": "R21_image_partial",
   "file": "R21_image_partial.docx",
-  "sha256": "3f1d28803c6f197cf43c1aba1150d26e6777905f138face0437040e6656104ee",
+  "sha256": "1c7448b28974cfa964e1620b3433adf0c5f58d2b867686ce5654a180c8303aba",
   "kind": "docx",
   "expected": {
     "partial": [

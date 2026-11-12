@@ -2,7 +2,7 @@
   "fixture_id": "D06_comments_meta",
   "kind": "docx",
   "file": "D06_comments_meta.docx",
-  "sha256": "4f14ec4ad25f0a0176a149ffb650e33e50b4a7ca66bd76d7309335b751d7afaa",
+  "sha256": "420ff0758717509cda29b941a008de801e615a9009738e9c12463892bb78a610",
   "note": "comments (+extended, ids, people), core/app/custom properties and thumbnail carry values; body keeps visible text",
   "values": {
     "v1": "Ana Ejemplo"

@@ -1,7 +1,7 @@
 {
   "fixture_id": "R07_external_rel",
   "file": "R07_external_rel.docx",
-  "sha256": "6c0ca995a94072351ebdae8c42d46fc5f5d1e3b40878fbc4a6e8100ce869ca08",
+  "sha256": "f77f9ba9e0db860523d4713fcd56bb0d79fa0724962ed418db88edc222972cc2",
   "kind": "docx",
   "expected": {
     "reject": [

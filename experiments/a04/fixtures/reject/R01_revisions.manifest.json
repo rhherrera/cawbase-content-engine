@@ -1,7 +1,7 @@
 {
   "fixture_id": "R01_revisions",
   "file": "R01_revisions.docx",
-  "sha256": "ea059c21856d4fc4b55b75b4409a15d1af29315ec30d77f0b7d588653ddd9ce1",
+  "sha256": "41e166d3bdfc43ec09ac224ee4ad4aefa829e38c8553156a47b44c677b4029c4",
   "kind": "docx",
   "expected": {
     "reject": [

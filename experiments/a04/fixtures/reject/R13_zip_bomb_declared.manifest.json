@@ -1,7 +1,7 @@
 {
   "fixture_id": "R13_zip_bomb_declared",
   "file": "R13_zip_bomb_declared.docx",
-  "sha256": "73539063c5ee9818c5ca5b12ee66b9c63d54f608b22ad2a96220ecb4955fce39",
+  "sha256": "8ab25639407a40971052ea71fc6470b89c570789892865a78db2e6fe247a883e",
   "kind": "docx",
   "expected": {
     "reject": [

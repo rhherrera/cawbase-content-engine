@@ -1,7 +1,7 @@
 {
   "fixture_id": "R17_unknown_part",
   "file": "R17_unknown_part.docx",
-  "sha256": "1e0373f42342d5a2fdacac265ab6e3e0917afce981d4961e9f8581667cabcc37",
+  "sha256": "0035742ce75590113f6a38d4921561e6c314d5a2ec8735bdc8556b4015884321",
   "kind": "docx",
   "expected": {
     "reject": [

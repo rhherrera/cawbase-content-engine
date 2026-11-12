@@ -2,7 +2,7 @@
   "fixture_id": "D07_aux_copy",
   "kind": "docx",
   "file": "D07_aux_copy.docx",
-  "sha256": "97c99405fc20f5c4e3cd5f26cde8718c2f35614e466e73c31e67b2d2bbde3ff7",
+  "sha256": "2eb969eb782dd391f221bb8fd494b28eaad21a6490b3d9aa1451e11b8e8648c7",
   "note": "selected value also copied in hyperlink target, image alt text and docVars-like settings; verification must detect",
   "values": {
     "v1": "Ana Ejemplo"

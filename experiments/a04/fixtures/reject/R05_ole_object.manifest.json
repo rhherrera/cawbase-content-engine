@@ -1,7 +1,7 @@
 {
   "fixture_id": "R05_ole_object",
   "file": "R05_ole_object.docx",
-  "sha256": "1248d5a031137d7f68393030a3639ac1de528286eb32242942745054f8178b3b",
+  "sha256": "5ea81dc2e9699e2c08d70aaadfcdce6da14a17d48b9c91ce122aea996d583599",
   "kind": "docx",
   "expected": {
     "reject": [

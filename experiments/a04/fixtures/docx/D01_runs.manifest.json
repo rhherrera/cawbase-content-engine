@@ -2,7 +2,7 @@
   "fixture_id": "D01_runs",
   "kind": "docx",
   "file": "D01_runs.docx",
-  "sha256": "3e287559cacd9bd96ef90f7c5081aa1ff068bb775203f7951d4f2e6ca73a1a81",
+  "sha256": "137a21f95870fb746a12ec009d7cdeac8101b9e31384bb15591747fa264e7b01",
   "note": "value split in 3 runs with different formatting; second identical occurrence NOT selected (CN-02)",
   "values": {
     "v1": "Ana Ejemplo",

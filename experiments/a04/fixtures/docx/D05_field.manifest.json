@@ -2,7 +2,7 @@
   "fixture_id": "D05_field",
   "kind": "docx",
   "file": "D05_field.docx",
-  "sha256": "b238935a57297b04a607b91d7c8118502d5f4700d3585903c3c0128c45534b1a",
+  "sha256": "fb7e3b6c97ffb44dc905db70d6da3b07aad6f3518416ea475bc7dd4dc2b3648a",
   "note": "simple field and complex field whose result holds a value; instruction text also holds a value",
   "values": {
     "v1": "Ana Ejemplo",

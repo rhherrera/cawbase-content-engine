@@ -1,7 +1,7 @@
 {
   "fixture_id": "R06_chart",
   "file": "R06_chart.docx",
-  "sha256": "d82857d8c3f9d37dbe2d93905ba9a8b9b682b6c2b469eea1f095cbbd795513bf",
+  "sha256": "b3768b3570857c1c8a2d70091cd93471c48b33a5f090b66a0ad56d0a42120922",
   "kind": "docx",
   "expected": {
     "reject": [
