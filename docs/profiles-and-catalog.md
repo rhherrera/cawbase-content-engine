@@ -154,7 +154,7 @@ El modo `resolution` es **válido** si y solo si, entre las categorías `enabled
   "profile": { "profile_id": "…", "display_name": "…", "description": null, "language": "es" },
   "catalog_provenance": { "catalog_id": "cce-starter-sensitive-types", "catalog_version": 1,
                           "copied_at": "2026-01-01T00:00:00Z" },   // null si el perfil empezó vacío
-  "ranking": { "mode": "ranking", "eligibility_threshold": 0, "tie_tolerance": 0 },
+  "ranking": { "mode": "ranking", "eligibility_threshold": 0.0, "tie_tolerance": 0.0 },
   "capabilities": { "classification": true, "detection": true },
   "categories": [ { "category_id": "…", "name": "…", "definition": "…",
                    "examples": { "positive": [], "negative": [] }, "translations": null,
@@ -167,7 +167,7 @@ El modo `resolution` es **válido** si y solo si, entre las categorías `enabled
 
 - Solo incluye elementos `enabled`, ordenados por id. Conserva sus **ids** (identidad estable entre versiones) y la revisión del elemento al publicar.
 - **Autocontenida:** leer una versión no consulta definiciones editables actuales ni requiere que los elementos existan, estén activos o no hayan sido eliminados.
-- `content_hash` = SHA-256 de la serialización canónica del `snapshot` (JSON UTF-8 con claves ordenadas, sin espacios, sin escapes innecesarios). Cabecera de versión: `version_id`, `version_number`, `source_draft_revision`, `content_hash` (hex), `snapshot_bytes`, `published_at`, `published_by` (etiqueta opaca del contexto).
+- `content_hash` = SHA-256 de la serialización canónica de la **instantánea completa almacenada**, incluida su trazabilidad (`source_revision`, `origin_entry`, `catalog_provenance`): es un hash de **integridad** de lo guardado (JSON UTF-8 con claves ordenadas, sin espacios, sin escapes innecesarios; los umbrales de ranking se normalizan siempre a número de coma flotante). **No** equivale a igualdad de configuración: dos instantáneas con la misma configuración efectiva pueden tener hashes distintos (§7.3.1). Cabecera de versión: `version_id`, `version_number`, `source_draft_revision`, `content_hash` (hex), `snapshot_bytes`, `published_at`, `published_by` (etiqueta opaca del contexto).
 - Contiene definiciones del consumidor: es contenido potencialmente sensible (nunca a logs ni eventos; ver [seguridad](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-especificado-no-implementado)).
 
 ### 7.2 Qué configuración puede publicarse (E-A02-04)
@@ -187,13 +187,37 @@ Preparar el borrador sí puede estar vacío (p. ej. un perfil creado con `initia
 
 ### 7.3 Publicaciones duplicadas (E-A02-05)
 
-Mecanismo local, sin marco general de idempotencia: la publicación se identifica por la clave natural **(perfil, `expected_draft_revision`)**, con respaldo en la base:
+Mecanismo local, sin marco general de idempotencia. Dos conceptos **distintos**: `content_hash` (integridad de lo almacenado, §7.1) y la **configuración efectiva** (qué analizaría una ejecución), que es lo que decide si hay algo nuevo que publicar.
 
-1. Se bloquea la fila del perfil y se exige `draft_revision == expected_draft_revision`; si no, `revision_conflict` (412).
-2. Se calcula la instantánea. Si su `content_hash` es igual al de la versión vigente ⇒ **no se escribe nada** y se devuelve esa versión (`created = false`).
-3. En otro caso se inserta la versión `n+1` con `source_draft_revision` y se actualiza `current_version_number`. `UNIQUE (perfil, source_draft_revision)` impide dos versiones para la misma revisión del borrador aunque falle el paso 2.
+Pasos de `publish_profile`, en una transacción, **después de adquirir el bloqueo del perfil** ([persistencia §7.4](persistence-and-migrations.md#74-reglas-de-acceso)):
 
-Efecto: reintentar una publicación (respuesta perdida, doble clic, dos clientes con la misma revisión) devuelve la misma versión; publicar sin cambios efectivos no crea versiones. Si entre tanto se editó el borrador, el reintento da 412 y el llamador relee.
+1. Se comprueban estado del perfil y `draft_revision == expected_draft_revision`; si no coincide, `revision_conflict` (412) **siempre, antes de comparar contenido**.
+2. Se arma la proyección efectiva del borrador (§7.3.1) y se compara con la proyección de la **versión vigente** (calculada desde su instantánea almacenada). Si son iguales ⇒ **no se escribe nada**: se devuelve la versión vigente tal como está (`created = false`), con su `source_draft_revision` y sus `source_revision` originales. No se afirma que represente la revisión actual del borrador.
+3. Si difieren ⇒ se validan las reglas de publicación y los límites, se inserta la versión `n+1` con una instantánea completa nueva (`source_draft_revision` = la revisión actual) y se actualiza `current_version_number`.
+
+`UNIQUE (perfil, source_draft_revision)` es solo un respaldo de base: cualquier cambio efectivo de la proyección incrementa `draft_revision`, de modo que dos versiones nunca deberían compartir la fuente.
+
+#### 7.3.1 Proyección de configuración efectiva
+
+Proyección canónica (JSON canónico, comparación de bytes iguales) calculada **desde la instantánea**, no desde las tablas editables:
+
+| Incluye | Excluye |
+|---|---|
+| `profile` (`profile_id`, `display_name`, `description`, `language`); `ranking` (`mode`, `eligibility_threshold`, `tie_tolerance`); `capabilities`; por cada elemento `enabled`: id, `name`, `definition`, `examples`, `translations` y, en categorías, `priority` | `revision`, `ranking_revision`, `source_revision`, `draft_revision`, `source_draft_revision`; timestamps (`published_at`, `copied_at`, …); `published_by`; `catalog_provenance` y `origin_entry` (procedencia); `snapshot_schema_version`; `content_hash`, `snapshot_bytes`, ids de versión |
+
+No se persiste un segundo hash: la comparación recalcula ambas proyecciones (acotadas por los límites).
+
+Casos:
+
+| Caso | Resultado |
+|---|---|
+| a) Publicar y repetir sin editar (mismo `expected_draft_revision`) | La repetición devuelve la misma versión (`created=false`); no hay versión nueva |
+| b) Editar una definición y restaurar su valor original antes de publicar | `draft_revision` avanzó (cada edición efectiva la incrementa) pero la proyección coincide con la vigente ⇒ se devuelve la versión vigente **con su `source_draft_revision` original** (anterior a las ediciones), sin crear otra |
+| c) Modificar solo un elemento **deshabilitado** | `draft_revision` avanza; la proyección no cambia (solo entran los `enabled`) ⇒ se devuelve la vigente |
+| d) Cambiar efectivamente un elemento **habilitado** (definición, ejemplo, prioridad, traducción, estado) o el ranking o los datos del perfil | La proyección difiere ⇒ nueva versión `n+1` completa; el elemento no modificado conserva su `source_revision` |
+| e) Reintentar con `expected_draft_revision` obsoleta | `revision_conflict` (412), aunque la configuración efectiva coincida; el llamador relee |
+
+Reintentar tras perder la respuesta (a): misma revisión ⇒ misma versión. Tras ediciones intermedias (b, c, e): si el `expected_draft_revision` es el vigente se devuelve la versión actual; si quedó obsoleto, 412.
 
 ## 8. Resolver un perfil y una versión publicados
 
@@ -220,7 +244,7 @@ Falla (sin efectos) con: `scope_disabled` (alcance deshabilitado: **no se resuel
 - Es una **plantilla versionada incluida en el paquete** (`catalog_id = cce-starter-sensitive-types`, `catalog_version = 1`), no una tabla compartida.
 - **Crear un perfil** copia los tipos del catálogo (con `origin_entry`) y registra su **procedencia** (`catalog_id`, `catalog_version`, `copied_at`) en el perfil, salvo `initial_catalog = "empty"`. Las **categorías** temáticas empiezan **vacías**.
 - Los tipos copiados son del perfil: editables, desactivables y eliminables como cualquier otro. Una **actualización del paquete nunca modifica perfiles existentes ni sus versiones**; una versión nueva del catálogo solo afecta a perfiles creados después. Incorporar a mano entradas nuevas es copiar valores (lectura de `starter_catalog()` + `create_sensitive_type`).
-- Son **definiciones de detección**, no políticas, y el catálogo **no es exhaustivo** ni promete detección. Los tipos **no son mutuamente excluyentes**: un fragmento puede corresponder a más de uno (p. ej. un número de tarjeta en una frase sobre un pago). El catálogo separa conceptos por *qué es el fragmento*, no por su contexto.
+- Son **definiciones de detección**, no políticas, y el catálogo **no es exhaustivo** ni promete detección ni clasificación infalible. Los tipos **son superponibles y no mutuamente excluyentes**: un fragmento puede corresponder a más de uno (p. ej. un número de tarjeta en una frase sobre un pago). El catálogo separa conceptos por *qué es el fragmento*, no por su contexto.
 
 Datos del catálogo `cce-starter-sensitive-types` v1 (todos los ejemplos son sintéticos; `P` = positivo, `N` = negativo):
 
@@ -230,8 +254,8 @@ Datos del catálogo `cce-starter-sensitive-types` v1 (todos los ejemplos son sin
 | `government_id` — Identificadores oficiales / Official identifiers | Números o códigos asignados por una autoridad a una persona o entidad: documento nacional, pasaporte, número fiscal, seguridad social, licencia de conducir. | Distinto de `personal_data` (atributos descriptivos o de contacto) y de `financial_information` (cuentas y tarjetas). | P: «Documento de identidad: 00000000-X (ejemplo).» · N: «Pedido número 00000000 del catálogo.» / P: «Passport number: X0000000 (sample).» · N: «Order number 00000000 in the catalog.» |
 | `salary_compensation` — Salarios y compensación / Salary and compensation | Remuneración individual vinculada a una persona o puesto identificable: salario, bonos, ajustes, comisiones. | No incluye bandas salariales o cifras agregadas sin persona ni puesto identificable. Cuentas y saldos son `financial_information`. | P: «El salario bruto anual de Ana Ejemplo es de 00.000 EUR.» · N: «Las bandas salariales del sector se publican cada año.» / P: «Alex Sample's gross annual salary is 00,000 USD.» · N: «Industry salary bands are published yearly.» |
 | `financial_information` — Información financiera / Financial information | Datos de instrumentos y posición financiera de una persona o entidad: números de cuenta (IBAN u otros), tarjetas, saldos, movimientos, deudas. | Los pagos de salario son `salary_compensation`; los números de documentos, `government_id`. Una cuenta o tarjeta es financiera aunque aparezca junto a datos personales. | P: «Cuenta ES00 0000 0000 0000 0000 0000, saldo 0.000,00 EUR.» · N: «La entidad ofrece cuentas de ahorro.» / P: «Card number 0000 0000 0000 0000, balance 0,000.00 USD.» · N: «The bank offers savings accounts.» |
-| `password` — Contraseñas / Passwords | Secretos de autenticación **elegidos por una persona**: contraseñas, PIN, frases de paso, respuestas a preguntas de seguridad. | Los secretos **generados por una máquina** (claves, tokens) son `api_key_secret`. | P: «Mi contraseña es EjemploNoReal-123.» · N: «La contraseña debe tener al menos ocho caracteres.» / P: «My password is NotARealPassword-123.» · N: «The password must be at least eight characters.» |
-| `api_key_secret` — API keys y tokens / API keys and tokens | Credenciales **generadas por una máquina**: claves de API, tokens de acceso o refresco, claves privadas, cadenas de conexión con credenciales. | Las contraseñas elegidas por personas son `password`. | P: «Authorization: Bearer EJEMPLO_TOKEN_NO_REAL_0000» · N: «Use un token en el encabezado Authorization.» / P: «api_key = EXAMPLE_NOT_A_REAL_KEY_0000» · N: «Send the token in the Authorization header.» |
+| `password` — Contraseñas / Passwords | Contraseñas, PIN, frases de paso y respuestas secretas **usadas para autenticarse**, las haya elegido una persona o generado una máquina (una contraseña generada por un gestor sigue siendo `password`). | La distinción con `api_key_secret` se basa en **función y contexto observable** (una credencial de inicio de sesión frente a una clave o token técnico de acceso a un servicio o API), no en quién generó el secreto; no hace falta deducir su procedencia. Un mismo fragmento puede encajar en ambos. | P: «Mi contraseña es EjemploNoReal-123.» · N: «La contraseña debe tener al menos ocho caracteres.» / P: «My password is NotARealPassword-123.» · N: «The password must be at least eight characters.» |
+| `api_key_secret` — API keys y tokens / API keys and tokens | Claves de API, tokens de acceso o refresco y otros secretos técnicos de servicio o aplicación (p. ej. claves privadas, cadenas de conexión con credenciales). | Las contraseñas, PIN, frases de paso y respuestas secretas de autenticación son `password`, sin importar su origen. Una cadena de conexión que incluya una contraseña puede encajar en ambos tipos. | P: «Authorization: Bearer EJEMPLO_TOKEN_NO_REAL_0000» · N: «Use un token en el encabezado Authorization.» / P: «api_key = EXAMPLE_NOT_A_REAL_KEY_0000» · N: «Send the token in the Authorization header.» |
 
 Las definiciones completas (es/en) de cada entrada se redactan en el paquete al implementar, respetando los límites de §5, estas fronteras y la política de ejemplos sintéticos. `starter_catalog()` devuelve el catálogo sin acceso a base de datos.
 

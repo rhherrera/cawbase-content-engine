@@ -295,7 +295,7 @@ Mismos tipos lógicos que §2 (`text`, `int`, `bool`, `timestamp`, `json`, `byte
 | `source_draft_revision` | int | NOT NULL; **UNIQUE** (`scope_id`, `profile_id`, `source_draft_revision`) |
 | `snapshot_schema_version` | int | NOT NULL |
 | `snapshot` | json | NOT NULL; ≤ 1 MiB canónico |
-| `content_hash` | bytes | NOT NULL; 32 bytes (SHA-256 de la serialización canónica) |
+| `content_hash` | bytes | NOT NULL; 32 bytes (SHA-256 de la serialización canónica de la instantánea **completa** almacenada; integridad, no igualdad de configuración: [modelo §7.3.1](profiles-and-catalog.md#731-proyección-de-configuración-efectiva)) |
 | `snapshot_bytes` | int | NOT NULL |
 | `capabilities` | json | NOT NULL (`classification`, `detection`; derivado, para listar sin leer la instantánea) |
 | `published_at` | timestamp | NOT NULL |
@@ -334,11 +334,39 @@ Igual que §2.8: en SQLite las FK dependen de `PRAGMA foreign_keys=ON` por conex
 Se aplican las de §3 y además:
 
 1. Toda consulta de perfiles incluye `scope_id = ctx.scope_id`; toda consulta de categorías, tipos y versiones incluye `scope_id` **y** `profile_id` en el `WHERE` (nunca «por id de elemento solamente»). Un elemento de otro perfil es indistinguible de uno inexistente.
-2. Las escrituras del conjunto editable, la publicación, las transiciones de estado del perfil y la designación comienzan con un `UPDATE` condicional de la fila de `profiles` (con `status` y, según el caso, `draft_revision`/`current_version_number` en el `WHERE`) que además la bloquea; `rowcount = 0` se interpreta con una lectura posterior para elegir el error exacto. La comprobación y la escritura son atómicas ([API pública §10.7](public-api.md#107-concurrencia-publicación-e-idempotencia)).
-3. La publicación lee categorías y tipos `enabled` **dentro de la misma transacción**, después de bloquear la fila del perfil, de modo que la instantánea es consistente (PostgreSQL `READ COMMITTED` basta porque todo escritor del conjunto editable pasa antes por esa fila).
+2. **Bloqueo primero, comprobación después.** Cada escritura adquiere el bloqueo de serialización que figura en §7.4.1 y **recién entonces** lee estado, revisiones y límites sobre los datos vigentes. Un bloqueo no es una escritura: si no hay cambio efectivo, la operación termina sin `UPDATE`/`INSERT` de datos de negocio, sin incrementar revisiones y sin evento. Los cambios efectivos usan además `UPDATE … WHERE revision = ?` (comparación y escritura atómicas, control optimista estricto de A01) como defensa. Ver [API pública §10.7](public-api.md#107-concurrencia-publicación-e-idempotencia).
+3. La publicación lee categorías y tipos `enabled` **dentro de la misma transacción**, después de bloquear la fila del perfil, de modo que la instantánea es consistente (PostgreSQL `READ COMMITTED` basta porque todo escritor del conjunto editable pasa antes por ese bloqueo).
 4. Ninguna transacción abarca llamadas HTTP, inferencia ni E/S remota. Publicar es CPU y una escritura de ≤ 1 MiB.
 5. Los `IntegrityError` (PK, índices parciales) se traducen a `ConflictError`, `NameConflictError` o `PriorityConflictError`; nunca se propaga texto del driver.
 6. Dialectos: PostgreSQL usa `jsonb`; SQLite texto JSON. El `content_hash` se calcula en el motor sobre la serialización canónica, no con funciones de la base, de modo que es idéntico en ambos backends.
+
+<a id="741-bloqueos-de-serialización"></a>
+#### 7.4.1 Bloqueos de serialización (E-A02-08)
+
+Solución mínima, sin servicio de locks ni infraestructura nueva: se bloquean **filas que ya existen** (`scopes` y `profiles`).
+
+| Backend | Cómo se bloquea |
+|---|---|
+| PostgreSQL | `SELECT 1 FROM … WHERE <clave completa> FOR UPDATE` sobre la fila de `profiles`; `… FOR NO KEY UPDATE` sobre la fila de `scopes` (no estorba las comprobaciones de FK de otras tablas). Sin `UPDATE` ficticio. Tras obtenerlo se relee en `READ COMMITTED` (A01 lo exige) y se comprueba sobre datos vigentes |
+| SQLite | No hay bloqueo de fila: la **transacción de escritura de A01** ya serializa a todos los escritores. En modo propio, las operaciones de escritura empiezan como escritura inmediata ([API §6.1](public-api.md#61-modo-propio-predeterminado)); con `HostTransaction`, la operación usa la transacción y el savepoint del host y **no abre otra transacción exterior**: se aplican las precondiciones de A01 (`BEGIN` real previo; el host decide `sqlite_begin="IMMEDIATE"`). Si el host inició la transacción en modo diferido y la promoción a escritura choca con otro escritor, falla con el error transitorio de base ocupada de A01 (`database_unavailable`, reintentable) |
+
+| Operación | Filas bloqueadas (en este orden) | Comprobado bajo el bloqueo |
+|---|---|---|
+| `create_profile` | `scopes[scope]` | alcance activo; límites de perfiles (no eliminados y filas totales: `COUNT` bajo el bloqueo); id libre |
+| `update_profile`, `disable/enable/delete_profile` | `profiles[perfil]` | estado y revisión; al desactivar/eliminar: lectura (sin bloqueo) de `scope_profile_defaults` ⇒ `profile_is_default` |
+| Crear/editar/cambiar estado de categoría o tipo; `update_ranking_config` | `profiles[perfil]` | perfil `active`; límites de elementos (no eliminados y filas totales); revisión del elemento; unicidad |
+| `publish_profile` | `profiles[perfil]` | estado; `draft_revision`; proyección frente a la vigente; límite de versiones; tamaño de instantánea |
+| `set_default_profile` | `scopes[scope]` → `profiles[perfil elegido]` | perfil `active`, no eliminado, con `current_version_number`; revisión de la designación |
+| `clear_default_profile` | `scopes[scope]` | revisión de la designación |
+| Lecturas, `resolve_profile` | ninguna | — |
+
+Reglas:
+
+- **Orden de adquisición:** alcance → perfil(es) → (filas hijas solo mediante `UPDATE … WHERE revision = ?`, sin bloqueos explícitos). Nunca se toma el bloqueo del alcance después del de un perfil. Si una operación necesitara bloquear varios perfiles, se bloquean en orden ascendente de `profile_id`. Las operaciones actuales bloquean como máximo un perfil.
+- **Ausencia inicial de `scope_profile_defaults`:** como el bloqueo del alcance serializa toda designación, no hace falta bloquear una fila inexistente. Con el bloqueo tomado se lee la fila: si falta, la revisión esperada es 0; `set` inserta con `revision = 1` y `clear` con la fila ausente y revisión esperada 0 no escribe. La `PK scope_id` es el respaldo: un `INSERT` duplicado se traduce a `revision_conflict`. Reemplazar (A→B) bloquea el perfil B, no el A; al quitar o reemplazar no se toca el perfil anterior.
+- **Desactivar/eliminar vs. designar:** la transición bloquea el perfil y lee la designación; la designación bloquea el alcance y luego el perfil y revalida su estado. Quien toma primero el perfil gana y el otro ve el estado confirmado: **nunca queda designado un perfil desactivado o eliminado**. No hay ciclo porque la transición no pide el bloqueo del alcance.
+- **Límites de cantidad:** nunca con un `COUNT` fuera del bloqueo común (alcance para perfiles, perfil para elementos y versiones); transacciones distintas no pueden superarlos concurrentemente.
+- **Sin garantía universal de ausencia de interbloqueos.** El orden fijo evita ciclos entre operaciones del motor, pero una `HostTransaction` puede conservar bloqueos de operaciones anteriores y el host accede a la base por su cuenta. Si PostgreSQL detecta un interbloqueo, la transacción afectada falla: en modo propio se informa como error transitorio de base (reintentable por el llamador); en `HostTransaction`, como el savepoint no repara una transacción abortada, rige el error no recuperable de A01 (`transaction_broken`, D-23). Se mantienen los plazos (`statement_timeout`, `busy_timeout`) y los errores de A01; el motor no reintenta por su cuenta.
 
 ### 7.5 Migración desde A01 (plan; no escrita)
 
@@ -350,9 +378,14 @@ Revisión propuesta **`0002_profiles`**, solo hacia adelante, estilo **expandir*
 4. Se ejecuta con el procedimiento de §4 sin cambios: una transacción, un bloqueo, plan calculado tras el bloqueo, atómica, repetirla es `already_current`. Un arranque concurrente con varias revisiones pendientes (A01 y A02 juntas, p. ej. una base vacía) aplica `0001` y `0002` en la misma transacción.
 5. Objetos ajenos: la verificación de instalación/actualización de §4.6 se repite en la actualización 1→2 (tablas, vistas y secuencias ajenas, incluso con nombres próximos al prefijo, permanecen intactas).
 
-Compatibilidad schema/runtime ([§4.5](#45-compatibilidad-p-10)) tras A02: el runtime de A02 requiere `schema_level ≥ 2` (con 1 ⇒ `schema_incompatible`, hay que migrar antes); `min_runtime_level = 1` mantiene el despliegue gradual «migrar → actualizar».
+Compatibilidad schema/runtime ([§4.5](#45-compatibilidad-p-10)) tras A02: el runtime de A02 requiere `schema_level ≥ 2` (con 1 ⇒ `schema_incompatible`, hay que migrar antes); `min_runtime_level = 1` mantiene el despliegue gradual «migrar → actualizar». **La compatibilidad con A01 es condicionada**: un runtime A01 puede operar sobre las tablas ampliadas (ignora las nuevas) con los datos y permisos que conoce, nada más.
 
-**Permisos nuevos y despliegue mixto.** Los permisos `profiles:read|write` se guardan como filas de `api_key_scope_grants` (columna `permission` de texto libre; no hay `CHECK`, así que no hay cambio de esquema). **El runtime de A01 (`0.1.0`) falla al cargar los grants de una clave que contenga un permiso desconocido** (`ScopePermission(...)` lanza `ValueError`). Por tanto: **no deben emitirse claves con `profiles:*` hasta que todos los runtimes del despliegue estén en la versión de A02.** Las claves ya emitidas no se amplían ni se reinterpretan (los grants son inmutables, D-27): para dar acceso HTTP a perfiles se emite una clave nueva. Endurecer la carga de grants con permisos desconocidos queda como mejora en el backlog.
+**Permisos nuevos y despliegue mixto.** Los permisos `profiles:read|write` se guardan como filas de `api_key_scope_grants` (columna `permission` de texto libre; no hay `CHECK`, así que no hay cambio de esquema). **El runtime de A01 (`0.1.0`) falla al cargar los grants de una clave que contenga un permiso desconocido** (`ScopePermission(...)` lanza `ValueError`). Por tanto: **no deben emitirse claves con `profiles:*` hasta que todos los runtimes del despliegue estén en la versión de A02.** Las claves ya emitidas no se amplían ni se reinterpretan (los grants son inmutables, D-27): para dar acceso HTTP a perfiles se emite una clave nueva. Precisiones:
+
+- El fallo puede ocurrir **al autenticar** esa clave y también en **operaciones administrativas que carguen sus grants** (p. ej. listar las claves de su cliente).
+- Tras emitir claves con permisos nuevos, **volver a ejecutar A01 no es un rollback transparente**: el esquema 2 es compatible, pero esas claves (y los listados que las incluyan) fallarían hasta revocarlas o actualizar. Restaurar el estado anterior sigue siendo restaurar desde copia ([§4.1](#41-reglas-generales-d-16)).
+- Cambiar el código de A02 **no corrige los binarios A01 ya desplegados**.
+- Endurecer la carga de permisos desconocidos permanece en el backlog (B-A02-12), **fuera de los requisitos de A02**. No se modifica A01 ni se añaden mecanismos de despliegue.
 
 Operación: el despliegue de A02 sigue «migrar (credencial DDL) → actualizar API/workers». El servicio independiente migra al arrancar como en A01. No se introduce purga ni infraestructura nueva; el crecimiento de `profile_versions` es acotado por los [límites](installation-and-operations.md#11-a02--límites-y-observabilidad-especificado-no-implementado) (no hay retención automática).
 
@@ -360,7 +393,7 @@ Operación: el despliegue de A02 sigue «migrar (credencial DDL) → actualizar 
 
 | Aspecto | PostgreSQL | SQLite |
 |---|---|---|
-| Arbitraje de carreras | bloqueo de la fila del perfil por `UPDATE`; los demás esperan y reevalúan el `WHERE` (`READ COMMITTED`) | un solo escritor: las escrituras de A02 inician como escritura inmediata; el segundo escritor espera `busy_timeout` o falla `database_unavailable (retryable)` |
+| Arbitraje de carreras | `SELECT … FOR UPDATE` / `FOR NO KEY UPDATE` de la fila de `profiles` / `scopes` ([§7.4.1](#741-bloqueos-de-serialización)); los demás esperan y releen (`READ COMMITTED`) | la transacción de escritura de A01 (único escritor): el segundo escritor espera `busy_timeout` o falla `database_unavailable (retryable)`; sin bloqueo de fila |
 | Índices parciales únicos | sí | sí (≥ 3.8; piso 3.38) |
 | Números reales | `double precision`; JSON numérico exacto | `REAL`/texto; NaN → NULL (por eso se rechaza antes) |
 | FK compuestas | siempre aplicadas | solo con `foreign_keys=ON` (el motor valida igual) |
