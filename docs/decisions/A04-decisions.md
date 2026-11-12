@@ -1,6 +1,6 @@
 # A04 — Registro de decisiones
 
-> **Estado: A04 DOCUMENTADA; experimentos PENDIENTES; viabilidad NO demostrada. Sin código.** Las decisiones `D-A04-nn` fueron **aprobadas por el usuario** al encargar A04 y no se vuelven a consultar. Las elecciones técnicas `E-A04-nn` las derivó el redactor del contrato por criterio: **no son decisiones de producto**. Nada de lo descrito aquí está disponible en `0.3.0`.
+> **Estado: A04 DOCUMENTADA y EXPERIMENTADA (experimentos acotados ejecutados en macOS y Linux local sobre documentos sintéticos); pendiente de aceptación del usuario.** Conclusiones de viabilidad en el [informe](../a04-feasibility-report.md): no son una aceptación ni habilitan A07/A08 por sí solas. Las decisiones `D-A04-nn` fueron **aprobadas por el usuario** y no cambian; las elecciones técnicas `E-A04-nn` no son decisiones de producto. Ningún soporte documental existe en `0.3.0`.
 
 Contratos que usan estas decisiones: [especificación de A04](../features/A04-viabilidad-y-contrato-de-documentos.md) · [procesamiento de documentos](../document-processing.md).
 
@@ -16,6 +16,7 @@ Este registro separa categorías; no mezclarlas.
 |---|---|
 | 1 | Primera redacción (solo documental): D-A04-01 a 03 aprobadas; E-A04-01 a 22; diferencias con el playbook; backlog. Registro del cierre y aceptación de A03 en los documentos de A03 (no es una decisión de A04). |
 | 2 | Precisiones previas a los experimentos (sin cambiar `D-A04-nn`): alcance temporal, nuevas disposiciones (`P` estructural inspeccionado) y condiciones de cobertura, Unicode, unidad PDF = página, campos DOCX. E-A04-23 a 27. |
+| 3 | Ejecución de los experimentos (rev. 3): E-A04-28 a 33 (derivadas de lo observado) y B-A04-11 a 19. Ninguna `D-A04-nn` cambia. |
 
 ## 1. Fuente, precedencia y herencia
 
@@ -68,7 +69,7 @@ Este registro separa categorías; no mezclarlas.
 | E-A04-16 | Para PDF, las actualizaciones incrementales con revisiones previas se rechazan | Las revisiones anteriores conservarían el contenido «eliminado» |
 | E-A04-17 | Verificador independiente: debe usar parser distinto del transformador cuando sea viable; si no, se declara la limitación | Un verificador con el mismo motor hereda sus errores |
 | E-A04-18 | Inspección visual de **todas** las páginas de muestras pequeñas; sin porcentaje global de similitud como única evidencia | Requisito de aceptación |
-| E-A04-19 | Ubicación propuesta de artefactos experimentales: `experiments/a04/` fuera de `src/`; no entra en la wheel (que solo empaqueta `src/…`) y no figura en el `include` del sdist. Propuesto / no disponible; no se cambia el empaquetado ahora | Separar experimentos del runtime y los distribuibles |
+| E-A04-19 | Ubicación de los artefactos experimentales (implementada; ver E-A04-31): `experiments/a04/` fuera de `src/`; no entra en la wheel (que solo empaqueta `src/…`) y no figura en el `include` del sdist. Propuesto / no disponible; no se cambia el empaquetado ahora | Separar experimentos del runtime y los distribuibles |
 | E-A04-20 | Límites de experimento conservadores (contrato §16), no límites productivos de A05 | Protegen la máquina y acotan el análisis |
 | E-A04-21 | Procesamiento local, sin red, sin macros/scripts/referencias externas | Seguridad de los experimentos |
 | E-A04-22 | Restitución mecánica = prueba de viabilidad con correspondencias sintéticas locales; no es contrato de A06 | Fuera de alcance: criptografía, custodia, autorización |
@@ -77,6 +78,12 @@ Este registro separa categorías; no mezclarlas.
 | E-A04-25 | Unidad PDF = página; separadores sintetizados por operadores de posicionamiento; intervalos con concatenación artificial no se transforman; sin segmentación semántica | Resuelve la contradicción entre unidades, orden y columnas sin nueva segmentación |
 | E-A04-26 | Distinguir punto de código, unidad UTF-16, grafema y glifo; relaciones con dirección explícita | Un punto fuera del BMP son 2 unidades UTF-16 y no equivale a 1 glifo |
 | E-A04-27 | Campos DOCX: se extrae el resultado; una selección dentro de él se rechaza (sin evaluador de campos) | Reemplazar el resultado no protege un valor que la instrucción pueda regenerar |
+| E-A04-28 | PDF: la transformación preserva la posición del texto posterior compensando el avance con un ajuste de `TJ`; el sustituto no puede ser más ancho que lo reemplazado (`replacement_overflow`) | Cumple «conservar presentación fuera de la zona afectada» sin reflujo ni medición de líneas libres; un sustituto más ancho exigiría decidir espacio disponible (B-A04-16) |
+| E-A04-29 | PDF: los caracteres del sustituto deben existir en la codificación **y** en el programa de fuente incrustado (cmap de `FontFile2`) | Un glifo ausente del subconjunto se dibujaría como `.notdef`: sustituto ilegible (D-A04-03) |
+| E-A04-30 | Verificación PDF con tres motores independientes del transformador (PDFium, pypdf estricto, Poppler) contra un oráculo del manifiesto; DOCX con XML de la biblioteca estándar; los verificadores se prueban con un control negativo (archivo sin modificar debe fallar) | Evita que una búsqueda de bytes o un solo motor acredite la eliminación |
+| E-A04-31 | `exclude = ["experiments"]` en la sección sdist del `pyproject.toml` del motor | Los patrones sin ruta `pyproject.toml`/`uv.lock` del `include` incluían los de `experiments/a04`; es configuración de empaquetado, no una dependencia, versión ni lockfile |
+| E-A04-32 | DOCX: el sustituto adopta el formato del primer run del valor; sin reconstrucción de runs | Mínima intervención sobre estructura y estilos fuera del valor |
+| E-A04-33 | Fixtures byte-deterministas (excepto `Q01_encrypted`, con sal aleatoria) con manifiesto independiente y hash verificado al cargar; `P11` generado en la imagen Linux con DejaVu y commiteado | Reproducibilidad sin dependencia de fuentes del sistema en macOS |
 
 ## 4. Diferencias respecto del playbook (revisión 6)
 
@@ -103,6 +110,15 @@ Lo no listado permanece vigente.
 | B-A04-08 | Segmentación productiva y agregación entre unidades (con A09) |
 | B-A04-09 | Evaluación de PyMuPDF si el usuario revisa D-A04-01 |
 | B-A04-10 | Comparación visual automatizada más rica (con tolerancias validadas) |
+| B-A04-11 | Fuentes Type0/CID, subconjuntos CFF y Type3 en la transformación PDF |
+| B-A04-12 | Corpus de documentos reales (Word, Acrobat, otros generadores) y renderizado con Word; varias secciones y documentos grandes |
+| B-A04-13 | Entradas PDF con object streams, `/Contents` en arreglo, linearizadas, PDF/A; rotaciones oblicuas y 270° |
+| B-A04-14 | Flujo de GitHub Actions para los experimentos (no se ejecutó ninguno) |
+| B-A04-15 | Protección de valores dentro de resultados de campos DOCX (requiere decidir semántica de campos) |
+| B-A04-16 | Sustitutos más anchos en PDF mediante reflujo/medición de espacio libre |
+| B-A04-17 | Aplicación en código de los límites de duración y memoria de los experimentos |
+| B-A04-18 | Restitución PDF que conserve el kerning interno de los valores |
+| B-A04-19 | Evaluar las plataformas de las ruedas (musl, x86_64) para licencias de binarios (FriBiDi/libimagequant en Pillow) |
 
 ## 6. Preguntas abiertas y tensiones
 

@@ -1,0 +1,3777 @@
+{
+ "env": {
+  "env": "macos",
+  "peak_rss_mb": 405.6,
+  "git_rev": "b7608e7334faec9532d53e689a7b97a8305fd14d",
+  "code_tree_dirty": false,
+  "code_tree_dirty_files": [],
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "python": "3.13.16",
+  "seconds": 4.8,
+  "libs": {
+   "python-docx": "1.2.0",
+   "lxml": "6.1.3",
+   "pikepdf": "10.18.0",
+   "pypdfium2": "5.15.2",
+   "pypdf": "7.0.1",
+   "Pillow": "13.0.0",
+   "fonttools": "4.68.0"
+  },
+  "libqpdf": "12.4.2",
+  "pdfium": "159.0.8149.0@sourcebuild-toolchained",
+  "poppler": "pdftotext version 26.10.0",
+  "soffice": "n/a"
+ },
+ "rows": [
+  {
+   "exp": "EXP-01",
+   "subject": "D01_runs",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "4 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D01_runs",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D01_runs",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 3"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D01_runs",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D01_runs",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "11 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D03_headers_notes",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "8 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D03_headers_notes",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D03_headers_notes",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D03_headers_notes",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D03_headers_notes",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 7}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D04_unicode",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "4 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D04_unicode",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D04_unicode",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D04_unicode",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D04_unicode",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D05_field",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "3 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D05_field",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D05_field",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D05_field",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D05_field",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"N\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D06_comments_meta",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "2 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D06_comments_meta",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D06_comments_meta",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D06_comments_meta",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D06_comments_meta",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 8, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D07_aux_copy",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "2 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D07_aux_copy",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D07_aux_copy",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D07_aux_copy",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D07_aux_copy",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"N\": 3, \"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D08_all_selected",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "2 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D08_all_selected",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D08_all_selected",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D08_all_selected",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D08_all_selected",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D09_no_values",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "2 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D09_no_values",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D09_no_values",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 0"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D09_no_values",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D09_no_values",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D10_sdt",
+   "check": "unit texts equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D10_sdt",
+   "check": "unit parts/order equal the manifest",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D10_sdt",
+   "check": "every occurrence resolves to original pieces and matches its value",
+   "status": "pass",
+   "detail": "max pieces per occurrence = 1"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D10_sdt",
+   "check": "deterministic (two extractions: texts, node paths)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D10_sdt",
+   "check": "inventory dispositions",
+   "status": "info",
+   "detail": "{\"P\": 6, \"E\": 2, \"S\": 1}"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "python-docx Document.tables lists only top-level tables (nested table not listed)",
+   "status": "limitation",
+   "detail": "python-docx tables=1, <w:tbl> in XML=2"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "D02_tables",
+   "check": "python-docx Document.paragraphs omits table-cell paragraphs",
+   "status": "limitation",
+   "detail": "python-docx paragraphs=1 vs tool units=11"
+  },
+  {
+   "exp": "EXP-01",
+   "subject": "R01_revisions",
+   "check": "python-docx paragraph text omits text inside w:ins (so it cannot be the only view)",
+   "status": "limitation",
+   "detail": "python-docx text=''"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "2 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [3, 2, 1, 1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P01_basic",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[102, 56]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P02_columns",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[68]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "3 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1, 1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P03_rotated",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[29, 28, 44]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1, 1, 1, 1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P04_unicode_ligature",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[111]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "2 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1, 1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "shared Form XObject detected with 2 uses",
+   "status": "pass",
+   "detail": "uses={('xobj', (4, 0)): 2}"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P05_shared_xobject",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[67, 55]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: ['localization_ambiguous']"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P06_artificial_concat",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[44]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P07_replacements",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[46]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P08_meta_comments",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[42]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1, 1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P09_all_selected",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[44]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: []"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P10_no_values",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[25]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "page-unit texts (incl. synthesized separators) equal the independent manifest",
+   "status": "pass",
+   "detail": "1 units"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "pdfium text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "pypdf text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "poppler text equals manifest (whitespace-insensitive)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "occurrences resolve to content-stream pieces (or fail with a closed reason)",
+   "status": "pass",
+   "detail": "pieces/operators per occurrence: [1, 1, 1]"
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "page count/rotation equal the manifest reference",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-02",
+   "subject": "P11_embedded_subset",
+   "check": "PDFium chars per page (geometry source)",
+   "status": "info",
+   "detail": "[81]"
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "D04_unicode",
+   "check": "DOCX offsets are code points (len(str)); UTF-16 units and graphemes differ as expected",
+   "status": "pass",
+   "detail": "(occ,code points,UTF-16 units,graphemes)=[('v4.a', 8, 8, 8), ('v4.b', 10, 10, 8), ('v1.a', 11, 11, 11), ('v1.b', 11, 11, 11), ('v3.a', 17, 17, 17), ('v2.a', 24, 24, 24)]"
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "D04_unicode",
+   "check": "NFC and NFD forms of the same name are distinct strings with different lengths",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "P04_unicode_ligature",
+   "check": "ligature code (1 font code) maps to 2 code points: relation n:1 represented",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "P04_unicode_ligature",
+   "check": "code outside the BMP: 1 code point, 2 UTF-16 units, one font code (glyph relation not assumed)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "P04_unicode_ligature",
+   "check": "combining mark U+0301 is its own code point in the unit text",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "P04_unicode_ligature",
+   "check": "identical unselected occurrence (v5.b) preserved; selected one (v5.a) replaced",
+   "status": "pass",
+   "detail": "'Emoji 😀 antes de [X] y [X] luego\\r\\n[X] y de nuevo Oficina Ejemplo\\r\\nParcial: officina'"
+  },
+  {
+   "exp": "EXP-03",
+   "subject": "P04_unicode_ligature",
+   "check": "selecting only the f of a fi ligature is refused (indivisible piece)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "A03",
+   "check": "AnalysisResult exposes no page/node/scope_note fields (A03 unchanged)",
+   "status": "pass",
+   "detail": "fields=['analysis_contract_version', 'classification', 'detection', 'input', 'profile', 'provenance', 'request_id', 'status']"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D01_runs",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D01_runs",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D01_runs",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D02_tables",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D02_tables",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D02_tables",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D03_headers_notes",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D03_headers_notes",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D03_headers_notes",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D04_unicode",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D04_unicode",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D04_unicode",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D05_field",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D05_field",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D05_field",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": false, \"declared_not_covered\": 2}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D06_comments_meta",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D06_comments_meta",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D06_comments_meta",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D07_aux_copy",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D07_aux_copy",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D07_aux_copy",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": false, \"declared_not_covered\": 3}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D08_all_selected",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D08_all_selected",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D08_all_selected",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D09_no_values",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D09_no_values",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D09_no_values",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D10_sdt",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D10_sdt",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D10_sdt",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P01_basic",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P01_basic",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P01_basic",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P02_columns",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P02_columns",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P02_columns",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P03_rotated",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P03_rotated",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P03_rotated",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P04_unicode_ligature",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P04_unicode_ligature",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P04_unicode_ligature",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P05_shared_xobject",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P05_shared_xobject",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P05_shared_xobject",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P06_artificial_concat",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P06_artificial_concat",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P06_artificial_concat",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P07_replacements",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P07_replacements",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P07_replacements",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P08_meta_comments",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P08_meta_comments",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P08_meta_comments",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": false, \"declared_not_covered\": 1}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P09_all_selected",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P09_all_selected",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P09_all_selected",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P10_no_values",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P10_no_values",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P10_no_values",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P11_embedded_subset",
+   "check": "A03 mock findings (unit-local [start,end) in code points) equal the manifest occurrences; provenance simulated",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P11_embedded_subset",
+   "check": "each unit carries scope_note outside AnalysisResult (local scope, no aggregation)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "P11_embedded_subset",
+   "check": "coverage flags computed (complete A03 coverage)",
+   "status": "pass",
+   "detail": "{\"textual_subset_complete\": true, \"document_coverage_complete\": true, \"declared_not_covered\": 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D01_runs (controlled partial coverage)",
+   "check": "partial A03 coverage => status inconclusive, textual_subset_complete=false, document_coverage_complete=false",
+   "status": "pass",
+   "detail": "status=inconclusive; not_evaluated=(); flags={'textual_subset_complete': False, 'document_coverage_complete': False, 'declared_not_covered': 0}"
+  },
+  {
+   "exp": "EXP-04",
+   "subject": "D01_runs (controlled partial coverage)",
+   "check": "findings returned only inside covered regions (no claim outside coverage)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D02_tables[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D02_tables[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D02_tables[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D02_tables[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D02_tables[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D02_tables[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D02_tables[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D02_tables[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D03_headers_notes[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 15, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D03_headers_notes[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D03_headers_notes[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D03_headers_notes[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D03_headers_notes[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D03_headers_notes[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D03_headers_notes[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D03_headers_notes[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D04_unicode[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D04_unicode[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D04_unicode[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D04_unicode[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D04_unicode[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D04_unicode[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}, {'value': 'Zoë Café', 'part': 'word/document.xml', 'how': 'raw:utf8-NFD'}, {'value': 'Zoë Café', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D04_unicode[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D04_unicode[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D06_comments_meta[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D06_comments_meta[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D06_comments_meta[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D07_aux_copy[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D07_aux_copy[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}, {'value': 'Ana Ejemplo', 'part': 'word/_rels/document.xml.rels', 'how': 'raw:pct-NFC'}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D07_aux_copy[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D08_all_selected[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D08_all_selected[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D08_all_selected[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D08_all_selected[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D08_all_selected[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D08_all_selected[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D08_all_selected[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D08_all_selected[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D10_sdt[std]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D10_sdt[std]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D10_sdt[std]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D10_sdt[std]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D10_sdt[std]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D10_sdt[std]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D10_sdt[std]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D10_sdt[std]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[shorter]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[shorter]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[shorter]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[shorter]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[shorter]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[shorter]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[shorter]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[shorter]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[removed_empty]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[removed_empty]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[removed_empty]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[removed_empty]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[removed_empty]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[removed_empty]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[removed_empty]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[removed_empty]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[long_reflow]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[long_reflow]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[long_reflow]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[long_reflow]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[long_reflow]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[long_reflow]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[long_reflow]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[long_reflow]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[v1.a]",
+   "check": "selection inside a field result is refused (no field evaluator)",
+   "status": "pass",
+   "detail": "field_result_not_transformable"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[v2.a]",
+   "check": "selection inside a field result is refused (no field evaluator)",
+   "status": "pass",
+   "detail": "field_result_not_transformable"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D05_field[text_next_to_fields]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "CN-01",
+   "subject": "D09_no_values",
+   "check": "no selected occurrences: text unchanged, no invented findings",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "CN-01",
+   "subject": "D09_no_values",
+   "check": "selection of a value that does not occur (offsets outside the unit) is refused",
+   "status": "pass",
+   "detail": "localization_ambiguous"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs",
+   "check": "mapping bound to the exact file: altered identity is refused",
+   "status": "pass",
+   "detail": "identity_mismatch"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[cn02]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[cn02]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[cn02]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[cn02]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[cn02]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[cn02]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[cn02]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D01_runs[cn02]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "CN-02",
+   "subject": "D01_runs",
+   "check": "identical unselected occurrence 'Ana Ejemplo' (v1.b) preserved",
+   "status": "pass",
+   "detail": "Informe de prueba Contactar a [X] ([X]) hoy. Otra mención de Ana Ejemplo sin seleccionar: Ana Ejemplo. Clave: [X] fin."
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "global absence (all occurrences selected) verified over all parts and encodings (CN-03)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D06_comments_meta[authorized_removal]",
+   "check": "DOCX render",
+   "status": "pending",
+   "detail": "LibreOffice not available in this environment"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "D06_comments_meta",
+   "check": "authorized classes removed and reported",
+   "status": "pass",
+   "detail": "report={'removed_classes': ['authorship', 'comment_authors', 'comments', 'company', 'custom_properties', 'descriptive_properties', 'thumbnail'], 'removed_parts': ['docProps/custom.xml', 'word/comments.xml', 'word/commentsExtended.xml', 'word/commentsIds.xml', 'word/people.xml', 'docProps/thumbnail.png']}"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "D06_comments_meta",
+   "check": "expected parts removed",
+   "status": "pass",
+   "detail": "remaining=[]"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "D06_comments_meta",
+   "check": "no residual copies of comment/metadata values in ANY part/relationship (raw UTF-8/16, XML strings, percent/char refs)",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "D06_comments_meta",
+   "check": "visible text kept; comment anchors removed from the body",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "D06_comments_meta",
+   "check": "[Content_Types].xml and relationships contain no removed parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[cn05]",
+   "check": "output opens without repair (zip, XML, rels, content types)",
+   "status": "pass",
+   "detail": "{\"zip_testzip\": null, \"parts\": 9, \"problems\": [], \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[cn05]",
+   "check": "python-docx opens the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[cn05]",
+   "check": "independent extraction (stdlib XML) equals the ORACLE text (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D07_aux_copy[cn05]",
+   "check": "DOCX structure/styles skeleton (tags+attributes, text excluded) equal for edited parts",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "D07_aux_copy[cn05]",
+   "check": "non-edited parts byte-identical (except authorized removals)",
+   "status": "pass",
+   "detail": "changed=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D07_aux_copy[cn05]",
+   "check": "selected values absent from every part unless an UNselected occurrence of the same value exists",
+   "status": "pass",
+   "detail": "findings=[{'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'raw:utf8-NFC'}, {'value': 'Ana Ejemplo', 'part': 'word/document.xml', 'how': 'xml-string'}, {'value': 'Ana Ejemplo', 'part': 'word/_rels/document.xml.rels', 'how': 'raw:pct-NFC'}]"
+  },
+  {
+   "exp": "CN-05",
+   "subject": "D07_aux_copy",
+   "check": "residual copies in hyperlink target and image alt text are DETECTED (verification reports residue)",
+   "status": "pass",
+   "detail": "detected in ['word/_rels/document.xml.rels', 'word/document.xml']"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "P08_meta_comments",
+   "check": "authorized classes removed (/Info, XMP, comment annotations) and reported",
+   "status": "pass",
+   "detail": "['comment_annotations', 'info_authorship', 'info_descriptive', 'xmp_descriptive']"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "P08_meta_comments",
+   "check": "no residual copies of /Info, XMP or annotation values (raw, inflated streams, hex, UTF-16)",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "CN-05",
+   "subject": "P08_meta_comments",
+   "check": "value copied in a Link URI (non-authorized, preserved) is DETECTED by the residue scan",
+   "status": "pass",
+   "detail": "detected=[{'value': 'Ana Ejemplo', 'where': 'file', 'how': 'pct-NFC'}, {'value': 'Ana%20Ejemplo', 'where': 'file', 'how': 'utf8-NFC'}]"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "P08_meta_comments",
+   "check": "output opens without repair in PDFium, pypdf(strict), Poppler",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-06",
+   "subject": "P08_meta_comments",
+   "check": "link annotation kept, Text/Popup annotations gone, /Info empty of descriptive keys",
+   "status": "pass",
+   "detail": "metadata={}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P01_basic[select_a]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 2, \"pypdf_pages\": 2, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P01_basic[select_a]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P01_basic[select_a]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P01_basic[select_a]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P01_basic[select_a]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[{'value': 'Ana Ejemplo', 'where': 'stream@493', 'how': 'utf8-NFC'}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P01_basic[select_a]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}, {'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P01_basic[select_a]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 3414, \"mask_fraction\": 0.1, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 2521, \"mask_fraction\": 0.0978, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P01_basic[select_a]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1888, \"mask_fraction\": 0.1013, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1561, \"mask_fraction\": 0.0987, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 520.0, 300.0], 'cropbox': [0.0, 0.0, 520.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 3087, \"mask_fraction\": 0.0511, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P02_columns[select_both_columns]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1879, \"mask_fraction\": 0.0507, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 3, \"pypdf_pages\": 3, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 90}, {'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}, {'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 938, \"mask_fraction\": 0.0489, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 939, \"mask_fraction\": 0.0367, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 2045, \"mask_fraction\": 0.0511, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 655, \"mask_fraction\": 0.0507, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 628, \"mask_fraction\": 0.038, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1259, \"mask_fraction\": 0.0507, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 2929, \"mask_fraction\": 0.1022, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1797, \"mask_fraction\": 0.104, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "CN-06",
+   "subject": "P04_unicode_ligature[partial_ligature]",
+   "check": "expected reject:localization_ambiguous; got reject:localization_ambiguous",
+   "status": "pass",
+   "detail": "boundary falls inside an indivisible piece (n:1)"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 2, \"pypdf_pages\": 2, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}, {'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 3087, \"mask_fraction\": 0.1, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 2089, \"mask_fraction\": 0.0511, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P05_shared_xobject[both_uses]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1851, \"mask_fraction\": 0.0987, \"tolerance\": 0}, {\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1249, \"mask_fraction\": 0.0507, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "CN-06",
+   "subject": "P05_shared_xobject[one_use_only]",
+   "check": "expected reject:shared_object_partial; got reject:shared_object_partial",
+   "status": "pass",
+   "detail": "1 of 2 uses selected"
+  },
+  {
+   "exp": "CN-06",
+   "subject": "P06_artificial_concat[wrapped_value]",
+   "check": "expected reject:localization_ambiguous; got reject:localization_ambiguous",
+   "status": "pass",
+   "detail": "interval includes a synthesized separator (artificial concatenation)"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[short]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[short]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[short]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[short]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[short]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[short]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[short]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 998, \"mask_fraction\": 0.0489, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[short]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 598, \"mask_fraction\": 0.048, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 878, \"mask_fraction\": 0.0489, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[removed_empty]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 524, \"mask_fraction\": 0.048, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[equal_width]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[equal_width]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[equal_width]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[equal_width]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P07_replacements[equal_width]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[equal_width]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[equal_width]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 91, \"mask_fraction\": 0.0489, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P07_replacements[equal_width]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 54, \"mask_fraction\": 0.048, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "CN-06",
+   "subject": "P07_replacements[wider_than_original]",
+   "check": "expected reject:replacement_overflow; got reject:replacement_overflow",
+   "status": "pass",
+   "detail": "13216 > 5669"
+  },
+  {
+   "exp": "CN-06",
+   "subject": "P07_replacements[glyph_unavailable]",
+   "check": "expected reject:substitute_glyph_unavailable; got reject:substitute_glyph_unavailable",
+   "status": "pass",
+   "detail": "character not encodable in the font"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[{'value': 'Ana Ejemplo', 'where': 'file', 'how': 'pct-NFC'}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1751, \"mask_fraction\": 0.1822, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P08_meta_comments[remove_authorized]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1042, \"mask_fraction\": 0.1813, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P09_all_selected[all]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P09_all_selected[all]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P09_all_selected[all]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P09_all_selected[all]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P09_all_selected[all]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "CN-03",
+   "subject": "P09_all_selected[all]",
+   "check": "global absence of the value (all occurrences selected): no engine finds it and raw scan is empty",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P09_all_selected[all]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P09_all_selected[all]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 2994, \"mask_fraction\": 0.0978, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P09_all_selected[all]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 1807, \"mask_fraction\": 0.0987, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P10_no_values[none_present]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P10_no_values[none_present]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P10_no_values[none_present]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P10_no_values[none_present]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P10_no_values[none_present]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P10_no_values[none_present]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P10_no_values[none_present]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 0, \"mask_fraction\": 0.0, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P10_no_values[none_present]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 0, \"mask_fraction\": 0.0, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "output opens without repair in PDFium, pypdf(strict) and Poppler (3 independent parsers)",
+   "status": "pass",
+   "detail": "{\"pdfium_pages\": 1, \"pypdf_pages\": 1, \"poppler_rc\": 0, \"poppler_stderr\": \"\", \"ok\": true}"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "pdfium text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "pypdf text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "poppler text equals ORACLE (selected replaced, rest intact)",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "raw/inflated byte scan finds no selected value (literal, hex, UTF-16); NOT sufficient alone (kerning-split strings)",
+   "status": "pass",
+   "detail": "[{'value': 'Ana Ejemplo', 'where': 'stream@329', 'how': 'utf8-NFC'}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "page count, MediaBox, CropBox and Rotate identical",
+   "status": "pass",
+   "detail": "[{'mediabox': [0.0, 0.0, 400.0, 300.0], 'cropbox': [0.0, 0.0, 400.0, 300.0], 'rotate': 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "PDFium render: 0 pixels differ OUTSIDE the affected line bands (tolerance 0, scale 1.5)",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 3945, \"mask_fraction\": 0.1156, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "EXP-08",
+   "subject": "P11_embedded_subset[subset_glyphs]",
+   "check": "Poppler render (second renderer, 90 dpi): 0 pixels differ outside the affected bands",
+   "status": "pass",
+   "detail": "[{\"outside_diff_pixels\": 0, \"total_diff_pixels\": 2482, \"mask_fraction\": 0.1147, \"tolerance\": 0}]"
+  },
+  {
+   "exp": "CN-06",
+   "subject": "P11_embedded_subset[glyph_not_in_subset]",
+   "check": "expected reject:substitute_glyph_unavailable; got reject:substitute_glyph_unavailable",
+   "status": "pass",
+   "detail": "no glyph for the character in the embedded font program"
+  },
+  {
+   "exp": "CN-01",
+   "subject": "P10_no_values",
+   "check": "no selected occurrences: text unchanged",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "CN-02",
+   "subject": "P01_basic",
+   "check": "identical unselected occurrence 'Ana Ejemplo' (v1.b) preserved on page 1",
+   "status": "pass",
+   "detail": "'Contactar a [X] hoy.\\r\\nCorreo: [X]\\r\\nRepetida sin seleccionar: Ana Ejemplo.'"
+  },
+  {
+   "exp": "CN-04",
+   "subject": "P01_basic[overlay]",
+   "check": "rectangle overlay without removal FAILS verification (all three engines still extract the value; oracle mismatch)",
+   "status": "pass",
+   "detail": "engines_still_contain={'pdfium': True, 'pypdf': True, 'poppler': True}"
+  },
+  {
+   "exp": "CN-04",
+   "subject": "P01_basic[overlay]",
+   "check": "raw/inflated scan finds the value shown by the page text only when not kerning-split (supplementary)",
+   "status": "pass",
+   "detail": "findings=[]"
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "P01_basic[unmodified]",
+   "check": "verifier sensitivity: all three engines MISMATCH the oracle when nothing was removed",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-05",
+   "subject": "D01_runs[unmodified]",
+   "check": "verifier sensitivity: DOCX independent extraction MISMATCHES the oracle and the residue scan finds the values when nothing was removed",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q01_encrypted",
+   "check": "rejected with one of ['encrypted'] (RC4/AES with empty user password: openable by the library, still rejected)",
+   "status": "pass",
+   "detail": "('REJECT', 'encrypted', '') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q02_signed",
+   "check": "rejected with one of ['signed'] (AcroForm with SigFlags (signature present))",
+   "status": "pass",
+   "detail": "('REJECT', 'signed', 'AcroForm') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q03_incremental",
+   "check": "rejected with one of ['incremental_update'] (valid incremental update (older revision still in the file))",
+   "status": "pass",
+   "detail": "('REJECT', 'incremental_update', 'multiple %%EOF') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q04_repaired_xref",
+   "check": "rejected with one of ['repaired_by_parser', 'corrupt_or_unreadable'] (wrong startxref: the parser reconstructs the xref table)",
+   "status": "pass",
+   "detail": "('REJECT', 'repaired_by_parser', 'stream <_io.BytesIO object at 0x10cde8d60>: file is damaged') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q05_javascript",
+   "check": "rejected with one of ['actions'] (OpenAction JavaScript)",
+   "status": "pass",
+   "detail": "('REJECT', 'actions', '/JavaScript') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q06_attachment",
+   "check": "rejected with one of ['attachments'] (EmbeddedFiles name tree)",
+   "status": "pass",
+   "detail": "('REJECT', 'attachments', '/EmbeddedFiles') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q07_form",
+   "check": "rejected with one of ['forms'] (AcroForm with a text widget)",
+   "status": "pass",
+   "detail": "('REJECT', 'forms', 'AcroForm') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q08_layers",
+   "check": "rejected with one of ['optional_content'] (optional content (OCProperties))",
+   "status": "pass",
+   "detail": "('REJECT', 'optional_content', 'OCProperties') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q09_tagged_actualtext",
+   "check": "rejected with one of ['tagged_structure_text'] (structure element with /ActualText)",
+   "status": "pass",
+   "detail": "('REJECT', 'tagged_structure_text', '/ActualText') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q10_invisible_text",
+   "check": "rejected with one of ['invisible_or_clipped_text'] (text render mode 3)",
+   "status": "pass",
+   "detail": "('REJECT', 'invisible_or_clipped_text', 'Tr 3') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q11_scanned",
+   "check": "rejected with one of ['scanned_document'] (page that is only an image)",
+   "status": "pass",
+   "detail": "('REJECT', 'scanned_document', 'page 0 has images and no text') in 0.00s"
+  },
+  {
+   "exp": "CN-07",
+   "subject": "Q12_mixed",
+   "check": "partial coverage: processable, N declared, document_coverage_complete=false",
+   "status": "pass",
+   "detail": "('OK', ['page0:/Im1|image']); flags={'textual_subset_complete': True, 'document_coverage_complete': False, 'declared_not_covered': 1}"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q13_freetext_annot",
+   "check": "rejected with one of ['annotation_unsupported'] (FreeText annotation with appearance)",
+   "status": "pass",
+   "detail": "('REJECT', 'annotation_unsupported', '/FreeText') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q14_font_without_mapping",
+   "check": "rejected with one of ['font_mapping_insufficient'] (custom glyph names and no ToUnicode)",
+   "status": "pass",
+   "detail": "('REJECT', 'font_mapping_insufficient', '0:/F1: no ToUnicode and no supported base encoding') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q15_type0_font",
+   "check": "rejected with one of ['font_unsupported'] (Type0/CID font (outside the experiment subset))",
+   "status": "pass",
+   "detail": "('REJECT', 'font_unsupported', '/Type0') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q16_flate_bomb",
+   "check": "rejected with one of ['limit_exceeded'] (content stream inflating to 60 MiB from ~60 KiB)",
+   "status": "pass",
+   "detail": "('REJECT', 'limit_exceeded', 'inflate produced bytes') in 0.25s"
+  },
+  {
+   "exp": "CN-07",
+   "subject": "Q17_vector_paths_partial",
+   "check": "partial coverage: processable, N declared, document_coverage_complete=false",
+   "status": "pass",
+   "detail": "('OK', ['page0|vector_graphics']); flags={'textual_subset_complete': True, 'document_coverage_complete': False, 'declared_not_covered': 1}"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q18_unknown_catalog",
+   "check": "rejected with one of ['unknown_catalog_entry'] (unknown catalog entry)",
+   "status": "pass",
+   "detail": "('REJECT', 'unknown_catalog_entry', 'Foo') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q19_text_state",
+   "check": "rejected with one of ['text_state_unsupported'] (horizontal scaling Tz)",
+   "status": "pass",
+   "detail": "('REJECT', 'text_state_unsupported', 'Tz') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q20_truncated",
+   "check": "rejected with one of ['corrupt_or_unreadable', 'repaired_by_parser'] (truncated file)",
+   "status": "pass",
+   "detail": "('REJECT', 'corrupt_or_unreadable', 'open') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R01_revisions",
+   "check": "rejected with one of ['revisions'] (pending tracked changes (w:ins / w:del))",
+   "status": "pass",
+   "detail": "('REJECT', 'revisions', 'word/document.xml:ins') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R02_hidden_text",
+   "check": "rejected with one of ['hidden_text'] (w:vanish run)",
+   "status": "pass",
+   "detail": "('REJECT', 'hidden_text', 'word/document.xml:vanish') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R03_text_box",
+   "check": "rejected with one of ['text_box'] (text box with Choice/Fallback duplicate)",
+   "status": "pass",
+   "detail": "('REJECT', 'text_box', 'word/document.xml:txbxContent') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R04_custom_xml",
+   "check": "rejected with one of ['unknown_relationship', 'embedded_or_unknown_part'] (customXml part)",
+   "status": "pass",
+   "detail": "('REJECT', 'unknown_relationship', 'customXml') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R05_ole_object",
+   "check": "rejected with one of ['unknown_relationship', 'embedded_or_unknown_part'] (embedded OLE payload)",
+   "status": "pass",
+   "detail": "('REJECT', 'unknown_relationship', 'oleObject') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R06_chart",
+   "check": "rejected with one of ['chart_or_diagram'] (chart graphic)",
+   "status": "pass",
+   "detail": "('REJECT', 'chart_or_diagram', 'word/document.xml') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R07_external_rel",
+   "check": "rejected with one of ['unknown_relationship', 'external_reference'] (external attachedTemplate relationship)",
+   "status": "pass",
+   "detail": "('REJECT', 'unknown_relationship', 'attachedTemplate') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R08_external_field",
+   "check": "rejected with one of ['external_field'] (INCLUDETEXT field)",
+   "status": "pass",
+   "detail": "('REJECT', 'external_field', 'word/document.xml') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R09_encrypted",
+   "check": "rejected with one of ['encrypted_or_legacy'] (OLE compound file (EncryptedPackage container) instead of a ZIP)",
+   "status": "pass",
+   "detail": "('REJECT', 'encrypted_or_legacy', 'CFB container') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R10_signed",
+   "check": "rejected with one of ['signed'] (digital signature origin + signature part)",
+   "status": "pass",
+   "detail": "('REJECT', 'signed', '') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R11_macros",
+   "check": "rejected with one of ['unknown_relationship', 'embedded_or_unknown_part'] (vbaProject.bin)",
+   "status": "pass",
+   "detail": "('REJECT', 'unknown_relationship', 'vbaProject') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R12_corrupt_zip",
+   "check": "rejected with one of ['corrupt_or_unreadable'] (truncated ZIP (central directory lost))",
+   "status": "pass",
+   "detail": "('REJECT', 'corrupt_or_unreadable', 'zip') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R13_zip_bomb_declared",
+   "check": "rejected with one of ['limit_exceeded'] (member declares and produces 60 MiB (declared-size check))",
+   "status": "pass",
+   "detail": "('REJECT', 'limit_exceeded', 'declared total') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R14_zip_bomb_lying_header",
+   "check": "rejected with one of ['limit_exceeded'] (declared sizes patched to 1000 bytes; real output is 60 MiB (produced-bytes check))",
+   "status": "pass",
+   "detail": "('REJECT', 'limit_exceeded', 'produced bytes') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R15_xml_entity_bomb",
+   "check": "rejected with one of ['xml_doctype'] (DOCTYPE with nested entities in document.xml)",
+   "status": "pass",
+   "detail": "('REJECT', 'xml_doctype', '') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R16_orphan_header",
+   "check": "rejected with one of ['orphan_header_footer'] (header part present but not referenced by any section)",
+   "status": "pass",
+   "detail": "('REJECT', 'orphan_header_footer', 'word/header9.xml') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R17_unknown_part",
+   "check": "rejected with one of ['unknown_part'] (vendor part with no rule)",
+   "status": "pass",
+   "detail": "('REJECT', 'unknown_part', 'word/vendor.xml') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R18_data_bound_sdt",
+   "check": "rejected with one of ['data_bound_control'] (content control bound to customXml)",
+   "status": "pass",
+   "detail": "('REJECT', 'data_bound_control', 'word/document.xml') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R19_settings_docvars",
+   "check": "rejected with one of ['settings_payload_or_external'] (settings.xml carries w:docVars)",
+   "status": "pass",
+   "detail": "('REJECT', 'settings_payload_or_external', 'docVars') in 0.00s"
+  },
+  {
+   "exp": "CN-07",
+   "subject": "R20_numbering_free_text",
+   "check": "partial coverage: processable, N declared, document_coverage_complete=false",
+   "status": "pass",
+   "detail": "('OK', ['word/numbering.xml|structural_free_strings']); flags={'textual_subset_complete': True, 'document_coverage_complete': False, 'declared_not_covered': 1}"
+  },
+  {
+   "exp": "CN-07",
+   "subject": "R21_image_partial",
+   "check": "partial coverage: processable, N declared, document_coverage_complete=false",
+   "status": "pass",
+   "detail": "('OK', ['word/media/image1.png|part']); flags={'textual_subset_complete': True, 'document_coverage_complete': False, 'declared_not_covered': 1}"
+  },
+  {
+   "exp": "CN-07",
+   "subject": "R22_equation_partial",
+   "check": "partial coverage: processable, N declared, document_coverage_complete=false",
+   "status": "pass",
+   "detail": "('OK', ['word/document.xml|equation']); flags={'textual_subset_complete': True, 'document_coverage_complete': False, 'declared_not_covered': 1}"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R23_media_type_mismatch",
+   "check": "rejected with one of ['media_type_mismatch'] (word/media/x.png that is not an image)",
+   "status": "pass",
+   "detail": "('REJECT', 'media_type_mismatch', '') in 0.00s"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R13_zip_bomb_declared",
+   "check": "bomb aborted for the intended reason (declared total)",
+   "status": "pass",
+   "detail": "declared total"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "R14_zip_bomb_lying_header",
+   "check": "bomb aborted for the intended reason (produced bytes)",
+   "status": "pass",
+   "detail": "produced bytes"
+  },
+  {
+   "exp": "EXP-07",
+   "subject": "Q16_flate_bomb",
+   "check": "bomb aborted for the intended reason (inflate produced bytes)",
+   "status": "pass",
+   "detail": "inflate produced bytes"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "P01_basic[select_a]",
+   "check": "mechanical restoration: values back at the recorded POSITIONS (validated, not searched); text equals original; PDFium render identical to the original OUTSIDE the restored values (inside: sub-glyph kerning inside a value is not restored); opens without repair",
+   "status": "pass",
+   "detail": "text=True outside_diff=[0, 0] differing_pixels_inside_values=1573 open=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "P01_basic",
+   "check": "wrong recorded position is refused (no search fallback)",
+   "status": "pass",
+   "detail": "restore_mismatch"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "P04_unicode_ligature[select_values]",
+   "check": "mechanical restoration: values back at the recorded POSITIONS (validated, not searched); text equals original; PDFium render identical to the original OUTSIDE the restored values (inside: sub-glyph kerning inside a value is not restored); opens without repair",
+   "status": "pass",
+   "detail": "text=True outside_diff=[0] differing_pixels_inside_values=56 open=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "P09_all_selected[all]",
+   "check": "mechanical restoration: values back at the recorded POSITIONS (validated, not searched); text equals original; PDFium render identical to the original OUTSIDE the restored values (inside: sub-glyph kerning inside a value is not restored); opens without repair",
+   "status": "pass",
+   "detail": "text=True outside_diff=[0] differing_pixels_inside_values=0 open=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "P03_rotated[select_all_rotated]",
+   "check": "mechanical restoration: values back at the recorded POSITIONS (validated, not searched); text equals original; PDFium render identical to the original OUTSIDE the restored values (inside: sub-glyph kerning inside a value is not restored); opens without repair",
+   "status": "pass",
+   "detail": "text=True outside_diff=[0, 0, 0] differing_pixels_inside_values=0 open=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D01_runs",
+   "check": "mechanical restoration: texts equal the original; skeleton of edited parts equal (run formatting at value boundaries may differ, see report)",
+   "status": "pass",
+   "detail": "text=True skeleton=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D02_tables",
+   "check": "mechanical restoration: texts equal the original; skeleton of edited parts equal (run formatting at value boundaries may differ, see report)",
+   "status": "pass",
+   "detail": "text=True skeleton=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D03_headers_notes",
+   "check": "mechanical restoration: texts equal the original; skeleton of edited parts equal (run formatting at value boundaries may differ, see report)",
+   "status": "pass",
+   "detail": "text=True skeleton=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D04_unicode",
+   "check": "mechanical restoration: texts equal the original; skeleton of edited parts equal (run formatting at value boundaries may differ, see report)",
+   "status": "pass",
+   "detail": "text=True skeleton=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D08_all_selected",
+   "check": "mechanical restoration: texts equal the original; skeleton of edited parts equal (run formatting at value boundaries may differ, see report)",
+   "status": "pass",
+   "detail": "text=True skeleton=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D10_sdt",
+   "check": "mechanical restoration: texts equal the original; skeleton of edited parts equal (run formatting at value boundaries may differ, see report)",
+   "status": "pass",
+   "detail": "text=True skeleton=True"
+  },
+  {
+   "exp": "EXP-09",
+   "subject": "D06_comments_meta",
+   "check": "authorized removals are irreversible: comments/metadata cannot be recovered from the output",
+   "status": "pass",
+   "detail": ""
+  },
+  {
+   "exp": "EXP-10",
+   "subject": "pdf_tool.py",
+   "check": "effort indicators (not a product limit, not a proof)",
+   "status": "info",
+   "detail": "606 non-blank lines, 477 statements (all inventory/extraction/rewrite/restore code)"
+  },
+  {
+   "exp": "EXP-10",
+   "subject": "capabilities",
+   "check": "capabilities required by the low-level route",
+   "status": "info",
+   "detail": "{\"needed and implemented (narrow subset)\": [\"content-stream parsing (pikepdf.parse_content_stream)\", \"simple-font code->Unicode from ToUnicode / WinAnsi / Differences+AGL\", \"per-glyph widths from /Widths\", \"synthesized-separator rule\", \"Form XObject recursion with use counting\", \"TJ rebuild with width compensation\", \"mechanical restore by position\"], \"needed but NOT implemented (outside the probed subset; documented limitation)\": [\"Type0/CID fonts and subset TrueType embedding (reverse CID map, glyph availability in the subset)\", \"Tc/Tw/Tz/Ts/TL text state and text rise\", \"clipping paths and non-trivial CTM for geometry-based masks\", \"cloning a shared Form XObject for partial use\", \"fonts without /Widths (AFM metrics)\", \"right-to-left and vertical writing\"]}"
+  },
+  {
+   "exp": "EXP-10",
+   "subject": "pikepdf/QPDF",
+   "check": "route works for the probed subset without a commercial dependency and without a general PDF interpreter (see rows EXP-05/09)",
+   "status": "pass",
+   "detail": ""
+  }
+ ],
+ "hashes": {
+  "fixtures/docx/D01_runs.docx": "137a21f95870fb746a12ec009d7cdeac8101b9e31384bb15591747fa264e7b01",
+  "fixtures/docx/D02_tables.docx": "4fe1df9614dede261c6e58809b1a4eb3cbb3393bdf24ac216f5cbd4f1aed4d7b",
+  "fixtures/docx/D03_headers_notes.docx": "1e34c272bf1e4009237f4dde201e94baef2fa823f03d8d299684d2c103289263",
+  "fixtures/docx/D04_unicode.docx": "fa52a3f0884900c3da0f1fcec64e41a6a3c1627ea6702bf3a2c22593d54368d5",
+  "fixtures/docx/D05_field.docx": "fb7e3b6c97ffb44dc905db70d6da3b07aad6f3518416ea475bc7dd4dc2b3648a",
+  "fixtures/docx/D06_comments_meta.docx": "420ff0758717509cda29b941a008de801e615a9009738e9c12463892bb78a610",
+  "fixtures/docx/D07_aux_copy.docx": "2eb969eb782dd391f221bb8fd494b28eaad21a6490b3d9aa1451e11b8e8648c7",
+  "fixtures/docx/D08_all_selected.docx": "ec12d0df49aecfb720c077419ec603093c99ccfc39da836da672597c26dbf3b1",
+  "fixtures/docx/D09_no_values.docx": "04802ee548bc2a670307bf8a7dcba35ec1650bfeb60036dec086c7395e2b0a71",
+  "fixtures/docx/D10_sdt.docx": "1dd116d6dfd12a0fa8eff69cd82fa746c5e74749f4b37cae45671745c84e7f0d",
+  "fixtures/reject/R01_revisions.docx": "41e166d3bdfc43ec09ac224ee4ad4aefa829e38c8553156a47b44c677b4029c4",
+  "fixtures/pdf/P01_basic.pdf": "777bfc44ba0723f118cc5544278358c20dd93a80e281e479917ca727f8d28ef5",
+  "fixtures/pdf/P02_columns.pdf": "e6040d82fe8dba728937a6e67041db3ca6f439ad9bb3523053ed21dbe421073c",
+  "fixtures/pdf/P03_rotated.pdf": "004ff12d8f4b91816445a2247a6b69d9641f010f36ffd025356b4f07c834d4f9",
+  "fixtures/pdf/P04_unicode_ligature.pdf": "1864cc7828d4ff93493317cdbd355f4023361524a955548d820784610621a4c6",
+  "fixtures/pdf/P05_shared_xobject.pdf": "8f8650f238c27b7857b46d50bf6f433d10cbccf8cf866bd98e3cd50712257250",
+  "fixtures/pdf/P06_artificial_concat.pdf": "580cacf83b718a08a412981f44e0d03ba58c7734ca16b56dd58c60ee89dded6b",
+  "fixtures/pdf/P07_replacements.pdf": "416a53ac01dabe3265961bb3b861d6eb12a42f38c2e6484dbf51462c93edf022",
+  "fixtures/pdf/P08_meta_comments.pdf": "d09259b7496ee4e786fd3292f500c841add8c0b60295b38810e623feac6a0427",
+  "fixtures/pdf/P09_all_selected.pdf": "6bf698f4474b9fddbacb9df6b1d62fc0a31493d56949ebfad1822f56a66093dd",
+  "fixtures/pdf/P10_no_values.pdf": "50605040befbd33d547ff95b69bdd6ee36c9ee73aee36bd685c138bc6c61462b",
+  "fixtures/pdf/P11_embedded_subset.pdf": "4e779a1219974f5b4acb86f0842a07c2a157ec866225b85ae9c8f3919099be96",
+  "outputs/samples/macos/docx/D01_runs-std.docx": "dd353ac5cde0622ca00772fcde31ea6f8d21dd48125de004055703dd4f28a442",
+  "outputs/samples/macos/docx/D02_tables-std.docx": "0cb49653c77bf03b0788efc506d924567c8ac596e01910fd69b45a99767b83c5",
+  "outputs/samples/macos/docx/D03_headers_notes-std.docx": "62c8944dde6485db201ab4e241df3b7ef35031388a22bf84c18db95426295426",
+  "outputs/samples/macos/docx/D04_unicode-std.docx": "df8f4515689a194b67ad6da40f11f5c35cefc1080c2011ca7442d4f812dbda8d",
+  "outputs/samples/macos/docx/D06_comments_meta-std.docx": "3d1c38b56b43b379e83a364002b0467f7ddf55d4e2e1b4938fff03a3684708bf",
+  "outputs/samples/macos/docx/D07_aux_copy-std.docx": "f06985156d68567090db57aa75c1535eaf7257b2d29a3347ea58c57bff658ee1",
+  "outputs/samples/macos/docx/D08_all_selected-std.docx": "e30d00c1e3bcebaf7d7710678f0c683ee4d16c5559c8bfcaba2489c39852003d",
+  "outputs/samples/macos/docx/D10_sdt-std.docx": "e9e29147affdeecd203152c0366b2e64da6c966ce67dfb61ac5473dacbc3aa0f",
+  "outputs/samples/macos/docx/D01_runs-shorter.docx": "f411ef41f3e4d5d18bb181e9d34aa01d4c83e18ae859b7e806d1111a105a7982",
+  "outputs/samples/macos/docx/D01_runs-removed_empty.docx": "9902f0362deb35599152716454ca320a8dac9e1bf93517d6e8e58ca6bb6bf4c6",
+  "outputs/samples/macos/docx/D01_runs-long_reflow.docx": "dbeffa5fe88a20a64c17c1d71a079c684a632328e87dbf9c1abd6180f9d62345",
+  "outputs/samples/macos/docx/D05_field-text_next_to_fields.docx": "6262bf3bf64fa13ca7aefb6ac392a4f924e02fd95d820f4a2c2d6020541b50ee",
+  "outputs/samples/macos/docx/D01_runs-cn02.docx": "f411ef41f3e4d5d18bb181e9d34aa01d4c83e18ae859b7e806d1111a105a7982",
+  "outputs/samples/macos/docx/D06_comments_meta-authorized_removal.docx": "40e325f0f9a9c44ac7bd08384dae401155e6c7b3cbf0550733e9f5baf37c8f33",
+  "outputs/samples/macos/docx/D07_aux_copy-cn05.docx": "b1324780e4596a46d1f8949fba80c5ed002901cbdfe9c1207fd7d87a7e7ad451",
+  "outputs/samples/macos/pdf/P01_basic-select_a.pdf": "37b13b1df8af0122cdf9b1e7d70a36dfb58b94fbb7710ca30b6655e0020c847d",
+  "outputs/samples/macos/pdf/P02_columns-select_both_columns.pdf": "d38a6c75818637ed26036957e7c00bb3ffd02f61bc51e34d8e417c7c145b482c",
+  "outputs/samples/macos/pdf/P03_rotated-select_all_rotated.pdf": "7d73f579fd899256ee4e4df558b7e9fcba7dad5951211a6ca1b12a00f872bae4",
+  "outputs/samples/macos/pdf/P04_unicode_ligature-select_values.pdf": "5ceea5acc798da6b56233aeac21e0279be5f8b8b27c2d83858a7520e7151c5ed",
+  "outputs/samples/macos/pdf/P05_shared_xobject-both_uses.pdf": "a24d640878326e3493dd73f24b9f8667e2a7e6b39d2d48e43d7cd521443c8e9e",
+  "outputs/samples/macos/pdf/P07_replacements-short.pdf": "818af8f772fb68408e9151d2f839745914b17057d9f6cd1d6f39b30254e07ee0",
+  "outputs/samples/macos/pdf/P07_replacements-removed_empty.pdf": "28e754bac5c281f14bb0596fb9620b6b5a6622ed39b58c02272fcc2b98cf1a74",
+  "outputs/samples/macos/pdf/P07_replacements-equal_width.pdf": "922422a656c98187fdca9b260b8c5183f437bd99a2e87d4fa3f3f092bd85dcc4",
+  "outputs/samples/macos/pdf/P08_meta_comments-remove_authorized.pdf": "43a970563b97d196ad22e1c719885fea290588b2ed7353926a710c93f9d921a1",
+  "outputs/samples/macos/pdf/P09_all_selected-all.pdf": "3acff22aacc3f085731aab95975f4a16975735a3cabe1b231ed5c42292ea15e5",
+  "outputs/samples/macos/pdf/P10_no_values-none_present.pdf": "3bc962549261ffdc53a6461c43ee0ee1c7fbab589568da1fe7c969ce6e3c1147",
+  "outputs/samples/macos/pdf/P11_embedded_subset-subset_glyphs.pdf": "8d4a1935f912af81ea1f2a0973a04f1e8edb77ead639d6e9cf0f23853f1d17d4",
+  "fixtures/reject/Q01_encrypted.pdf": "97f754d1eb1880b9965c08bd34bd87c5ba3a9338a2c6dbc7834494c900c0ae60",
+  "fixtures/reject/Q02_signed.pdf": "494d3292f8053e4cf69ba47f4ed3f4be1f86be7c1e2c8c0c80c707ba0d07bde0",
+  "fixtures/reject/Q03_incremental.pdf": "985828022b47ab3eba5fd72276a75adc75ecb2ab3ca3fc64c2383bb477033b92",
+  "fixtures/reject/Q04_repaired_xref.pdf": "509cba3574f559cba1e7e660821f0ec022370488c0ccd223d972c82072fb95a7",
+  "fixtures/reject/Q05_javascript.pdf": "8dcf938f41ec88b91fd68e32d3701928518ac8390bec2b18c8fbc38cc9dcc59f",
+  "fixtures/reject/Q06_attachment.pdf": "eb68455e87bf38dd9498a6b53f072c8f52fd07e4a7e6ebb4471d8f97ff7f448c",
+  "fixtures/reject/Q07_form.pdf": "fe4d3f5920b12c7a5ad5c629cab662b1d93204b84fed6850814580ab0190421f",
+  "fixtures/reject/Q08_layers.pdf": "f674a925a8910663510b0a217c3a5a18a7e9f337ed1347a39863e935ce463840",
+  "fixtures/reject/Q09_tagged_actualtext.pdf": "a480ddbcd8be0a8ab1e9eaff63176b5a840271989416c1b293af9a93f62fa500",
+  "fixtures/reject/Q10_invisible_text.pdf": "466fff20f39d196167df4a8100961aab9a22443d12fc50e53482723e0ac5a424",
+  "fixtures/reject/Q11_scanned.pdf": "773b18257667f0a12c42240d5a87fbc5748a0c9936b697d0b88038d86c3989c8",
+  "fixtures/reject/Q12_mixed.pdf": "bfd896d5544faae5a5e29562de021a2ffbb840a212d152a59d803bcad15c7e68",
+  "fixtures/reject/Q13_freetext_annot.pdf": "e0c396ba55b052388bc14952e4b0731766ad005d94a4745fbc718409344febe4",
+  "fixtures/reject/Q14_font_without_mapping.pdf": "49cb8dbabb48d6ceddc2e85ad0790961920db3584c8502f73cc70b32e083a96b",
+  "fixtures/reject/Q15_type0_font.pdf": "e6a70c940c077846d86baf72cbb7ee70916b8086d08d45fa3a6eb8a92dba3f0d",
+  "fixtures/reject/Q16_flate_bomb.pdf": "259d4e3a2e93d15933c1c83d797aebf1d06751aaa7c722b14d7b05356f941cd5",
+  "fixtures/reject/Q17_vector_paths_partial.pdf": "79ca869b56e84fc7594141e03d2581bc834c32e3b28a8095dccb1ff320a5b0cd",
+  "fixtures/reject/Q18_unknown_catalog.pdf": "0c26b32b52bdb2da506cdd5ca1cd12ec7dc54c9221abef07d55a69ec4a69b4c5",
+  "fixtures/reject/Q19_text_state.pdf": "dee217e0367b2d52ba484cb146ac88a120d990ecd3e1acf1dc868b7a74a37b40",
+  "fixtures/reject/Q20_truncated.pdf": "006b6485d11a5aa6839c567708783799c0fe0c2e20af78a8af4b241a79934b05",
+  "fixtures/reject/R02_hidden_text.docx": "a5f8c58462f923a5a124350df3f17873a3330d98bb49abd59e5763ae2f3b78ee",
+  "fixtures/reject/R03_text_box.docx": "57ed891d75cb87880b674d84042183c8402ac1d69b92f65b160df47d4aeecc20",
+  "fixtures/reject/R04_custom_xml.docx": "a062365ebc97e19f01759787b0241a3af0047424fc4f0f4a86a6f4cfc80975d9",
+  "fixtures/reject/R05_ole_object.docx": "5ea81dc2e9699e2c08d70aaadfcdce6da14a17d48b9c91ce122aea996d583599",
+  "fixtures/reject/R06_chart.docx": "b3768b3570857c1c8a2d70091cd93471c48b33a5f090b66a0ad56d0a42120922",
+  "fixtures/reject/R07_external_rel.docx": "f77f9ba9e0db860523d4713fcd56bb0d79fa0724962ed418db88edc222972cc2",
+  "fixtures/reject/R08_external_field.docx": "4920e8730236fa1e976d54434f2594580ed5a1d8a8b9584643c77ce5613ad12a",
+  "fixtures/reject/R09_encrypted.docx": "74a6e134d3dfb106c0e7ea80827a8f383323d270b533b4af086aa21d853aa725",
+  "fixtures/reject/R10_signed.docx": "055695204881c0a97fbc570a56d9d4b2434ff6b1b822ca326dddc3718ce80c11",
+  "fixtures/reject/R11_macros.docx": "e2ea6e3739cc5828e1100b8b80691b03b720174d8d868b56eebd19296057686f",
+  "fixtures/reject/R12_corrupt_zip.docx": "58627d344a60119719e1ad9e6de2f995ef94d0438100c28672cf35d9bd5d95d9",
+  "fixtures/reject/R13_zip_bomb_declared.docx": "8ab25639407a40971052ea71fc6470b89c570789892865a78db2e6fe247a883e",
+  "fixtures/reject/R14_zip_bomb_lying_header.docx": "e17dd33dcdfc60529e0c02ca8b5e0a90174e87f4e059407fe18a9b7c119c4ca0",
+  "fixtures/reject/R15_xml_entity_bomb.docx": "2d1b433d24fbd9103b10df6cb9edd2f7847fc99f4bfbb593be3426407ceaab98",
+  "fixtures/reject/R16_orphan_header.docx": "a7b5708baaf5caf33bc8e0e7d857f28d45f83f637eca86f76ffda87092671aed",
+  "fixtures/reject/R17_unknown_part.docx": "0035742ce75590113f6a38d4921561e6c314d5a2ec8735bdc8556b4015884321",
+  "fixtures/reject/R18_data_bound_sdt.docx": "4c49d62feb977175e8a5bbc6ad2760858a731491a171fb7f74387eca047c21a9",
+  "fixtures/reject/R19_settings_docvars.docx": "623330c4e9b6e2d9b6f494679e5fd6a454f65cb02207e24278533b664bf68957",
+  "fixtures/reject/R20_numbering_free_text.docx": "ffb419cc9424fe22f4402d69c60ef59cf928ad4f8a08d9394566f4f4d0097603",
+  "fixtures/reject/R21_image_partial.docx": "1c7448b28974cfa964e1620b3433adf0c5f58d2b867686ce5654a180c8303aba",
+  "fixtures/reject/R22_equation_partial.docx": "bf331a4d67fac9204caba3837ea8faceedda589fc8a4e54949b2dafc5e598a9a",
+  "fixtures/reject/R23_media_type_mismatch.docx": "9b333f1e132885058de4499e05948cdf19cfa98457b57a053816cf3c1a11bc03"
+ },
+ "coverage_flags": {
+  "D01_runs": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D02_tables": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D03_headers_notes": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D04_unicode": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D05_field": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": false,
+   "declared_not_covered": 2
+  },
+  "D06_comments_meta": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D07_aux_copy": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": false,
+   "declared_not_covered": 3
+  },
+  "D08_all_selected": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D09_no_values": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "D10_sdt": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P01_basic": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P02_columns": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P03_rotated": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P04_unicode_ligature": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P05_shared_xobject": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P06_artificial_concat": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P07_replacements": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P08_meta_comments": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": false,
+   "declared_not_covered": 1
+  },
+  "P09_all_selected": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P10_no_values": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  },
+  "P11_embedded_subset": {
+   "textual_subset_complete": true,
+   "document_coverage_complete": true,
+   "declared_not_covered": 0
+  }
+ }
+}

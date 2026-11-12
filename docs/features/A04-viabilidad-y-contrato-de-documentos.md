@@ -1,6 +1,6 @@
 # A04 — Viabilidad y contrato de documentos
 
-> **Estado: DOCUMENTADA; precisiones documentales aplicadas antes de ejecutar los experimentos (revisión 2). Los experimentos se implementan y ejecutan en la entrega siguiente; hasta que exista `docs/a04-feasibility-report.md`, viabilidad NO demostrada y ninguna biblioteca validada. Sin cambios en `src`, dependencias del paquete, versión (`0.3.0`), esquema ni permisos.** Ningún soporte de PDF/DOCX existe en `0.3.0`. Este documento define alcance, exclusiones, experimentos y aceptación; el contrato permanente vive en [procesamiento de documentos](../document-processing.md). No hay informe de viabilidad: se creará **después** de ejecutar los experimentos (estructura en §8).
+> **Estado: DOCUMENTADA y EXPERIMENTADA; pendiente de aceptación del usuario.** Los experimentos EXP-01 a 10 y los controles CN-01 a 07 se implementaron (`experiments/a04/`) y se ejecutaron en macOS y en Linux local (Docker); resultados, hashes, renders y conclusiones en el [informe de viabilidad](../a04-feasibility-report.md). La viabilidad se demostró **solo dentro del subconjunto probado, con documentos sintéticos y restricciones enumeradas**; no hay soporte documental en `0.3.0`, no se ejecutó GitHub Actions, y ninguna conclusión habilita A07/A08 sin decisión del usuario.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md)); estas **prevalecen** sobre el playbook donde difieren.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a04-document-feasibility-contract` (desde `ae19ef3`, merge de A03).
@@ -23,7 +23,7 @@ Aprobadas (`D-A04-01` a `03`, texto en [A04-decisions §2](../decisions/A04-deci
 | Tema | Documento permanente |
 |---|---|
 | Seis capas, afirmaciones separadas | [procesamiento §1, §9](../document-processing.md#1-seis-capas-seis-afirmaciones-distintas) |
-| Disposiciones S/E/N/R | [§2](../document-processing.md#2-disposición-de-cada-elemento-e-a04-02) |
+| Disposiciones S/E/N/R | [§2](../document-processing.md#2-disposición-de-cada-elemento-e-a04-02-revisada-por-e-a04-23) |
 | Identidad y versionado del mapa | [§3](../document-processing.md#3-identidad-y-versionado-e-a04-04) |
 | Estructuras conceptuales | [§4](../document-processing.md#4-estructuras-conceptuales) |
 | Unidades Unicode, orden, ambigüedad | [§5](../document-processing.md#5-unidades-unicode-y-orden-de-extracción) |
@@ -37,7 +37,7 @@ Aprobadas (`D-A04-01` a `03`, texto en [A04-decisions §2](../decisions/A04-deci
 
 ## 4. Reglas comunes de los experimentos
 
-1. **Ejecución posterior y local.** Sin red durante el procesamiento; sin activar macros, scripts ni referencias externas; límites de [§16 del contrato](../document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20). Artefactos en la ubicación **propuesta** `experiments/a04/` (no existe; ver [contrato §17](../document-processing.md#17-estructura-propuesta-de-los-artefactos-experimentales-no-disponible)): fuera de `src/`, fuera de la wheel y del `include` del sdist; no se cambia el empaquetado ahora.
+1. **Ejecución posterior y local.** Sin red durante el procesamiento; sin activar macros, scripts ni referencias externas; límites de [§16 del contrato](../document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20). Artefactos en la ubicación **propuesta** `experiments/a04/` (no existe; ver [contrato §17](../document-processing.md#17-artefactos-experimentales-implementados)): fuera de `src/`, fuera de la wheel y del `include` del sdist; no se cambia el empaquetado ahora.
 2. **Fixtures sintéticos con manifiesto independiente.** Cada fixture lleva un manifiesto escrito **a mano o por el generador del fixture** (nunca por la extracción que se valida) con: `fixture_id`, hash del archivo, valores sintéticos y sus **ocurrencias** (parte/página, posición esperada), partes afectadas, **hallazgos seleccionados** (cuáles ocurrencias se transforman), resultado esperado y **estructura de referencia** (partes/objetos, páginas, estilos). Valores evidentemente falsos (`example.test`, nombres ficticios); ningún dato real.
 3. **Oráculo independiente:** la verificación compara contra el manifiesto y contra una inspección estructural con herramienta distinta de la transformadora cuando sea viable; si comparten parser o motor, se **declara la limitación**.
 4. **Resultados registrados como** `demostrado`, `limitación observada` o `pendiente` por fila de la matriz; un resultado negativo completa la investigación pero no habilita A07/A08.
@@ -58,7 +58,7 @@ Aprobadas (`D-A04-01` a `03`, texto en [A04-decisions §2](../decisions/A04-deci
 
 ## 6. Batería de experimentos
 
-Cada experimento: entradas, hipótesis, procedimiento, verificaciones y resultado esperado. **Ninguno se ejecutó.** Estado de todos: `pendiente`.
+Cada experimento: entradas, hipótesis, procedimiento, verificaciones y resultado esperado (texto del plan; **resultados reales en el [informe](../a04-feasibility-report.md)**: los 10 experimentos y los 7 controles se ejecutaron en macOS y Linux local).
 
 ### EXP-01 — Extracción y mapeo DOCX
 
@@ -131,38 +131,38 @@ Cada experimento: entradas, hipótesis, procedimiento, verificaciones y resultad
 
 ## 7. Matriz de aceptación
 
-Estado actual de todos los criterios: **pendiente** (se evalúan al ejecutar los experimentos; esta entrega solo los fija **antes** de ejecutar).
+Los criterios se fijaron **antes** de ejecutar; la columna «Estado» refleja el resultado observado (detalle por criterio en el [informe §3](../a04-feasibility-report.md#3-criterios-de-aceptación-ac-a04)).
 
 | AC | Criterio verificable | Experimento / evidencia | Estado |
 |---|---|---|---|
-| AC-A04-01 | Archivo de salida abrible con la herramienta designada, estructuralmente válido y sin reparación silenciosa (se registran avisos del parser) | EXP-05, 06, 08 | pendiente |
-| AC-A04-02 | Localizadores y mapa consistentes con el archivo exacto (hash) y con el texto exacto (puntos de código); un mapa no se aplica a otro archivo | EXP-01, 02, 03 | pendiente |
-| AC-A04-03 | Eliminación **real** del contenido seleccionado; superponer rectángulos no cumple (CN-04) | EXP-05 | pendiente |
-| AC-A04-04 | Extracción posterior y revisión estructural (XML, relaciones, objetos, streams) sin el valor seleccionado; no depende solo de buscar bytes literales (fragmentación, codificaciones, compresión) | EXP-05, 08 | pendiente |
-| AC-A04-05 | Verificador independiente cuando sea viable; limitaciones declaradas si comparte parser o motor | EXP-02, 08 | pendiente |
-| AC-A04-06 | Inspección visual de **todas** las páginas de muestras pequeñas con renders antes/después y regiones identificadas; renderizador, versión, fuentes, resolución y condiciones registrados | EXP-08 | pendiente |
-| AC-A04-07 | DOCX: estructura y estilos preservados fuera de cambios autorizados (admite reflujo) | EXP-05, 08 | pendiente |
-| AC-A04-08 | PDF: misma cantidad y geometría de páginas; comparación fuera de regiones afectadas con método y tolerancias explícitos | EXP-05, 08 | pendiente |
-| AC-A04-09 | Sin texto no seleccionado perdido, sin sustitutos ilegibles ni desbordamientos; si ocurre ⇒ fallo explícito (CN-02, CN-06) | EXP-05, 08 | pendiente |
-| AC-A04-10 | Prueba mecánica de restitución de valores y estructura dentro del contrato, sin recuperar contenido eliminado irreversiblemente | EXP-09 | pendiente |
-| AC-A04-11 | Rechazos reproducibles para cada familia excluida; cobertura incompleta nunca presentada como éxito de protección completa (CN-07) | EXP-07 | pendiente |
-| AC-A04-12 | Ausencia de las ocurrencias seleccionadas distinguida de ausencia global; la global solo se exige con todas las ocurrencias incluidas (CN-02, CN-03) | EXP-05, 08 | pendiente |
-| AC-A04-13 | Comentarios/metadatos: clases eliminadas registradas, estructura válida, sin copias residuales (CN-05) | EXP-06 | pendiente |
-| AC-A04-14 | Unidades A03 con alcance local, sin agregación; `AnalysisResult` sin cambios; `scope_note` y metadatos documentales fuera de `AnalysisResult` | EXP-04 | pendiente |
-| AC-A04-21 | `textual_subset_complete` y `document_coverage_complete` (contrato §2.1) se calculan sin ambigüedad; recursos `P` inspeccionados con lista de permitidas; imágenes, destinos, instrucciones de campos y texto alternativo permanecen `N` | EXP-01, 02, 07 | pendiente |
-| AC-A04-22 | Unicode: puntos de código, unidades UTF-16, grafemas y glifos distinguidos; direcciones `n:1`/`1:n` demostradas; PDF: unidad = página, intervalos ambiguos o con concatenación artificial no se transforman | EXP-02, 03 | pendiente |
-| AC-A04-23 | Campos DOCX: una selección dentro de un resultado de campo se rechaza (sin evaluador de campos) | EXP-05, 07 | pendiente |
-| AC-A04-24 | Límites de descompresión comprobados sobre tamaños declarados **y** sobre bytes realmente producidos (aborto al superar) | EXP-07 | pendiente |
-| AC-A04-15 | Bibliotecas con versión fijada y licencias transitivas, binarios y fuentes registrados; cumplimiento de D-A04-01 | Informe de viabilidad | pendiente |
-| AC-A04-16 | Evidencia con commit, SO, Python, bibliotecas, hashes de fixtures y salidas, comandos y resultados; macOS, Linux local y GitHub Actions **por separado**, sin aprobación cruzada | Informe de viabilidad | pendiente |
-| AC-A04-17 | Conclusiones **por separado** para DOCX/PDF y para eliminación/sustitución/restitución: viable en el subconjunto probado / viable con restricciones enumeradas / no viable o evidencia insuficiente | Informe de viabilidad | pendiente |
-| AC-A04-18 | Esfuerzo de la vía PDF evaluado (EXP-10) y reportado | EXP-10 | pendiente |
-| AC-A04-19 | Ningún cambio de versión, esquema, permisos ni contratos de A03; sin extras ni APIs anticipadas **en esta entrega documental** | Revisión del diff de esta entrega | cumplido en la entrega documental (verificado por revisión del diff; sin ejecución de suites) |
-| AC-A04-20 | Un resultado negativo no habilita A07/A08 ni cierra A04 sin decisión del usuario | Informe de viabilidad + decisión del usuario | pendiente |
+| AC-A04-01 | Archivo de salida abrible con la herramienta designada, estructuralmente válido y sin reparación silenciosa (se registran avisos del parser) | EXP-05, 06, 08 | cumplido en el subconjunto probado (PDFium, pypdf estricto y Poppler; zip/XML/relaciones; python-docx y LibreOffice abren los DOCX) |
+| AC-A04-02 | Localizadores y mapa consistentes con el archivo exacto (hash) y con el texto exacto (puntos de código); un mapa no se aplica a otro archivo | EXP-01, 02, 03 | cumplido (hash del archivo; `identity_mismatch` probado) |
+| AC-A04-03 | Eliminación **real** del contenido seleccionado; superponer rectángulos no cumple (CN-04) | EXP-05 | cumplido (CN-04: el rectángulo superpuesto falla) |
+| AC-A04-04 | Extracción posterior y revisión estructural (XML, relaciones, objetos, streams) sin el valor seleccionado; no depende solo de buscar bytes literales (fragmentación, codificaciones, compresión) | EXP-05, 08 | cumplido (varios motores y todas las partes/objetos/flujos; bytes literales no bastan) |
+| AC-A04-05 | Verificador independiente cuando sea viable; limitaciones declaradas si comparte parser o motor | EXP-02, 08 | cumplido para PDF (3 motores) y DOCX (XML estándar); **limitación**: el transformador DOCX y el verificador leen el mismo XML (parsers distintos: lxml / ElementTree) |
+| AC-A04-06 | Inspección visual de **todas** las páginas de muestras pequeñas con renders antes/después y regiones identificadas; renderizador, versión, fuentes, resolución y condiciones registrados | EXP-08 | cumplido (todas las páginas de las muestras revisadas; DOCX solo con LibreOffice en Linux; PDF en ambos) |
+| AC-A04-07 | DOCX: estructura y estilos preservados fuera de cambios autorizados (admite reflujo) | EXP-05, 08 | cumplido a nivel de esqueleto estructural; el formato de los runs en los límites del valor puede cambiar |
+| AC-A04-08 | PDF: misma cantidad y geometría de páginas; comparación fuera de regiones afectadas con método y tolerancias explícitos | EXP-05, 08 | cumplido (0 píxeles de diferencia fuera de las bandas afectadas, tolerancia 0, PDFium y Poppler) |
+| AC-A04-09 | Sin texto no seleccionado perdido, sin sustitutos ilegibles ni desbordamientos; si ocurre ⇒ fallo explícito (CN-02, CN-06) | EXP-05, 08 | cumplido (fallos explícitos; sin pérdidas colaterales observadas) |
+| AC-A04-10 | Prueba mecánica de restitución de valores y estructura dentro del contrato, sin recuperar contenido eliminado irreversiblemente | EXP-09 | cumplido en el subconjunto, con restricciones (informe §5) |
+| AC-A04-11 | Rechazos reproducibles para cada familia excluida; cobertura incompleta nunca presentada como éxito de protección completa (CN-07) | EXP-07 | cumplido (rechazos reproducibles; cobertura parcial declarada) |
+| AC-A04-12 | Ausencia de las ocurrencias seleccionadas distinguida de ausencia global; la global solo se exige con todas las ocurrencias incluidas (CN-02, CN-03) | EXP-05, 08 | cumplido |
+| AC-A04-13 | Comentarios/metadatos: clases eliminadas registradas, estructura válida, sin copias residuales (CN-05) | EXP-06 | cumplido |
+| AC-A04-14 | Unidades A03 con alcance local, sin agregación; `AnalysisResult` sin cambios; `scope_note` y metadatos documentales fuera de `AnalysisResult` | EXP-04 | cumplido |
+| AC-A04-21 | `textual_subset_complete` y `document_coverage_complete` (contrato §2.1) se calculan sin ambigüedad; recursos `P` inspeccionados con lista de permitidas; imágenes, destinos, instrucciones de campos y texto alternativo permanecen `N` | EXP-01, 02, 07 | cumplido |
+| AC-A04-22 | Unicode: puntos de código, unidades UTF-16, grafemas y glifos distinguidos; direcciones `n:1`/`1:n` demostradas; PDF: unidad = página, intervalos ambiguos o con concatenación artificial no se transforman | EXP-02, 03 | cumplido |
+| AC-A04-23 | Campos DOCX: una selección dentro de un resultado de campo se rechaza (sin evaluador de campos) | EXP-05, 07 | cumplido |
+| AC-A04-24 | Límites de descompresión comprobados sobre tamaños declarados **y** sobre bytes realmente producidos (aborto al superar) | EXP-07 | cumplido |
+| AC-A04-15 | Bibliotecas con versión fijada y licencias transitivas, binarios y fuentes registrados; cumplimiento de D-A04-01 | Informe de viabilidad | cumplido (versiones fijadas; licencias y binarios registrados; salvedad de plataformas, B-A04-19) |
+| AC-A04-16 | Evidencia con commit, SO, Python, bibliotecas, hashes de fixtures y salidas, comandos y resultados; macOS, Linux local y GitHub Actions **por separado**, sin aprobación cruzada | Informe de viabilidad | cumplido para macOS y Linux local (Docker), por separado; **GitHub Actions no ejecutado** |
+| AC-A04-17 | Conclusiones **por separado** para DOCX/PDF y para eliminación/sustitución/restitución: viable en el subconjunto probado / viable con restricciones enumeradas / no viable o evidencia insuficiente | Informe de viabilidad | cumplido (informe §5) |
+| AC-A04-18 | Esfuerzo de la vía PDF evaluado (EXP-10) y reportado | EXP-10 | cumplido (informe §6) |
+| AC-A04-19 | Ningún cambio de versión, esquema, permisos ni contratos de A03; sin extras ni APIs anticipadas **en esta entrega documental** | Revisión del diff de esta entrega | cumplido: sin cambios en `src`, versión, esquema, permisos, contratos de A03 ni dependencias/`uv.lock` del paquete; único cambio en `pyproject.toml`: `exclude = ["experiments"]` del sdist (verificado con `uv build`) |
+| AC-A04-20 | Un resultado negativo no habilita A07/A08 ni cierra A04 sin decisión del usuario | Informe de viabilidad + decisión del usuario | **pendiente de decisión del usuario** |
 
-## 8. Estructura del informe de viabilidad (se completará después; hoy no existe)
+## 8. Estructura del informe de viabilidad
 
-Archivo futuro: `docs/a04-feasibility-report.md` (**propuesto / no disponible**). Secciones: **0.** estado por nivel de evidencia (especificado ≠ implementado ≠ probado en macOS ≠ en Linux local ≠ en GitHub Actions ≠ aceptado); **1.** identidad de la ejecución (commit, SO, Python, bibliotecas con versiones y licencias transitivas, binarios, fuentes, renderizador y versión, hashes de fixtures y salidas, comandos); **2.** resultados por experimento (EXP-01 a 10) con estado por fila de las matrices; **3.** controles negativos CN-01 a 07; **4.** hallazgos de fidelidad y residuos (con renders); **5.** conclusiones separadas: DOCX / PDF × eliminación / sustitución / restitución mecánica ∈ {viable en el subconjunto probado, viable con restricciones enumeradas, no viable o evidencia insuficiente}; **6.** esfuerzo de la vía PDF; **7.** límites, *skips* y lo no ejecutado; **8.** recomendación para A07/A08 y **decisión pendiente del usuario**. Cada resultado separa macOS, Linux local (Docker) y GitHub Actions.
+Archivo: [`docs/a04-feasibility-report.md`](../a04-feasibility-report.md) (existe tras ejecutar los experimentos). Secciones: **0.** estado por nivel de evidencia (especificado ≠ implementado ≠ probado en macOS ≠ en Linux local ≠ en GitHub Actions ≠ aceptado); **1.** identidad de la ejecución (commit, SO, Python, bibliotecas con versiones y licencias transitivas, binarios, fuentes, renderizador y versión, hashes, comandos); **2.** resultados por experimento (EXP-01 a 10) y por fila de las matrices; **3.** criterios de aceptación AC-A04; **4.** controles negativos CN-01 a 07; **5.** conclusiones separadas DOCX / PDF × eliminación / sustitución / restitución mecánica; **6.** esfuerzo de la vía PDF; **7.** fidelidad, residuos y renders revisados; **8.** límites, *skips* y lo no ejecutado; **9.** consecuencia para A05/A07/A08 y decisión pendiente del usuario. Cada resultado separa macOS, Linux local (Docker) y GitHub Actions.
 
 ## 9. Riesgos y límites declarados
 
