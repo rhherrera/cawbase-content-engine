@@ -8,7 +8,7 @@ SCHEMA_NAME = "cawbase_content_engine"
 SQLITE_PREFIX = "cawbase_content_engine_"
 
 #: Schema level this runtime requires (bumped by every migration that this release needs).
-SCHEMA_LEVEL = 1
+SCHEMA_LEVEL = 2
 #: Level of this runtime; a schema whose ``min_runtime_level`` is higher is rejected.
 RUNTIME_LEVEL = 1
 

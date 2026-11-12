@@ -30,6 +30,19 @@ class Limits:
     max_active_keys_per_client: int = 100
     default_page_size: int = 50
     max_page_size: int = 200
+    # A02 (profiles, categories, sensitive types)
+    max_profiles_per_scope: int = 50
+    max_profile_rows_per_scope: int = 500
+    max_elements_per_profile: int = 50
+    max_element_rows_per_profile: int = 250
+    max_versions_per_profile: int = 500
+    max_snapshot_bytes: int = 1024 * 1024
+    max_element_name: int = 100
+    max_element_definition: int = 1500
+    max_example: int = 300
+    max_examples_per_list: int = 5
+    max_element_text_bytes: int = 8192
+    max_priority: int = 10000
 
     def __post_init__(self) -> None:
         for name, value in vars(self).items():

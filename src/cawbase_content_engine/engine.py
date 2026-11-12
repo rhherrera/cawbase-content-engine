@@ -41,6 +41,7 @@ from .operations import api_keys as ak
 from .operations import clients as cl
 from .operations import scopes as sc
 from .operations.common import page_size
+from .operations.profile_facade import ProfileOperations
 from .permissions import AdminPermission, ScopePermission
 from .persistence.dialect import Backend
 from .persistence.engines import create_owned_engine
@@ -232,7 +233,7 @@ class ContentEngine:
         return await self._run(lambda c: ak.authenticate(c, self._tables, text, self._token), write=False, tx=None)
 
 
-class ScopedOperations:
+class ScopedOperations(ProfileOperations):
     """Operations on one scope. Every query is constrained by ``ctx.scope_id``."""
 
     def __init__(self, engine: ContentEngine, ctx: ScopeContext, tx: HostTransaction | None) -> None:

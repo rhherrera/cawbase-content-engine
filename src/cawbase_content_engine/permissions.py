@@ -1,4 +1,4 @@
-"""Permission catalog (8 permissions) and the delegation rules (D-27)."""
+"""Permission catalog (10 permissions: 8 from A01, 2 from A02) and the delegation rules (D-27)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from enum import StrEnum
 class ScopePermission(StrEnum):
     SCOPE_READ = "scope:read"
     SCOPE_WRITE = "scope:write"
+    PROFILES_READ = "profiles:read"
+    PROFILES_WRITE = "profiles:write"
 
 
 class AdminPermission(StrEnum):

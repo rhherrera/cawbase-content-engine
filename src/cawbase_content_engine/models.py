@@ -98,3 +98,119 @@ class LivenessReport(_Frozen):
 class ReadinessReport(_Frozen):
     ready: bool
     state: str
+
+
+# ---- A02: profiles, categories and sensitive types -------------------------------------------------
+class RankingConfig(_Frozen):
+    mode: str
+    eligibility_threshold: float
+    tie_tolerance: float
+    revision: int
+
+
+class CatalogProvenance(_Frozen):
+    catalog_id: str
+    catalog_version: int
+    copied_at: datetime
+
+
+class Profile(_Frozen):
+    scope_id: str
+    profile_id: str
+    display_name: str
+    description: str | None
+    language: str
+    status: str
+    revision: int
+    draft_revision: int
+    current_version_number: int | None
+    is_default: bool
+    ranking: RankingConfig
+    catalog_provenance: CatalogProvenance | None
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None
+
+
+class Examples(_Frozen):
+    positive: tuple[str, ...] = ()
+    negative: tuple[str, ...] = ()
+
+
+class Translation(_Frozen):
+    name: str
+    definition: str
+
+
+class Category(_Frozen):
+    scope_id: str
+    profile_id: str
+    category_id: str
+    name: str
+    definition: str
+    examples: Examples
+    translations: dict[str, Translation] | None
+    priority: int | None
+    state: str
+    revision: int
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None
+
+
+class SensitiveType(_Frozen):
+    scope_id: str
+    profile_id: str
+    type_id: str
+    name: str
+    definition: str
+    examples: Examples
+    translations: dict[str, Translation] | None
+    origin_entry: str | None
+    state: str
+    revision: int
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None
+
+
+class ProfileVersionSummary(_Frozen):
+    scope_id: str
+    profile_id: str
+    version_id: str
+    version_number: int
+    source_draft_revision: int
+    content_hash: str
+    capabilities: dict[str, bool]
+    snapshot_bytes: int
+    published_at: datetime
+    published_by: str | None
+
+
+class ProfileVersion(ProfileVersionSummary):
+    snapshot: dict[str, Any]
+
+
+class DefaultProfile(_Frozen):
+    scope_id: str
+    profile_id: str | None
+    revision: int
+    updated_at: datetime | None
+
+
+class ResolvedProfile(_Frozen):
+    selection: str
+    version: ProfileVersion
+
+
+class StarterCatalogEntry(_Frozen):
+    entry: str
+    names: dict[str, str]
+    definitions: dict[str, str]
+    examples: dict[str, Examples]
+
+
+class StarterCatalog(_Frozen):
+    catalog_id: str
+    catalog_version: int
+    entries: tuple[StarterCatalogEntry, ...]

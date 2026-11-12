@@ -24,6 +24,7 @@ from .persistence.sqlite_support import BEGIN_OPTION, driver_in_transaction
 
 T = TypeVar("T")
 _BUSY = "_cce_host_connection_busy"
+_TRANSIENT_SQLSTATES = frozenset({"40P01", "40001"})
 
 
 class HostTransaction:
@@ -56,8 +57,13 @@ def translate(exc: BaseException) -> EngineError:
         return ConflictError()
     if isinstance(exc, (sa.exc.OperationalError, sa.exc.InterfaceError, sa.exc.TimeoutError, OSError, TimeoutError)):
         return DatabaseUnavailableError()
-    if isinstance(exc, DBAPIError) and exc.connection_invalidated:
-        return DatabaseUnavailableError()
+    if isinstance(exc, DBAPIError):
+        if exc.connection_invalidated:
+            return DatabaseUnavailableError()
+        # PostgreSQL deadlock (40P01) and serialization failure (40001): transient, retryable by the caller.
+        # asyncpg's errors reach us wrapped (not as OperationalError), so classify by SQLSTATE.
+        if getattr(exc.orig, "sqlstate", None) in _TRANSIENT_SQLSTATES:
+            return DatabaseUnavailableError()
     return InternalError()
 
 
