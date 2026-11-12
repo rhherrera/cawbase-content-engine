@@ -285,7 +285,7 @@ El motor **no escanea** el contenido de las definiciones en busca de datos reale
 
 ## 10. A03 — Permiso y datos del análisis (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
 
 ### 10.1 Catálogo ampliado
 

@@ -405,7 +405,7 @@ Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
 
 ## 8. A03 — Sin modelo persistente (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Todo lo de §1–§7 sigue vigente sin cambios.
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Todo lo de §1–§7 sigue vigente sin cambios.
 
 - A03 **no almacena** texto, contexto, resultados ni solicitudes: no hay tablas de análisis ni migración. No se crea una migración vacía.
 - Niveles: `schema_level = 2` y `min_runtime_level = 1` **no cambian**; la cabeza de migraciones sigue en `0002_profiles`. Los niveles de código (`SCHEMA_LEVEL`, `RUNTIME_LEVEL`) tampoco cambian por A03.

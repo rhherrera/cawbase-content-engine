@@ -1,12 +1,12 @@
 # cawbase-content-engine
 
-> ## Estado: A01 y A02 cerradas y aceptadas · A03 implementada (`0.3.0`), sin aceptar
+> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`)
 >
 > | Feature | Estado |
 > |---|---|
 > | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
 > | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `f4ad3e7`. GitHub Actions pasó sobre ese commit, según confirmación explícita del usuario. El merge `e149146` (PR #1) en `main` es posterior y no es el commit aceptado. Evidencia histórica y límites en el [informe de A02](docs/a02-implementation-report.md) |
-> | **A03** — contrato de inferencia y análisis con mock (`0.3.0`) | **Implementada** en la rama `feature/a03-inference-contract-mock` (commits locales, **sin push**). Probada localmente (macOS) y en Linux local (Docker; última validación sobre el código corregido `20d9211`) según el [informe de A03](docs/a03-implementation-report.md); **GitHub Actions no ejecutado sobre A03**; **no aceptada por el usuario** (la aceptación es suya). Solo ingeniería del contrato con un mock: **no** acredita calidad de inferencia (A09) |
+> | **A03** — contrato de inferencia y análisis con mock (`0.3.0`) | Implementada, **cerrada y aceptada por el usuario**, según su declaración explícita: commit de implementación y regresiones `20d9211`; `e3ca6da` contiene la documentación y evidencia posterior; mergeada en `main` (merge `ae19ef3`, PR #2). Probada en macOS y en Linux local (Docker) según el [informe de A03](docs/a03-implementation-report.md); resultado de GitHub Actions no verificado con la evidencia disponible. Solo ingeniería del contrato con un mock: **no** acredita calidad de inferencia (A09) |
 >
 > El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: A04 en adelante (documentos, protección, trabajos, modelo real).
 
@@ -27,9 +27,9 @@ Estado de A01: **implementada, cerrada y aceptada** (commit `1b5ffab`).
 
 Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles propios; configuración editable separada de **versiones publicadas inmutables**; perfil predeterminado opcional por scope; catálogo inicial versionado de tipos sensibles copiado al crear el perfil; configuración de ranking/resolución; permisos `profiles:read|write` (2 nuevos sobre los 8 de A01). Entrada: [especificación de A02](docs/features/A02-perfiles-categorias-y-tipos-sensibles.md).
 
-## A03 — Contrato de inferencia y análisis con mock (implementada, sin aceptar)
+## A03 — Contrato de inferencia y análisis con mock (cerrada y aceptada)
 
-> **Implementada en `0.3.0`; no aceptada.** Una operación de análisis de texto (`ScopedOperations.analyze_text` y `POST /v1/scopes/{scope_id}/analyze-text`, mismo núcleo, resultado en la misma llamada, sin persistencia ni trabajos) sobre versiones publicadas de A02, con el permiso nuevo `analysis:execute`, una interfaz de adaptador de inferencia, validación estricta de su salida y un **mock determinista** sobre fixtures sintéticos. No elige modelo, no incluye inferencia real y **no acredita calidad de detección** (A09). Ejemplo ejecutable: `uv run python examples/analysis_host.py`. Contrato: [inferencia y análisis](docs/inference-and-analysis.md); entrada: [especificación de A03](docs/features/A03-contrato-de-inferencia-y-analisis-con-mock.md).
+> **Implementada en `0.3.0`; cerrada y aceptada.** Una operación de análisis de texto (`ScopedOperations.analyze_text` y `POST /v1/scopes/{scope_id}/analyze-text`, mismo núcleo, resultado en la misma llamada, sin persistencia ni trabajos) sobre versiones publicadas de A02, con el permiso nuevo `analysis:execute`, una interfaz de adaptador de inferencia, validación estricta de su salida y un **mock determinista** sobre fixtures sintéticos. No elige modelo, no incluye inferencia real y **no acredita calidad de detección** (A09). Ejemplo ejecutable: `uv run python examples/analysis_host.py`. Contrato: [inferencia y análisis](docs/inference-and-analysis.md); entrada: [especificación de A03](docs/features/A03-contrato-de-inferencia-y-analisis-con-mock.md).
 
 ## Probar rápidamente
 

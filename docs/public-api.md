@@ -662,7 +662,7 @@ Se reutiliza `admin_events` ([persistencia §2.6](persistence-and-migrations.md#
 
 ## 11. A03 — Análisis de texto (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Los nombres, firmas, rutas, permisos y códigos de esta sección siguen el código (`src/cawbase_content_engine/operations/analysis.py`, `inference/`, `http/router.py`); evidencia en el [informe de A03](a03-implementation-report.md). Todo lo de A01 (§1–§9) y A02 (§10) sigue vigente y **no cambia**; esta sección solo agrega. Contrato completo y ejemplos: [inferencia y análisis](inference-and-analysis.md). Decisiones: [A03-decisions](decisions/A03-decisions.md).
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Los nombres, firmas, rutas, permisos y códigos de esta sección siguen el código (`src/cawbase_content_engine/operations/analysis.py`, `inference/`, `http/router.py`); evidencia en el [informe de A03](a03-implementation-report.md). Todo lo de A01 (§1–§9) y A02 (§10) sigue vigente y **no cambia**; esta sección solo agrega. Contrato completo y ejemplos: [inferencia y análisis](inference-and-analysis.md). Decisiones: [A03-decisions](decisions/A03-decisions.md).
 
 ### 11.1 Firma Python (`ScopedOperations`)
 

@@ -270,7 +270,7 @@ A02 no agrega extras ni dependencias, no carga modelos y no cambia los criterios
 
 ## 12. A03 — Límites, observabilidad y ciclo de vida (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Valores iniciales (E-A03-06), configurables mediante `Limits` y las variables del servicio. Los límites de A01 (§7.1) y A02 (§11.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB.
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Valores iniciales (E-A03-06), configurables mediante `Limits` y las variables del servicio. Los límites de A01 (§7.1) y A02 (§11.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB.
 
 ### 12.1 Límites (campos nuevos de `Limits`)
 

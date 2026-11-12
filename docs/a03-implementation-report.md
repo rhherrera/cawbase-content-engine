@@ -1,6 +1,8 @@
 # Informe de implementación de A03 — Contrato de inferencia y análisis con mock
 
-> **Estado: A03 está implementada (`0.3.0`) en la rama `feature/a03-inference-contract-mock` (commits locales, sin push). Probada localmente en macOS y en Linux local (Docker). GitHub Actions NO se ejecutó sobre A03. NO aceptada por el usuario. La feature NO está cerrada.** Este informe no es un acta de aceptación: la aceptación corresponde al usuario. Las cifras provienen de ejecuciones reales; lo que no se ejecutó se dice explícitamente.
+> **Estado: A03 está implementada (`0.3.0`), probada localmente en macOS y en Linux local (Docker), y **cerrada y aceptada por el usuario en `0.3.0`**, según su declaración explícita: commit de implementación y regresiones `20d9211`; `e3ca6da` contiene la documentación y evidencia posterior; ya mergeada en `main` (merge `ae19ef3`, PR #2; el merge es posterior y distinto de los commits mencionados). Resultado de GitHub Actions no verificado con la evidencia disponible (durante la entrega local no se había ejecutado).** Este informe no es un acta de aceptación: la aceptación consta por la declaración explícita del usuario, registrada en la sección 0. Las cifras provienen de ejecuciones reales realizadas durante la entrega local (histórico: en ese momento no se había hecho push ni se había ejecutado GitHub Actions); lo que no se ejecutó se dice explícitamente.
+>
+> **Revisión posterior (A04, solo documental):** se registraron el cierre y dos precisiones de §3.6 (verificaciones de macOS e interpretación de la mediana de importación). No se regeneró evidencia ni se repitieron pruebas; la versión no cambia.
 
 Relacionado: [especificación](features/A03-contrato-de-inferencia-y-analisis-con-mock.md) · [decisiones](decisions/A03-decisions.md) · [contrato](inference-and-analysis.md) · [informe de A02](a02-implementation-report.md) · [desarrollo](development.md)
 
@@ -11,8 +13,8 @@ Relacionado: [especificación](features/A03-contrato-de-inferencia-y-analisis-co
 | 1 | **Implementado** | Sí (`0.3.0`): permiso `analysis:execute`, `analyze_text`, ruta HTTP, adaptador y mock, validador, resultado, errores, composición del servicio |
 | 2 | **Probado en macOS** | Sí: §3.1 |
 | 3 | **Probado en Linux local (Docker)** | Sí: sobre `86bae54` (§3.2, histórico) y, tras las correcciones posteriores, sobre `20d9211` (§3.6) |
-| 4 | **Probado en GitHub Actions** | **No.** No se hizo push ni se ejecutó el workflow; no se informa ningún resultado de Actions sobre A03 |
-| 5 | **Aceptación del usuario** | **Pendiente.** No la emite este informe |
+| 4 | **Probado en GitHub Actions** | **Histórico:** durante la entrega local no se hizo push ni se ejecutó el workflow. **Después:** resultado de GitHub Actions no verificado con la evidencia disponible; este informe no infiere un resultado a partir del merge |
+| 5 | **Aceptación del usuario** | **Aceptada** (`0.3.0`), por declaración explícita del usuario: cerrada y aceptada y ya mergeada. Commit de implementación y regresiones: `20d9211`; documentación y evidencia posterior: `e3ca6da`; merge en `main`: `ae19ef3` (PR #2). Son tres referencias distintas |
 
 Una corrida Linux local en Docker **no equivale** a una ejecución de GitHub Actions. Un *skip* no es una aprobación (§6).
 
@@ -20,7 +22,7 @@ Una corrida Linux local en Docker **no equivale** a una ejecución de GitHub Act
 
 **Corrección posterior al informe inicial (`20d9211`):** se reprodujeron y corrigieron dos defectos (frontera de excepciones del adaptador y puntuaciones enteras enormes), ver §3.6. Las corridas de §3.1–§3.3 corresponden a `86bae54`/`ba21db4` y **no se reatribuyen** al código corregido; los resultados sobre `20d9211` están en §3.6.
 
-**Commits de esta entrega** (sobre `e149146`, merge de A02): `a3993a2` (cierre documental de A02), `61813ad` (especificación de A03), `2e30c65` (precisiones P-A03-01 a 06), `ba21db4` (código, pruebas y ejemplo), `86bae54` (ajuste de una prueba del catálogo de permisos), `e57b8b2` (informe inicial y evidencia), `20d9211` (corrección de los dos defectos y sus regresiones) y el commit de documentación/informe de esa corrección. Entre `86bae54` y `e57b8b2` no hubo cambios de código ni de pruebas (hash de árbol de código `6cca12af7b6133b1e5b5e5ce340dcabc308a22d1`); `20d9211` sí los cambia (`inference/service.py`, `inference/output.py` y tres archivos de pruebas).
+**Commits de esta entrega** (histórico; sobre `e149146`, merge de A02; el merge posterior en `main` es `ae19ef3`): `a3993a2` (cierre documental de A02), `61813ad` (especificación de A03), `2e30c65` (precisiones P-A03-01 a 06), `ba21db4` (código, pruebas y ejemplo), `86bae54` (ajuste de una prueba del catálogo de permisos), `e57b8b2` (informe inicial y evidencia), `20d9211` (corrección de los dos defectos y sus regresiones) y `e3ca6da` (documentación/informe de esa corrección). Entre `86bae54` y `e57b8b2` no hubo cambios de código ni de pruebas (hash de árbol de código `6cca12af7b6133b1e5b5e5ce340dcabc308a22d1`); `20d9211` sí los cambia (`inference/service.py`, `inference/output.py` y tres archivos de pruebas).
 
 ## 1. Qué se implementó
 
@@ -47,7 +49,7 @@ Detalle en [A03-decisions §3.1–§3.2](decisions/A03-decisions.md#31-precision
 
 PostgreSQL de las pruebas: contenedor descartable dedicado `cce-test-pg17` (`postgres:17-alpine`, puerto 55417) con bases `cce_t_*` propias; **no** se usó ninguna base existente.
 
-- `uv run ruff check .` · `uv run ruff format --check src tests examples scripts` · `uv run mypy`: sin hallazgos (51 archivos fuente) sobre el código final.
+- `uv run ruff check .` · `uv run ruff format --check src tests examples scripts` · `uv run mypy`: sin hallazgos (51 archivos fuente) sobre el código de `86bae54` (no repetidos en macOS sobre `20d9211`, ver §3.6).
 - `uv run pytest -q -rs` (SQLite siempre; PostgreSQL con `CCE_REQUIRE_POSTGRES=1`): **728 passed, 13 skipped, 8 deselected (marca `dist`)**, sobre el código de `86bae54` (sin cambios de código posteriores).
 - `uv run pytest -m dist -q`: **8 passed**, ejecutado sobre `ba21db4`; el único cambio posterior de código es una prueba (`86bae54`, `tests/test_credentials.py`), y la corrida de `dist` en Linux (§3.2) es posterior.
 - Una corrida intermedia sobre `ba21db4` tuvo 2 fallos de pruebas existentes que enumeraban 10 permisos y el catálogo de códigos; se corrigieron las pruebas (no el código) en `ba21db4`/`86bae54`.
@@ -69,7 +71,7 @@ PostgreSQL de las pruebas: contenedor descartable dedicado `cce-test-pg17` (`pos
 
 ### 3.4 GitHub Actions
 
-**No ejecutado sobre A03.** No se hizo push; no se afirma ningún resultado de Actions.
+**Histórico (entrega local):** no se ejecutó sobre A03; no se había hecho push. **Posterior:** resultado de GitHub Actions no verificado con la evidencia disponible. No se afirma ningún resultado de Actions ni se infiere del merge.
 
 ### 3.5 Defectos corregidos tras el informe inicial
 
@@ -82,10 +84,10 @@ Regresiones nuevas (falla el código anterior: 48 casos en rojo con `src` previo
 
 Solo se repiten estos checks (todos sobre `20d9211`; el árbol de código no cambia después):
 
-- **macOS** (contenedor descartable `cce-test-pg17`, bases `cce_t_*`): ruff check/format y mypy limpios (la validación Linux los repite); `uv run pytest -q -rs`: **793 passed, 13 skipped, 8 deselected**; `-m dist`: **8 passed**.
-- **Linux local (Docker)**, `SNAPSHOT=head` ([`evidence/a03-fix1-linux-local-summary.txt`](evidence/a03-fix1-linux-local-summary.txt)): ruff, format y mypy limpios; PostgreSQL 15.19, 16.15, 17.11 y 18.6: **792 passed, 14 skipped** cada una; cotas inferiores: 792 passed, 14 skipped; `dist` 8 passed; auditoría de artefactos 0 hallazgos. Importación (wheel): caliente mediana 237,2 ms (gate D-33 ≤ 300 ms sobre la mediana; máximo 360,5 ms), 28 311 KiB ([`evidence/a03-fix1-measure-import-linux.json`](evidence/a03-fix1-measure-import-linux.json)). La mediana caliente de `86bae54` fue 186,7 ms; la diferencia es ruido de la máquina, no se investigó otra causa.
+- **macOS** (contenedor descartable `cce-test-pg17`, bases `cce_t_*`): `ruff check`, `ruff format --check` y `mypy` **no se repitieron en macOS sobre `20d9211`** (el resumen de entrega lo indicó así y no hay evidencia específica de lo contrario); las corridas macOS de esos tres checks de §3.1 corresponden a commits anteriores y no se reatribuyen. Sí pasaron en Linux sobre `20d9211`, respaldados por [`evidence/a03-fix1-linux-local-summary.txt`](evidence/a03-fix1-linux-local-summary.txt). `uv run pytest -q -rs`: **793 passed, 13 skipped, 8 deselected**; `-m dist`: **8 passed**.
+- **Linux local (Docker)**, `SNAPSHOT=head` ([`evidence/a03-fix1-linux-local-summary.txt`](evidence/a03-fix1-linux-local-summary.txt)): ruff, format y mypy limpios; PostgreSQL 15.19, 16.15, 17.11 y 18.6: **792 passed, 14 skipped** cada una; cotas inferiores: 792 passed, 14 skipped; `dist` 8 passed; auditoría de artefactos 0 hallazgos. Importación (wheel): caliente mediana 237,2 ms (gate D-33 ≤ 300 ms sobre la mediana; máximo 360,5 ms), 28 311 KiB ([`evidence/a03-fix1-measure-import-linux.json`](evidence/a03-fix1-measure-import-linux.json)). La mediana caliente de `86bae54` fue 186,7 ms; la de `20d9211`, 237,2 ms. **No se investigó la causa de la diferencia** y no se le atribuye ninguna. La mediana cumple el gate de 300 ms de D-33; el máximo de 360,5 ms no incumple ningún criterio, porque el gate está definido sobre la mediana.
 - **Piso de SQLite**: 3.38.5 ⇒ **793 passed, 13 skipped**; 3.37.2 rechazado ([`evidence/a03-fix1-sqlite-floor-summary.txt`](evidence/a03-fix1-sqlite-floor-summary.txt)).
-- **GitHub Actions:** no ejecutado.
+- **GitHub Actions:** histórico: no ejecutado durante la entrega local; resultado posterior no verificado con la evidencia disponible.
 
 ## 4. <a id="matriz-ac-a03-trazable"></a>Matriz AC-A03 trazable
 
@@ -146,14 +148,14 @@ Los runtimes anteriores (A01 y A02) fallan al cargar grants con permisos descono
 ## 6. Skips, límites y checks no ejecutados
 
 - **Skips (no son aprobaciones):** 13 en macOS y en el piso de SQLite, 14 en cada corrida de PostgreSQL en Linux: pruebas exclusivas de PostgreSQL recogidas también para el parámetro SQLite (bloqueos de fila, interbloqueos, etc.) y la que exige `CCE_EXPECT_SQLITE_VERSION`. Con `CCE_REQUIRE_POSTGRES=1` un PostgreSQL ausente falla.
-- **GitHub Actions** no se ejecutó. No hay x86_64, ni Python 3.14+. En macOS se probó solo PostgreSQL 17.11.
+- **GitHub Actions:** no se ejecutó durante la entrega local; resultado posterior no verificado con la evidencia disponible. No hay x86_64, ni Python 3.14+. En macOS se probó solo PostgreSQL 17.11.
 - La **desconexión HTTP** se verifica con una invocación ASGI directa (`receive` que entrega `http.disconnect`), no con un servidor Uvicorn real con un cliente que corte el socket.
 - Los adaptadores que **bloquean el bucle de eventos o ignoran la cancelación** quedan fuera de la garantía de cancelación/timeout; no se promete detener trabajo ya iniciado en un futuro servidor remoto.
 - La **concurrencia de preparación** (lecturas sucesivas) se prueba con operaciones confirmadas mientras el adaptador está bloqueado (después de preparar), no con intercalados forzados entre las sentencias de la selección.
 - La compatibilidad con runtimes anteriores se prueba con una reproducción del cargador, no con binarios reales.
 - La corrección de §3.5 no se probó con un servidor remoto real ni con adaptadores reales, solo con adaptadores de prueba. **Calidad de inferencia real: no evaluada** (A09). No se fijaron umbrales de precisión/recall.
 - Backlog no implementado: [B-A03-01 a 12](decisions/A03-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).
-- La aceptación del usuario sigue **pendiente** y no la emite este informe.
+- La aceptación consta por declaración explícita del usuario (sección 0); este informe no la emite.
 
 ## 7. Cómo reproducir
 

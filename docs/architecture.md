@@ -114,7 +114,7 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 ## 9. A03 — Inferencia y análisis (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Estructura real. Contrato: [inferencia y análisis](inference-and-analysis.md).
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Estructura real. Contrato: [inferencia y análisis](inference-and-analysis.md).
 
 - **Dos fronteras:** la API pública de análisis (autorizada, asociada a scope y perfil persistido) y la interfaz del **adaptador de inferencia** (recibe una solicitud ya preparada; devuelve una salida cruda sujeta a validación). El adaptador no consulta tablas, no resuelve perfiles, no aplica permisos y no decide ganadoras; el núcleo valida, calcula ranking/resolución/cobertura y fija la procedencia.
 - **Módulos** (carga perezosa; `import cawbase_content_engine` no los importa): `inference/` (tipos y protocolo, validación de salida, mock), `operations/selection.py` (selección de versión publicada **compartida** con `resolve_profile`, sin permisos y no pública), `operations/analysis.py` (fachada de `analyze_text`, mixin de `ScopedOperations`). La ruta HTTP vive en el adaptador HTTP; el núcleo sigue sin depender de FastAPI ni de Alembic.

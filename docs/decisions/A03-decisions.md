@@ -1,6 +1,6 @@
 # A03 — Registro de decisiones
 
-> **Estado: A03 IMPLEMENTADA en `0.3.0` (commits locales en `feature/a03-inference-contract-mock`, sin push); NO aceptada por el usuario; no cerrada.** Las decisiones de producto `D-A03-nn` fueron **aprobadas por el usuario**; las elecciones técnicas `E-A03-nn` se derivaron por criterio al redactar el contrato; las precisiones `P-A03-nn` y las decisiones de implementación `I-A03-nn` surgieron al implementar. Ninguna de estas últimas es una decisión de producto. Evidencia: [informe de A03](../a03-implementation-report.md).
+> **Estado: A03 IMPLEMENTADA en `0.3.0` y **cerrada y aceptada por el usuario en `0.3.0`**, según su declaración explícita: commit de implementación y regresiones `20d9211`; `e3ca6da` contiene la documentación y evidencia posterior; ya mergeada en `main` (merge `ae19ef3`, PR #2; el merge es posterior y distinto de los commits mencionados). Resultado de GitHub Actions no verificado con la evidencia disponible (durante la entrega local no se había ejecutado).** Las decisiones de producto `D-A03-nn` fueron **aprobadas por el usuario**; las elecciones técnicas `E-A03-nn` se derivaron por criterio al redactar el contrato; las precisiones `P-A03-nn` y las decisiones de implementación `I-A03-nn` surgieron al implementar. Ninguna de estas últimas es una decisión de producto. Evidencia: [informe de A03](../a03-implementation-report.md).
 
 Este registro separa categorías; no mezclarlas.
 
@@ -18,6 +18,7 @@ Contratos que usan estas decisiones: [feature A03](../features/A03-contrato-de-i
 | 1 | Primera redacción del contrato de A03: D-A03-01 a D-A03-03 (aprobadas), E-A03-01 a E-A03-18, diferencias con el playbook y backlog. Solo documentación. |
 | 2 | Implementación (`0.3.0`): precisiones P-A03-01 a 06 y decisiones de implementación I-A03-01 a 14 (§3.1–§3.2). Ninguna `D-A03-nn` cambia. |
 | 3 | Correcciones posteriores al informe (frontera de excepciones del adaptador y puntuaciones enteras enormes): I-A03-13 y I-A03-14. Ninguna `D-A03-nn` cambia. |
+| 4 | Registro del cierre y la aceptación de A03 por el usuario (`0.3.0`) y dos precisiones documentales del informe (§3.6). Ninguna `D-A03-nn` ni la versión cambian; no se regeneró evidencia. |
 
 ## 1. Fuente, precedencia y herencia
 
