@@ -19,6 +19,40 @@ from .prepared import PreparedAnalysis
 REASONS = ("partial_coverage", "abstained", "truncated")
 STATUSES = ("completed", "inconclusive")
 _MAX_PROBLEMS = 20
+#: Closed catalog of diagnostic codes (the only ones that may appear in ``problems``).
+PROBLEM_CODES = frozenset(
+    {
+        "output_not_object",
+        "output_not_serializable",
+        "output_too_large",
+        "contract_version_mismatch",
+        "unknown_field",
+        "missing_field",
+        "invalid_type",
+        "capability_missing",
+        "capability_not_executed",
+        "invalid_status",
+        "reason_invalid",
+        "status_coverage_mismatch",
+        "reason_coverage_mismatch",
+        "unknown_id",
+        "duplicate_id",
+        "empty_group",
+        "region_out_of_range",
+        "regions_not_canonical",
+        "regions_limit_exceeded",
+        "invalid_score",
+        "scores_coverage_mismatch",
+        "invalid_offset",
+        "offset_out_of_range",
+        "finding_too_long",
+        "fragment_mismatch",
+        "finding_outside_coverage",
+        "duplicate_finding",
+        "findings_limit_exceeded",
+        "adapter_diagnostic_invalid",  # substituted when an adapter-supplied diagnostic does not validate
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -211,6 +245,15 @@ def _coverage(cap: str, obj: Any, ids: set[str], n: int, max_regions: int, pr: _
     return ValidatedCoverage(tuple(out), frozenset(seen), complete)
 
 
+def _valid_score(score: Any) -> bool:
+    """A real number in [0, 1]. Never converts: huge ints are compared as ints (no OverflowError)."""
+    if isinstance(score, bool) or not isinstance(score, (int, float)):
+        return False
+    if isinstance(score, float) and not math.isfinite(score):
+        return False
+    return 0 <= score <= 1
+
+
 def _scores(raw: Any, ids: set[str], cov: ValidatedCoverage, pr: _Problems) -> tuple[tuple[str, float], ...]:
     cap = "classification"
     if not isinstance(raw, list):
@@ -224,12 +267,7 @@ def _scores(raw: Any, ids: set[str], cov: ValidatedCoverage, pr: _Problems) -> t
             clean = False
             continue
         cid, score = item["category_id"], item["score"]
-        if (
-            isinstance(score, bool)
-            or not isinstance(score, (int, float))
-            or not math.isfinite(score)
-            or not (0 <= score <= 1)
-        ):
+        if not _valid_score(score):
             pr.add("invalid_score", cap, i)
             clean = False
         elif not isinstance(cid, str) or cid not in ids:

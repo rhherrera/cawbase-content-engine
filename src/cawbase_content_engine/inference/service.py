@@ -13,6 +13,8 @@ from .. import validation as v
 from ..errors import (
     CapabilitiesNotConfiguredError,
     EngineError,
+    InferenceFixtureNotFoundError,
+    InferenceOutputInvalidError,
     InferenceTimeoutError,
     InferenceUnavailableError,
     InternalError,
@@ -22,7 +24,7 @@ from ..errors import (
 from ..operations.selection import select_published_version
 from .adapter import CAPABILITIES, InferenceSetup
 from .build import build_result
-from .output import validate_output
+from .output import PROBLEM_CODES, validate_output
 from .prepared import build_request, prepare
 from .results import AnalysisResult
 
@@ -58,21 +60,63 @@ def check_capabilities(value: Any) -> tuple[str, ...]:
     return tuple(c for c in CAPABILITIES if c in items)
 
 
+def _safe_problems(raw: Any) -> list[dict[str, str]]:
+    """Adapter-supplied diagnostics are data: keep them only if they fit the closed catalog and limits."""
+    generic = [{"code": "adapter_diagnostic_invalid"}]
+    if not isinstance(raw, list) or len(raw) > 20:
+        return generic
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict) or not set(item) <= {"code", "capability", "index"}:
+            return generic
+        code, cap, idx = item.get("code"), item.get("capability"), item.get("index")
+        if not isinstance(code, str) or code not in PROBLEM_CODES:
+            return generic
+        entry = {"code": code}
+        if cap is not None:
+            if not isinstance(cap, str) or cap not in CAPABILITIES:
+                return generic
+            entry["capability"] = cap
+        if idx is not None:
+            if not isinstance(idx, str) or not idx.isascii() or not idx.isdigit() or len(idx) > 6:
+                return generic
+            entry["index"] = idx
+        out.append(entry)
+    return out
+
+
+def _protocol_error(exc: Exception) -> EngineError:
+    """The adapter's error protocol is closed: unavailable, timeout, invalid output, fixture-not-found.
+
+    Each is rebuilt with the generic public message and only validated attributes; nothing the adapter
+    supplied (message, field, problems, request id, ...) is propagated as is. Any other error, including
+    other ``EngineError`` subclasses, is an unexpected adapter failure (``internal_error``).
+    """
+    if isinstance(exc, InferenceUnavailableError):
+        reason = getattr(exc, "reason", None)
+        return InferenceUnavailableError(reason if reason in InferenceUnavailableError.REASONS else "unreachable")
+    if isinstance(exc, InferenceTimeoutError):
+        return InferenceTimeoutError()
+    if isinstance(exc, InferenceOutputInvalidError):
+        return InferenceOutputInvalidError(_safe_problems(getattr(exc, "problems", None)))
+    if isinstance(exc, InferenceFixtureNotFoundError):
+        return InferenceFixtureNotFoundError()
+    log.error("adapter_failed", extra={"error_class": type(exc).__name__})
+    return InternalError()
+
+
 async def _invoke(setup: InferenceSetup, request: Any) -> Any:
     """Call the adapter in the caller's own task under a timeout: cancellation reaches it, nothing is orphaned."""
+    failure: EngineError
     try:
         async with asyncio.timeout(setup.timeout_s):
             return await setup.adapter.infer(request)
     except TimeoutError:
         # our own deadline, or the adapter's own timeout: either way no valid answer
-        raise InferenceTimeoutError() from None
-    except InferenceUnavailableError as exc:
-        raise InferenceUnavailableError(exc.reason) from None
-    except EngineError:
-        raise
-    except Exception as exc:  # unexpected adapter failure: class name only, never the message
-        log.error("adapter_failed", extra={"error_class": type(exc).__name__})
-        raise InternalError() from None
+        failure = InferenceTimeoutError()
+    except Exception as exc:  # CancelledError is a BaseException and propagates untouched
+        failure = _protocol_error(exc)
+    raise failure  # raised outside the handler: no chained context carrying adapter-supplied text
 
 
 async def run_analysis(

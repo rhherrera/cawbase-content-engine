@@ -324,3 +324,56 @@ class TestStandaloneServiceComposition:
         fixtures.write_text("{")
         with pytest.raises(InvalidConfigurationError):
             build_inference_setup(ServiceSettings.from_env(env))
+
+
+class TestHttpErrorBoundary:
+    MARK = "SYNTHETIC_CONTENT_MARKER"
+
+    async def call(self, engine, keys, exc_or_out, caplog):
+        async def boom(request):
+            if isinstance(exc_or_out, BaseException):
+                raise exc_or_out
+            return exc_or_out
+
+        caplog.set_level(logging.DEBUG)
+        async with serve(engine, CustomAdapter(fn=boom)) as (api, _, _):
+            return await api.post(URL, headers=h(keys["ae"]), json=body())
+
+    async def test_adapter_validation_error_is_500_not_422(self, engine, keys, caplog):
+        from cawbase_content_engine import PermissionDeniedError, ValidationFailedError
+
+        for exc in (ValidationFailedError(self.MARK, field=self.MARK), PermissionDeniedError(self.MARK)):
+            r = await self.call(engine, keys, exc, caplog)
+            assert r.status_code == 500 and r.json()["error"]["code"] == "internal_error"
+            assert self.MARK not in r.text and self.MARK not in caplog.text
+
+    async def test_allowed_errors_do_not_leak_manipulated_text(self, engine, keys, caplog):
+        from cawbase_content_engine import (
+            InferenceFixtureNotFoundError,
+            InferenceOutputInvalidError,
+            InferenceTimeoutError,
+            InferenceUnavailableError,
+        )
+
+        bad = InferenceOutputInvalidError([], self.MARK)
+        bad.problems = [{"code": self.MARK}]  # type: ignore[list-item]
+        cases = [
+            (InferenceUnavailableError("stopped", self.MARK), 503, "inference_unavailable"),
+            (InferenceTimeoutError(self.MARK), 504, "inference_timeout"),
+            (InferenceFixtureNotFoundError(self.MARK), 501, "inference_fixture_not_found"),
+            (bad, 502, "inference_output_invalid"),
+        ]
+        for exc, status, code in cases:
+            r = await self.call(engine, keys, exc, caplog)
+            assert (r.status_code, r.json()["error"]["code"]) == (status, code)
+            assert self.MARK not in r.text and self.MARK not in caplog.text
+        assert r.json()["error"]["problems"] == [{"code": "adapter_diagnostic_invalid"}]
+
+    async def test_huge_integer_score_is_502(self, engine, keys, caplog):
+        out = ok_output()
+        out["classification"]["scores"][0]["score"] = 10**400
+        r = await self.call(engine, keys, out, caplog)
+        assert (r.status_code, r.json()["error"]["code"]) == (502, "inference_output_invalid")
+        assert r.json()["error"]["problems"] == [
+            {"code": "invalid_score", "capability": "classification", "index": "0"}
+        ]

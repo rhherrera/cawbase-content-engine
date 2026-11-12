@@ -268,6 +268,24 @@ class TestValidatorRejections:
         mutate(raw)
         assert code in {p["code"] for p in problems(raw, prepared, req)}
 
+    @pytest.mark.parametrize(
+        "score", [10**400, -(10**400), 10**30, -1, 2, 1.0000000000000002, -1e-300, 1e308, float("-inf")]
+    )
+    def test_out_of_range_numbers_are_rejected_safely(self, ctx, score):  # no OverflowError, whole output rejected
+        prepared, req, raw = ctx
+        raw = copy.deepcopy(raw)
+        raw["classification"]["scores"][0]["score"] = score
+        ps = problems(raw, prepared, req)
+        assert {"code": "invalid_score", "capability": "classification", "index": "0"} in ps
+
+    @pytest.mark.parametrize("score", [0, 1, 0.0, 1.0, 5e-324, 0.9999999999999999])
+    def test_boundary_scores_still_accepted_unchanged(self, ctx, score):
+        prepared, req, raw = ctx
+        raw = copy.deepcopy(raw)
+        raw["classification"]["scores"][0]["score"] = score
+        out = validate_output(raw, prepared, req)
+        assert out["classification"].scores[0][1] == float(score)
+
     @pytest.mark.parametrize("raw", [None, [], "x", 5, {1: 2}])
     def test_not_an_object(self, ctx, raw):
         prepared, req, _ = ctx

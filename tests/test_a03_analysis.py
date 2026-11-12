@@ -13,6 +13,7 @@ import pytest
 from cawbase_content_engine import (
     AdminPermission,
     CapabilitiesNotConfiguredError,
+    DatabaseUnavailableError,
     HostTransaction,
     IncompatibleTransactionError,
     InferenceFixtureNotFoundError,
@@ -23,6 +24,7 @@ from cawbase_content_engine import (
     InternalError,
     LimitExceededError,
     PermissionDeniedError,
+    ProfileInvalidError,
     ProfileNotPublishedError,
     ProfileNotSelectableError,
     ResourceNotAccessibleError,
@@ -796,3 +798,104 @@ class TestCompatibilityOfTheNewPermission:
         monkeypatch.setattr(ak, "ScopePermission", self.A02ScopePermission)
         with pytest.raises(Exception):  # noqa: B017
             await admin.list_api_keys(client.client_id)
+
+
+class TestAdapterErrorBoundary:
+    """The adapter cannot impose public error codes, messages or details (precision on the exception boundary)."""
+
+    MARK = "SYNTHETIC_CONTENT_MARKER"
+
+    async def run(self, engine, raise_exc, caplog=None):
+        await build_profile(engine)
+
+        async def boom(request):
+            raise raise_exc
+
+        async with inference_engine(engine, CustomAdapter(fn=boom)) as eng:
+            try:
+                await analysis_ops(eng).analyze_text("a", text=TEXT)
+            except Exception as exc:
+                return exc
+        raise AssertionError("no error")
+
+    @pytest.mark.parametrize(
+        "make",
+        [
+            lambda m: ValidationFailedError(m, field=m),
+            lambda m: PermissionDeniedError(m),
+            lambda m: ResourceNotFoundError(m),
+            lambda m: ScopeDisabledError(m),
+            lambda m: LimitExceededError(m),
+            lambda m: CapabilitiesNotConfiguredError(m),
+            lambda m: InferenceNotConfiguredError(m),
+            lambda m: DatabaseUnavailableError(m),
+            lambda m: ProfileInvalidError([{"code": m}], m),
+        ],
+    )
+    async def test_foreign_engine_errors_become_internal_error(self, engine, make, caplog):
+        caplog.set_level(logging.DEBUG)
+        exc = await self.run(engine, make(self.MARK))
+        assert type(exc) is InternalError and exc.http_status == 500 and exc.code == "internal_error"
+        assert self.MARK not in str(exc) and self.MARK not in repr(exc) and self.MARK not in caplog.text
+        assert exc.__cause__ is None and exc.__context__ is None
+
+    async def test_allowed_errors_are_rebuilt_without_adapter_text(self, engine, caplog):
+        caplog.set_level(logging.DEBUG)
+        for exc, expected in [
+            (InferenceUnavailableError("loading", self.MARK), (InferenceUnavailableError, "loading")),
+            (InferenceTimeoutError(self.MARK), (InferenceTimeoutError, None)),
+            (InferenceFixtureNotFoundError(self.MARK), (InferenceFixtureNotFoundError, None)),
+        ]:
+            got = await self.run(engine, exc)
+            assert type(got) is expected[0] and got.message == expected[0].default_message
+            assert getattr(got, "reason", None) == expected[1]
+            assert self.MARK not in str(got) and got.__context__ is None
+        bad_reason = InferenceUnavailableError("loading")
+        bad_reason.reason = self.MARK  # type: ignore[assignment]
+        got = await self.run(engine, bad_reason)
+        assert got.reason == "unreachable" and self.MARK not in str(got.__dict__)
+        assert self.MARK not in caplog.text
+
+    @pytest.mark.parametrize(
+        "problems",
+        [
+            [{"code": "SYNTHETIC_CONTENT_MARKER"}],
+            [{"code": "fragment_mismatch", "capability": "SYNTHETIC_CONTENT_MARKER"}],
+            [{"code": "fragment_mismatch", "index": "SYNTHETIC_CONTENT_MARKER"}],
+            [{"code": "fragment_mismatch", "index": "1234567"}],
+            [{"code": "fragment_mismatch", "extra": "SYNTHETIC_CONTENT_MARKER"}],
+            [{"code": "fragment_mismatch"}] * 21,
+            ["SYNTHETIC_CONTENT_MARKER"],
+            "SYNTHETIC_CONTENT_MARKER",
+            None,
+        ],
+    )
+    async def test_manipulated_problems_are_replaced_by_a_generic_diagnostic(self, engine, problems):
+        err = InferenceOutputInvalidError([], self.MARK)
+        err.problems = problems  # type: ignore[assignment]
+        got = await self.run(engine, err)
+        assert (
+            type(got) is InferenceOutputInvalidError and got.http_status == 502 and got.message == err.default_message
+        )
+        assert got.problems == [{"code": "adapter_diagnostic_invalid"}]
+        assert self.MARK not in str(got) + repr(got.problems)
+
+    async def test_valid_adapter_diagnostics_are_kept(self, engine):
+        err = InferenceOutputInvalidError([{"code": "fragment_mismatch", "capability": "detection", "index": "3"}])
+        got = await self.run(engine, err)
+        assert got.problems == [{"code": "fragment_mismatch", "capability": "detection", "index": "3"}]
+
+    async def test_timeout_error_and_cancellation_still_work(self, engine):
+        got = await self.run(engine, TimeoutError(self.MARK))
+        assert type(got) is InferenceTimeoutError and self.MARK not in str(got)
+
+    async def test_huge_integer_score_is_502_not_500(self, engine):
+        await build_profile(engine)
+        for score in (10**400, -(10**400)):
+            bad = ok_output()
+            bad["classification"]["scores"][0]["score"] = score
+            async with inference_engine(engine, CustomAdapter(bad)) as eng:
+                with pytest.raises(InferenceOutputInvalidError) as ei:
+                    await analysis_ops(eng).analyze_text("a", text=TEXT)
+            assert ei.value.http_status == 502
+            assert ei.value.problems == [{"code": "invalid_score", "capability": "classification", "index": "0"}]
