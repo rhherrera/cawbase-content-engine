@@ -1,6 +1,6 @@
 # API pública (Python y HTTP)
 
-> **Estado: implementado en la versión 0.1.0 (rama `feature/a01-product-foundation`, sin commitear) y probado localmente en macOS; no probado en Linux/GitHub Actions todavía y no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
+> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
 
 Relacionado: [arquitectura](architecture.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 

@@ -1,6 +1,6 @@
 # Persistencia y migraciones
 
-> **Estado: implementado en la versión 0.1.0 (rama `feature/a01-product-foundation`, sin commitear) y probado localmente en macOS; no probado en Linux/GitHub Actions todavía y no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres de tablas y mecanismos descritos son los implementados (`src/cawbase_content_engine/persistence/`, `migrations/`).
+> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres de tablas y mecanismos descritos son los implementados (`src/cawbase_content_engine/persistence/`, `migrations/`).
 
 Relacionado: [API pública](public-api.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 

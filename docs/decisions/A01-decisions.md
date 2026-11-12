@@ -1,6 +1,6 @@
 # A01 — Registro de decisiones
 
-> **Estado: A01 implementado en 0.1.0 (rama `feature/a01-product-foundation`, sin commitear) y probado localmente en macOS; no probado en Linux/GitHub Actions todavía y no aceptado por el usuario.** Ver el [informe de implementación](../a01-implementation-report.md).
+> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Ver el [informe de implementación](../a01-implementation-report.md).
 
 Este registro separa tres categorías. No mezclarlas.
 
@@ -19,13 +19,15 @@ Contratos que usan estas decisiones: [feature A01](../features/A01-base-del-prod
 
 | 3 | Implementación de A01. P-20 adoptada (D-30), GitHub Actions adoptado (D-31), elecciones técnicas P-01 a P-04, P-10 a P-12 y P-15 a P-19 **adoptadas para esta implementación** (§4.3) y decisiones de implementación registradas (§4.4). |
 
+| 4 | Revisión de validación (base `d091b49`): validación en Linux local, PostgreSQL 16, piso de SQLite, AC-26/AC-101/AC-07, CI y artefactos, mediciones. Correcciones I-10 a I-15 (§4.4) y la pregunta Q-06 (§5). No cambia decisiones aprobadas. |
+
 Esto numera revisiones **de esta especificación**; no es una revisión del playbook.
 
 ## 1. Fuente y precedencia
 
 - Referencia: `STAGE_3_PLAYBOOK.md`, **revisión 6**, fecha de actualización 11 de noviembre de 2026. Versión comprobada al redactar: la misma (el archivo externo y la copia local `docs/STAGE_3_PLAYBOOK.md` son idénticos byte a byte).
 - Las decisiones del usuario recibidas con el encargo de A01 son posteriores a la revisión 6 y **prevalecen** sobre ella.
-- Este registro **no crea una nueva revisión global ni declara actualizada la fuente canónica**. La fuente canónica vive en el proyecto Backend; la copia en `docs/` es una copia identificada por fecha y revisión, y no debe evolucionar por separado.
+- Este registro **no crea una nueva revisión global ni declara actualizada la fuente canónica**. La fuente canónica vive en el proyecto Backend; la copia local en `docs/` (ignorada por Git, no versionada) es una copia identificada por fecha y revisión, y no debe evolucionar por separado.
 - Lo que sigue sin cambios respecto de la revisión 6 permanece vigente (por ejemplo: exclusiones de A01, mock de inferencia en A03, librería con extras, CAWbase como consumidor).
 
 ## 2. Decisiones aprobadas
@@ -77,7 +79,7 @@ Registro local. No reemplaza al playbook ni lo modifica.
 | 5 | §2 «HTTP opcional»; §6 A01 «Diseñar la API HTTP»; §6 A10 «El adaptador HTTP opcional, si se entrega» | A01 solo **diseña** el adaptador; su entrega es condicional (A10) | El adaptador HTTP se **implementa en A01** (sigue siendo opcional de instalar/usar). A10 pasa a ser release/imágenes/Compose del adaptador, no su creación | D-09, D-10 |
 | 6 | §2 «Motor independiente» («El modo HTTP opcional sí debe autenticar y autorizar»); §6 A02 «credenciales por recurso solo para modo HTTP» | Mecanismo no definido; credenciales por recurso en A02 | **API keys por cliente** con grants explícitos de alcance y permiso, hash, revocación y bootstrap, definidos en A01. A02 podrá ampliar el catálogo de permisos | D-18, D-20 |
 | 7 | §2 «Migraciones» («se ejecutan explícitamente durante despliegue, no durante pip install, importación, cold start de Lambda o requests») | Siempre explícitas | Explícitas **salvo** el servicio HTTP independiente, que migra al arrancar antes de quedar listo. Librería, host embebido y Lambda siguen sin migrar implícitamente | D-16 |
-| 8 | §3 «Contexto entre repositorios» | Copia del playbook «cuando corresponda» | La copia de la revisión 6 existe en `docs/STAGE_3_PLAYBOOK.md` (sin commitear al redactar). No se modifica; la fuente canónica sigue siendo la del proyecto Backend | — |
+| 8 | §3 «Contexto entre repositorios» | Copia del playbook «cuando corresponda» | Existe una copia local de la revisión 6 en `docs/STAGE_3_PLAYBOOK.md`, ignorada por Git desde el commit `d091b49` (no versionada; ningún artefacto ni test depende de ella). No se modifica; la fuente canónica sigue siendo la del proyecto Backend | — |
 | 9 | §6 A02 «credenciales por recurso solo para modo HTTP» y §2 «Motor independiente» | Sin catálogo de permisos | Catálogo de 8 permisos y reglas de delegación (`admin:grants:write`) definidos en A01 | D-27 |
 | 10 | §2 «Migraciones» (ejecución explícita) | Sin contrato de bloqueo | Una transacción y un bloqueo por secuencia de migración; arranque del servicio independiente: migrar → verificar → escuchar; sin HTTP durante la preparación | D-24, D-29 |
 | 11 | §2 «Transacciones» | «Evitar commits ocultos» | Contrato de `HostTransaction`, errores recuperables vs. `transaction_broken`, precondiciones de SQLite e inyección | D-23 |
@@ -153,6 +155,12 @@ Adoptadas por el encargo de implementación de A01. **No son decisiones históri
 | I-07 | Cursor de paginación decodificado de forma estricta | `b64decode` indulgente aceptaba `@@@` |
 | I-08 | La relectura de esquema tras el bloqueo exige `READ COMMITTED` en la conexión de migración (PostgreSQL) | Con un nivel superior la instantánea sería anterior al bloqueo |
 | I-09 | Códigos de salida 2/3/4/1 en CLI y servicio | Distinguir configuración, migración y compatibilidad |
+| I-10 | La cota declarada de Uvicorn pasa de `>=0.32` a `>=0.50` | Release notes de Uvicorn 0.50.0: hasta entonces el supervisor reinicia indefinidamente los workers que fallan al iniciar; con ≥ 0.50 se detiene. Cambia un rango declarado por evidencia; no es una decisión de producto |
+| I-11 | El lanzador devuelve el código del fallo de inicialización de un worker (p. ej. 4) mediante un marcador privado, y nunca 0 | Defecto encontrado: con varios workers `serve()` devolvía 0 tras detenerse el supervisor por un fallo de arranque, y con un worker Uvicorn salía con 3 (indistinguible de «migración») |
+| I-12 | Los registros de Uvicorn se enrutan por el manejador JSON del servicio (sin `exc_info`) | Antes los mensajes del supervisor ni se veían (`log_config=None`) y un fallo de arranque volcaba una traza |
+| I-13 | La respuesta 503 de la compuerta de readiness lleva `X-Request-ID` y `request_id` | Defecto: iba vacío |
+| I-14 | AC-26 usa una base SQLite realmente de solo lectura (`mode=ro`) y exige exactamente `MigrationPermissionError` | El test anterior (chmod sobre un archivo vacío, aserción permisiva) **fallaba como root en Linux** y aceptaba cualquier error |
+| I-15 | Auditoría de artefactos (`scripts/audit_artifacts.py`) y `scripts` + `uv.lock` incluidos en el sdist | Reproducibilidad del sdist y control de archivos accidentales |
 
 ## 5. Preguntas abiertas
 
@@ -163,6 +171,8 @@ Adoptadas por el encargo de implementación de A01. **No son decisiones históri
 | Q-03 | ~~¿Pepper o KMS para el hash de API keys?~~ **Cerrada por D-25: sin pepper ni KMS en A01.** | Cerrada |
 | Q-04 | ¿Política de retención/purga de `admin_events`? En A01 se conserva indefinidamente sin purga. | A05 (retención) |
 | Q-05 | ¿Soporte de otros drivers (`psycopg` 3)? Fuera de A01. | Posterior |
+| Q-06 | **Política ante el fallo de un worker posterior a la preparación.** Comportamiento observado con Uvicorn ≥ 0.50 (ver [operación §4.2](../installation-and-operations.md#42-varios-workers-e-instancias)): fallo de inicialización ⇒ el servicio se detiene con código ≠ 0; muerte tras servir ⇒ reinicio sin límite ni *backoff*. D-29 no define la segunda situación. **Aclaración mínima propuesta (pendiente, no una política nueva):** declarar en el contrato exactamente lo observado y dejar un límite/*backoff* de reinicios fuera de A01. | Revisión del usuario |
+| Q-07 | **Qué importación debe cumplir la referencia provisional de 300 ms.** Medido en Linux/aarch64: en frío (sin bytecode) ≈ 875 ms, en caliente ≈ 198 ms (máx. 229 ms); en macOS: frío ≈ 939 ms (máx. 3263 ms), caliente ≈ 231 ms (máx. 324 ms). La referencia no distinguía frío de caliente y **no se modificó**. | Revisión del usuario |
 
 ## 6. Conflictos o tensiones detectadas
 

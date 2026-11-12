@@ -1,6 +1,6 @@
 # Seguridad y aislamiento
 
-> **Estado: implementado en la versión 0.1.0 (rama `feature/a01-product-foundation`, sin commitear) y probado localmente en macOS; no probado en Linux/GitHub Actions todavía y no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
+> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [instalación y operación](installation-and-operations.md).
 

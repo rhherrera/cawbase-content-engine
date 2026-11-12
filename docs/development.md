@@ -1,6 +1,6 @@
 # Desarrollo
 
-> **Estado: implementado en la versión 0.1.0 (rama `feature/a01-product-foundation`, sin commitear); probado localmente en macOS, no en Linux/GitHub Actions todavía; no aceptado por el usuario.** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
+> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
 
 Relacionado: [feature A01](features/A01-base-del-producto-instalacion-independiente.md) · [instalación y operación](installation-and-operations.md) · [CLAUDE.md](../CLAUDE.md).
 
@@ -69,9 +69,23 @@ Cotas declaradas en `pyproject.toml`: `sqlalchemy>=2.0.36,<2.2`, `pydantic>=2.9,
 - Pruebas de concurrencia separadas por backend con expectativas distintas.
 - Los enlaces sin romper solo acreditan la coherencia de referencias entre documentos; **no validan técnicamente el contrato**, que se valida ejecutando la matriz de aceptación.
 
-## 7. CI
+## 7. CI y validación Linux
 
-[.github/workflows/ci.yml](../.github/workflows/ci.yml): `static`, `tests` (PostgreSQL 15/17/18 + SQLite, `CCE_REQUIRE_POSTGRES=1`), `tests-lowest-bounds`, `distribution`. **No se ha ejecutado en GitHub** (no se hizo push); su sintaxis YAML se validó localmente y sus comandos equivalen a los ejecutados a mano. Las versiones de las acciones (`actions/checkout@v4`, `astral-sh/setup-uv@v5`) no se verificaron contra su documentación oficial en este entorno.
+**GitHub Actions: preparado, no ejecutado.** [.github/workflows/ci.yml](../.github/workflows/ci.yml) define `static`, `tests` (PostgreSQL 15, 16, 17 y 18 + SQLite, `CCE_REQUIRE_POSTGRES=1`), `tests-lowest-bounds`, `distribution` (construye y audita wheel/sdist, los prueba fuera del árbol y mide la importación) y sube resultados como artefactos (`junit-*`, `distribution`) incluso si un job falla. No se hizo push: no existe ninguna ejecución remota. `tests/test_ci_contract.py` verifica que las acciones estén fijadas por SHA, que cada job de PostgreSQL exija el servicio (`CCE_REQUIRE_POSTGRES=1`) y que un PostgreSQL ausente o inalcanzable **falle** la suite.
+
+Versiones de las acciones comprobadas el 2026-11-11 contra la última *release* de cada repositorio y el README de `setup-uv` (que recomienda fijar por SHA): `actions/checkout` v7.0.1, `astral-sh/setup-uv` v10.3.3, `actions/upload-artifact` v7.0.2.
+
+**Linux local (Docker), no es GitHub Actions:**
+
+```bash
+bash scripts/linux_docker_validate.sh /ruta/evidencia      # Python 3.13 (Debian bookworm) + PostgreSQL 15/16/17/18 en contenedores exclusivos
+SNAPSHOT=head bash scripts/linux_docker_validate.sh ...    # exactamente el estado commiteado (git archive HEAD)
+bash scripts/sqlite_floor_validate.sh /ruta/evidencia      # SQLite 3.38.5 (piso declarado) y 3.37.2 (debajo del piso) enlazados al sqlite3 del intérprete
+```
+
+Los scripts crean la red `cce-linux-net` y los contenedores `cce-linux-pg*`; elimínelos con `docker rm -f cce-linux-pg15 cce-linux-pg16 cce-linux-pg17 cce-linux-pg18 && docker network rm cce-linux-net`.
+
+Auditoría de artefactos: `uv run python scripts/audit_artifacts.py dist/*` (archivos accidentales y patrones de secretos). Mediciones de importación desde un wheel instalado en un venv limpio: `uv run python scripts/measure_distribution.py`.
 
 ## 8. Documentación
 
@@ -81,4 +95,4 @@ Cotas declaradas en `pyproject.toml`: `sqlalchemy>=2.0.36,<2.2`, `pydantic>=2.9,
 
 ## 9. Commits y ramas
 
-Rama de implementación: `feature/a01-product-foundation` (creada desde `docs/a01-product-foundation`, que no tiene commits). **No se han hecho commits ni push**; todo está en el árbol de trabajo para revisión. Los cambios ajenos (`docs/STAGE_3_PLAYBOOK.md`, `.DS_Store`) se preservan y `.DS_Store` no se agrega a Git.
+Rama de implementación: `feature/a01-product-foundation`. Los commits son locales; **no se ha hecho push** y no se publica nada. `.DS_Store` y `docs/STAGE_3_PLAYBOOK.md` están en `.gitignore` (commit `d091b49`, del usuario) y no se agregan a Git; la segunda es una copia local de referencia que **ningún test, enlace ni artefacto necesita**. Un checkout limpio no la contiene y construye wheel y sdist idénticos.

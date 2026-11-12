@@ -1,6 +1,6 @@
 # Instalación y operación
 
-> **Estado: implementado en la versión 0.1.0 (rama `feature/a01-product-foundation`, sin commitear) y probado localmente en macOS; no probado en Linux/GitHub Actions todavía y no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
+> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [desarrollo](development.md).
 
@@ -121,6 +121,17 @@ Ante fallo de migración, esquema incompatible, bloqueo vencido o runtime sin ac
 
 - **Un lanzador, N workers:** el lanzador completa 1–3 **una vez** y recién después inicia los workers. Los workers **nunca migran**; cada uno, antes de atender, comprueba compatibilidad con las credenciales de runtime (paso 3 en su proceso) y termina con código ≠ 0 si falla. No se supone ninguna migración de fondo.
 - **Varias instancias del servicio** (réplicas, contenedores): cada lanzador ejecuta 1–3; el bloqueo de migración garantiza que solo una aplica la secuencia y las demás esperan hasta `lock_timeout_s`, releen el esquema y continúan sin escribir (o fallan por timeout).
+- **Qué ocurre cuando un worker falla después de que el lanzador preparó el servicio** (comportamiento *observado* con Uvicorn ≥ 0.50, cubierto por `tests/test_processes.py::TestWorkerFailures`; la política del supervisor es de Uvicorn, no del producto):
+
+  | Situación | Comportamiento observado | Código de salida del servicio |
+  |---|---|---|
+  | El worker **no logra inicializar** (p. ej. el esquema dejó de ser compatible tras la preparación): su `start()` falla | Registra `worker_startup_failed` (código estable, sin URL/credenciales/rutas); Uvicorn lo sale con su código 3 y **detiene el supervisor**: el servicio termina y deja de escuchar. Ningún worker migra ni «repara» el esquema | `4` (incompatibilidad); el lanzador lo recupera de un marcador privado porque Uvicorn solo informa «3» |
+  | Un worker **muere después de empezar a servir** (p. ej. `SIGKILL`) | El supervisor lo **reinicia** (`Child process [pid] died`); el otro worker sigue sirviendo; el reemplazo comprueba compatibilidad antes de atender y **no migra**; `/readyz` vuelve a 200 cuando está listo | el servicio sigue vivo |
+  | El reemplazo **no logra inicializar** | Igual que la primera fila: detiene el servicio | `4` |
+
+  La aclaración contractual mínima propuesta (no una política nueva) está en [A01-decisions, Q-06](decisions/A01-decisions.md#5-preguntas-abiertas): hoy no hay límite ni *backoff* de reinicios tras una muerte posterior al arranque.
+- Uvicorn anterior a 0.50 **reinicia indefinidamente** los workers que fallan al iniciar (release notes de Uvicorn 0.50.0: «Stop the multiprocess supervisor when a worker exits with code 3 instead of restarting it forever»). Por eso la cota declarada pasó de `uvicorn>=0.32` a `uvicorn>=0.50`.
+- Los registros de Uvicorn (`uvicorn`, `uvicorn.error`) pasan por el mismo manejador JSON del servicio; el formateador imprime solo el mensaje (nunca `exc_info`), de modo que un fallo de arranque de un worker no vuelca trazas en el log del servicio.
 - La fábrica de aplicación para ejecutarse con un servidor externo (p. ej. `uvicorn módulo:app --workers N`) **no migra**: exige migración externa o previa y solo verifica compatibilidad al arrancar cada worker.
 
 ### 4.3 Liveness y readiness (con el servicio ya escuchando)
@@ -217,4 +228,4 @@ Detalle en [persistencia y migraciones](persistence-and-migrations.md#6-diferenc
 
 ## 10. Mediciones registradas (macOS, no Linux)
 
-Metodología, versiones y plataforma de cada medición están en el [informe de implementación](a01-implementation-report.md#mediciones). Resumen: importación en procesos nuevos (`scripts/measure_import.py`), tamaño de `site-packages` del entorno base instalado desde el wheel, y módulos de terceros cargados. Las "referencias provisionales" (300 ms, 40 MiB) **no se han relajado**; todavía no hay medición en Linux/CI.
+Metodología, versiones y plataforma de cada medición están en el [informe de implementación](a01-implementation-report.md#mediciones). Resumen: `scripts/measure_distribution.py` instala el wheel en un venv limpio y mide importación en frío/en caliente, tamaño de `site-packages` y módulos de terceros cargados. Las "referencias provisionales" (300 ms, 40 MiB) **no se han relajado**. Se midió en Linux (Docker) y macOS separando la importación **en frío** (sin bytecode) de la **en caliente**; el frío (≈ 0,9 s) supera 300 ms y el caliente (≈ 0,2 s) no; cuál debe cumplir la referencia es la pregunta abierta Q-07. No hay mediciones en GitHub Actions ni x86_64.
