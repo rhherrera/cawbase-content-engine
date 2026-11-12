@@ -309,3 +309,12 @@ Derivadas de la ejecución sobre **documentos sintéticos** ([informe](a04-feasi
 8. **Lectores.** DOCX se renderizó solo con LibreOffice 7.4.7 (Linux); **no** se probó Word. PDF con PDFium y Poppler. No se promete identidad entre lectores (D-A04-03).
 9. **Alcance de la evidencia.** Documentos generados por el propio equipo (estructura limpia). No se probaron archivos producidos por Word, Acrobat u otros generadores reales, PDF con object streams o `/Contents` en arreglo, DOCX con varias secciones, ni documentos grandes.
 10. **Cadena de dependencias.** La vía `pikepdf` arrastra `Pillow` y `lxml` como dependencias obligatorias ([§15.1](#151-versiones-y-licencias-efectivas-de-los-experimentos-observadas)).
+
+## 20. A05 — Uso productivo de extracción y mapeo (especificado; no implementado)
+
+> **ESPECIFICADO / NO IMPLEMENTADO (A05, pendiente de revisión).** Nada de esta sección existe en `0.3.0` (propuesto / no disponible); la versión no cambia. Contrato: [trabajos, archivos y ciclo de vida §10–§11](jobs-files-and-lifecycle.md#10-seguridad-del-procesamiento-documental). Este documento conserva el contrato de A04 sin cambios.
+
+- A05 propone incorporar al paquete (extra `documents`, importación perezosa) **solo** inventario, extracción, mapeo, validación de identidad y cobertura y orquestación con A03, con pruebas propias; **no** la transformación ni la restitución experimentales, y sin importar `experiments/a04`.
+- Matriz de soporte de A05 = el subconjunto de §11/§12 demostrado en A04, solo para **extracción y localización** (DOCX por párrafo; PDF por página, fuentes simples con mapeo fiable). No se amplía automáticamente a Type0/CID ni a otras variantes pendientes (D-A04-04 sigue perteneciendo al inicio de A08).
+- **Adaptación de `E`**: A05 no transforma ni elimina; los comentarios y metadatos (`E`) se inventarían, no se analizan y cuentan como **no cubiertos**; `authorized_removals_performed` queda vacío. «Eliminación autorizada» (A04) ≠ «eliminación efectuada».
+- Los límites de §16 siguen siendo de experimento; los productivos son los de [contrato §12](jobs-files-and-lifecycle.md#12-límites-operativos-e-a05-17).

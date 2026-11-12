@@ -297,3 +297,16 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 ## 13. A04 — Sin cambios operativos (solo documentado)
 
 > **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Sin extras, variables de entorno, límites de `Limits`, dependencias ni configuración nuevos; `0.3.0` no cambia. Los experimentos viven en `experiments/a04/` (entorno propio; **no** forman parte del paquete instalable). Los límites de [contrato §16](document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20) son **elecciones técnicas de experimentos**, no límites productivos (los fijará A05). Los criterios de importación liviana (D-33) no se ven afectados: no se agrega nada al paquete.
+
+## 14. A05 — Operación de trabajos, archivos y limpieza (especificado; no implementado)
+
+> **ESPECIFICADO / NO IMPLEMENTADO (A05, pendiente de revisión).** Nada de esta sección existe en `0.3.0` (propuesto / no disponible); la versión no cambia. Contrato: [trabajos, archivos y ciclo de vida](jobs-files-and-lifecycle.md). Los extras, variables, límites y comandos de esta sección son **propuestos / no disponibles**.
+
+- **Extra `documents`** (propuesto; hoy reservado): inventario, extracción, mapeo y validación DOCX/PDF con importación perezosa; la base y la Lambda de CAWbase no lo instalan. Gate D-33 sin cambios.
+- **Storage**: implementación de referencia en filesystem privado (directorio `0700` exclusivo, no servido como estático; un nodo o FS compartido con semánticas equivalentes; NFS sin garantías no soportado). El operador puede aportar otro `ManagedStorage`.
+- **Aislamiento**: en Linux, perfil `linux_container_reference` (contenedor OCI restringido) o uno equivalente del host; `unconfined_development` solo con configuración explícita (p. ej. macOS de desarrollo).
+- **Workers y ejecutor**: el host ejecuta trabajos concretos desde sus workers (`run_job`) o arranca el `ReferenceExecutor` (CLI propuesta `cawbase-content-engine worker`). Nada arranca al importar ni al iniciar el motor. Re-aviso de trabajos sin notificación: `list_runnable_jobs`.
+- **Limpieza explícita** (`run_cleanup`, CLI propuesta `cawbase-content-engine cleanup`): por lotes, repetible y recuperable; debe programarse (cron, ejecutor con `cleanup_interval_s` o el orquestador del host). Sin limpieza, las cuotas de storage bloquean nuevas cargas.
+- **Purga de `admin_events`** (CLI propuesta `cawbase-content-engine purge-admin-events --older-than-days 90 --batch-size 1000 [--execute]`): previsualización por defecto, corte ≥ 90 días configurable, resumen sin contenido. La primera ejecución puede eliminar eventos históricos anteriores a A05.
+- **Límites y cuotas iniciales** ([contrato §12](jobs-files-and-lifecycle.md#12-límites-operativos-e-a05-17)): 25 MiB por archivo, 100 páginas PDF, 200 MiB descomprimidos, 100 trabajos activos y 2 GiB por scope, lease 60 s, plazo total 24 h, 5 intentos. Son elecciones, no mediciones.
+- **Despliegue**: migrar (`0003`) → actualizar todos los runtimes → emitir claves con permisos nuevos → habilitar workers y limpieza. `readiness()`/`/readyz` no cambian.

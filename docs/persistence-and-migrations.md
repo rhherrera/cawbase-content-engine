@@ -416,3 +416,13 @@ Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
 ## 9. A04 — Sin persistencia ni migraciones (solo documentado)
 
 > **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** **No hay tablas, migraciones ni cambios de esquema** (`schema_level = 2`, `min_runtime_level = 1` se mantienen). Los inventarios, mapas e informes de A04 son estructuras conceptuales y artefactos de experimento; su persistencia, la retención de originales/resultados y las referencias opacas corresponden a A05.
+
+## 10. A05 — Modelo de trabajos y archivos y migración `0003` (especificado; no implementado)
+
+> **ESPECIFICADO / NO IMPLEMENTADO (A05, pendiente de revisión).** Nada de esta sección existe en `0.3.0` (propuesto / no disponible); la versión no cambia. Detalle: [contrato §18](jobs-files-and-lifecycle.md#18-persistencia-y-migración-0003-propuesta). Todo lo de §1–§9 sigue vigente.
+
+- Tablas propuestas (namespace fijo; `scope_id` en toda PK y FK; ninguna garantía depende solo de FK/`CHECK`): `stored_files`, `file_validations`, `jobs`, `job_attempts`, `job_artifacts`, `idempotency_records`, `scope_job_fences`, `scope_usage`, `engine_usage`. Ninguna guarda texto, contexto, resultados ni mapas: el contenido vive en el storage administrado.
+- Migración **`0003_jobs_files`** propuesta: aditiva, solo hacia adelante, sin `ALTER` de tablas existentes, sin migrar ni purgar datos; `schema_level` 2 → **3**; `min_runtime_level` **permanece en 1** con justificación semántica (un runtime anterior no puede aceptar ni publicar trabajos y sus cambios de scope se detectan por `scopes.revision`, [contrato §9.2](jobs-files-and-lifecycle.md#92-serialización-frente-a-deshabilitarrehabilitar-fence-del-scope)). Mismo procedimiento de §4 (una transacción, un bloqueo, objetos ajenos intactos).
+- Orden de despliegue: migrar → actualizar todos los runtimes → emitir claves con permisos nuevos y habilitar workers/limpieza.
+- Concurrencia por backend: PostgreSQL — reclamación con `FOR UPDATE SKIP LOCKED`, scope `FOR SHARE` contra deshabilitaciones concurrentes, `READ COMMITTED` como en A01; SQLite — transacción de escritura inmediata (un único escritor). Autoridad temporal: reloj de la base ([contrato §6.1](jobs-files-and-lifecycle.md#61-autoridad-temporal)).
+- Permisos de base: el runtime A05 necesita además `DELETE` sobre sus propias tablas; la purga de `admin_events` necesita `DELETE` sobre esa tabla (recomendado solo para el rol de mantenimiento). La migración no purga datos.

@@ -202,7 +202,7 @@ Alcanza únicamente los datos que A01 introduce.
 
 - El motor no ofrece en A01 eliminación física. El retiro completo de la instalación (borrar el schema o las tablas con prefijo) es una operación manual del DBA, destructiva, documentada en la guía de operación de A10; el motor no la ejecuta nunca por sí mismo ni en migraciones.
 - Las copias de seguridad de la base conservan estos datos según la política del operador; no se afirma borrado inmediato en copias.
-- Cuando aparezcan datos documentales y correspondencias (A05/A06) tendrán su propia retención; no se anticipa aquí.
+- Cuando aparezcan datos documentales y correspondencias (A05/A06) tendrán su propia retención; no se anticipa aquí. *Registro posterior:* la retención de A05 y la de `admin_events` están especificadas (no implementadas) en [§12](#12-a05--archivos-trabajos-permisos-y-retención-especificado-no-implementado); las correspondencias siguen siendo de A06.
 
 ## 8. Riesgos residuales conocidos
 
@@ -327,3 +327,15 @@ Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistingu
 - Rechazos iniciales (D-A04-02): cifrado, firmas, revisiones, objetos incrustados y estructuras no cubiertas; reparación del parser nunca es éxito normal.
 - Los fixtures y manifiestos contienen solo valores sintéticos; ningún dato real, secreto o contenido sensible en registros o informes. Un mapa documental queda ligado al hash del archivo exacto y no se transfiere.
 - Cobertura parcial nunca se presenta como protección completa; la ausencia de valores sintéticos seleccionados no acredita ausencia universal de datos sensibles.
+
+## 12. A05 — Archivos, trabajos, permisos y retención (especificado; no implementado)
+
+> **ESPECIFICADO / NO IMPLEMENTADO (A05, pendiente de revisión).** Nada de esta sección existe en `0.3.0` (propuesto / no disponible); la versión no cambia. Contrato: [trabajos, archivos y ciclo de vida](jobs-files-and-lifecycle.md). Todo lo de §1–§11 sigue vigente; el catálogo **implementado** sigue en 11 permisos.
+
+- **Permisos propuestos** (6 de scope; el catálogo pasaría de 11 a **17**): `files:write`, `files:read`, `jobs:read`, `jobs:cancel`, `results:read`, `data:delete`; `analysis:execute` se reutiliza para **enviar** trabajos sin conceder lectura de archivos ni de resultados. Sin jerarquías ni comodines; `AdminContext`/`admin:*` no acceden a archivos, trabajos ni resultados ([contrato §16](jobs-files-and-lifecycle.md#16-permisos-elección-técnica-e-a05-12)). Se mantiene la **restricción de despliegue**: no emitir claves con permisos nuevos hasta actualizar todos los runtimes (revocar no corrige un runtime anterior).
+- **Entrada no confiable**: tipo real por contenido, límites aplicados antes de abrir, ZIP/OPC/XML/PDF acotados, rechazos heredados de A04, sin ejecutar macros/scripts ni resolver recursos externos, sin saneamiento silencioso. **Cuarentena = privado y pendiente de validación**, no «libre de malware». Antivirus solo como extensión local opcional; nunca servicios externos de escaneo ([contrato §10](jobs-files-and-lifecycle.md#10-seguridad-del-procesamiento-documental)).
+- **Aislamiento del parser**: proceso separado con entorno vacío y sin credenciales; perfil verificable `linux_container_reference` (sin red, raíz de solo lectura, sin capacidades, límites de memoria/CPU/procesos/tiempo), `host_provided` equivalente, o `unconfined_development` solo explícito; **sin fallback silencioso**. Un subprocess no es sandbox; macOS es solo desarrollo.
+- **Superficies HTTP**: sin URLs arbitrarias, rutas locales, resolvers ni credenciales del cliente; sin URLs firmadas; descargas `no-store`/`attachment`; nada en cuarentena, rechazado o no publicado es descargable; 404 indistinguible entre scopes. Reclamación, *fencing tokens*, limpieza y purga **no** se exponen por HTTP.
+- **Datos sensibles**: originales, texto, contexto, resultados y mapas nunca en logs, errores, eventos ni diagnósticos; tampoco claves de storage, referencias externas, tokens de lease ni claves de idempotencia (se guarda su SHA-256).
+- **Retención** (D-A05-01): originales 7 días desde la recepción; resultados/mapas 7 días desde la terminación; temporales abandonados 24 h; metadatos e idempotencia 30 días; `admin_events` 90 días. La expiración lógica deniega el acceso aunque la purga esté pendiente; no se promete borrado de backups, réplicas, versiones del storage ni originales externos. Esto **completa** §7 para los datos de A05 y resuelve Q-04 de A01 (purga local explícita de `admin_events`, sin endpoint HTTP).
+- **Cambios administrativos** (D-A05-02): deshabilitar el scope cancela trabajos no terminales (fence que resiste deshabilitar/rehabilitar rápido y cambios de runtimes anteriores); desactivar el perfil o revocar la clave no cancela trabajos aceptados.
