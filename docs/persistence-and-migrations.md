@@ -412,3 +412,7 @@ Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
 - El permiso `analysis:execute` se guarda como una cadena en `api_key_scope_grants.permission` (columna `TEXT` sin restricción de valores): no requiere cambio de esquema. La compatibilidad con runtimes anteriores depende de los **grants**, no del nivel: ver [seguridad §10.3](security-and-isolation.md#103-compatibilidad-y-despliegue-del-permiso-nuevo).
 - La lectura de preparación (selección de la versión publicada) usa las tablas de A02 con el mismo patrón de acceso (`scope_id`, `profile_id`) en una transacción propia de solo lectura, que termina antes de la inferencia ([contrato §3](inference-and-analysis.md#3-preparación-versiones-y-transacciones)).
 - No se escribe contenido ni resultados en `admin_events`.
+
+## 9. A04 — Sin persistencia ni migraciones (solo documentado)
+
+> **A04 está DOCUMENTADA (solo documentación): experimentos pendientes, viabilidad no demostrada, ninguna biblioteca validada, ningún soporte documental en `0.3.0`.** **No hay tablas, migraciones ni cambios de esquema** (`schema_level = 2`, `min_runtime_level = 1` se mantienen). Los inventarios, mapas e informes de A04 son estructuras conceptuales y artefactos de experimento; su persistencia, la retención de originales/resultados y las referencias opacas corresponden a A05.

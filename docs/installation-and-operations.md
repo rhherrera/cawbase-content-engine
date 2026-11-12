@@ -293,3 +293,7 @@ Sin texto, contexto, fragmentos, definiciones, salidas crudas ni secretos en log
 ### 12.5 Importación liviana y dependencias
 
 Sin efectos al importar; el módulo de inferencia, el validador y el mock se importan de forma perezosa (D-33 se mantiene). Sin dependencias pesadas ni extras vacíos por anticipación.
+
+## 13. A04 — Sin cambios operativos (solo documentado)
+
+> **A04 está DOCUMENTADA (solo documentación): experimentos pendientes, viabilidad no demostrada, ninguna biblioteca validada, ningún soporte documental en `0.3.0`.** Sin extras, variables de entorno, límites de `Limits`, dependencias ni configuración nuevos; `0.3.0` no cambia. Los límites de [contrato §16](document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20) son **elecciones técnicas de experimentos**, no límites productivos (los fijará A05). Los criterios de importación liviana (D-33) no se ven afectados: no se agrega nada al paquete.

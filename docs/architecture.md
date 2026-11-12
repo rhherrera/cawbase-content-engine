@@ -121,3 +121,10 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 - **Flujo:** autoriza → valida entrada → prepara (lectura corta propia, fija la versión, copia defensiva) → **libera la conexión** → invoca al adaptador (timeout, cancelable) → valida → construye el resultado. Ninguna conexión ni transacción del motor se retiene durante la inferencia; `HostTransaction` se rechaza.
 - **Ownership:** el adaptador (y sus recursos) es del host y se compone explícitamente en `ContentEngine(config, inference=InferenceSetup(adapter))`; el motor no lo inicia ni lo cierra. Sin estado mutable compartido entre solicitudes. El motor funciona para A01/A02 sin inferencia.
 - **Sin persistencia:** A03 no añade tablas ni migración ([persistencia §8](persistence-and-migrations.md#8-a03--sin-modelo-persistente-implementado)).
+
+## 10. A04 — Documentos (solo documentado; no implementado)
+
+> **A04 está DOCUMENTADA (solo documentación): experimentos pendientes, viabilidad no demostrada, ninguna biblioteca validada, ningún soporte documental en `0.3.0`.** Contrato: [procesamiento de documentos](document-processing.md); especificación: [A04](features/A04-viabilidad-y-contrato-de-documentos.md).
+
+- La estructura de §3 **no cambia**: no hay módulo, extra ni dependencia documental. Los futuros módulos de documentos (extracción, mapeo, transformación) seguirán la regla de §2: viven en extras, dependen del núcleo y **no** se importan desde `__init__` compartidos; el núcleo no depende de bibliotecas PDF/DOCX.
+- El mapa documental es una estructura **separada** de `AnalysisResult` (A03 no cambia). Los scripts y artefactos experimentales (`experiments/a04/`, propuesto / no disponible) quedan fuera de `src/` y de los distribuibles ([contrato §17](document-processing.md#17-estructura-propuesta-de-los-artefactos-experimentales-no-disponible)).

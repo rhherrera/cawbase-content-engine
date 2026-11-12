@@ -706,3 +706,7 @@ Requiere `ScopeContext` con `analysis:execute`. Con `HostTransaction` ⇒ `trans
 | `inference_fixture_not_found` | 501 | no | el mock no tiene fixture para la entrada |
 
 Se reutilizan `permission_denied`, `resource_not_accessible`, `validation_failed`, `limit_exceeded` (también HTTP 413 por cuerpo > 64 KiB), `scope_disabled`, `default_profile_not_set`, `resource_not_found`, `profile_not_selectable`, `profile_not_published`, `transaction_incompatible` y `internal_error`. Tabla completa (con excepción Python y si se invocó al adaptador): [contrato §8.1](inference-and-analysis.md#81-tabla-de-errores-se-reutilizan-jerarquía-engineerror-y-envoltorio). Estados HTTP añadidos al catálogo de §9.4 solo para esta ruta: `501`, `502`, `504`.
+
+## 12. A04 — Sin operaciones nuevas
+
+> **A04 está DOCUMENTADA (solo documentación): experimentos pendientes, viabilidad no demostrada, ninguna biblioteca validada, ningún soporte documental en `0.3.0`.** **A04 no añade operaciones, rutas, permisos, errores ni tipos públicos disponibles.** El catálogo sigue en 11 permisos; `AnalysisResult` y `analyze_text` no cambian. Las estructuras de [procesamiento de documentos](document-processing.md) son conceptuales (propuesto / no disponible); cualquier endpoint documental pertenece a A05 y posteriores.

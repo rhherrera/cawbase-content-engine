@@ -6,6 +6,7 @@
 > |---|---|
 > | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
 > | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `f4ad3e7`. GitHub Actions pasó sobre ese commit, según confirmación explícita del usuario. El merge `e149146` (PR #1) en `main` es posterior y no es el commit aceptado. Evidencia histórica y límites en el [informe de A02](docs/a02-implementation-report.md) |
+> | **A04** — viabilidad y contrato de documentos | **Documentada** (solo documentación, rama `feature/a04-document-feasibility-contract`): contrato, matrices de soporte/rechazo, plan de experimentos y criterios de aceptación. **Experimentos pendientes; viabilidad no demostrada; ninguna biblioteca validada; ningún soporte PDF/DOCX en `0.3.0`** |
 > | **A03** — contrato de inferencia y análisis con mock (`0.3.0`) | Implementada, **cerrada y aceptada por el usuario**, según su declaración explícita: commit de implementación y regresiones `20d9211`; `e3ca6da` contiene la documentación y evidencia posterior; mergeada en `main` (merge `ae19ef3`, PR #2). Probada en macOS y en Linux local (Docker) según el [informe de A03](docs/a03-implementation-report.md); resultado de GitHub Actions no verificado con la evidencia disponible. Solo ingeniería del contrato con un mock: **no** acredita calidad de inferencia (A09) |
 >
 > El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: A04 en adelante (documentos, protección, trabajos, modelo real).
@@ -30,6 +31,10 @@ Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles 
 ## A03 — Contrato de inferencia y análisis con mock (cerrada y aceptada)
 
 > **Implementada en `0.3.0`; cerrada y aceptada.** Una operación de análisis de texto (`ScopedOperations.analyze_text` y `POST /v1/scopes/{scope_id}/analyze-text`, mismo núcleo, resultado en la misma llamada, sin persistencia ni trabajos) sobre versiones publicadas de A02, con el permiso nuevo `analysis:execute`, una interfaz de adaptador de inferencia, validación estricta de su salida y un **mock determinista** sobre fixtures sintéticos. No elige modelo, no incluye inferencia real y **no acredita calidad de detección** (A09). Ejemplo ejecutable: `uv run python examples/analysis_host.py`. Contrato: [inferencia y análisis](docs/inference-and-analysis.md); entrada: [especificación de A03](docs/features/A03-contrato-de-inferencia-y-analisis-con-mock.md).
+
+## A04 — Viabilidad y contrato de documentos (documentada; experimentos pendientes)
+
+> **Solo documentación.** Define seis capas (inventario, extracción, mapeo, cobertura de extracción, cobertura de inferencia, transformación/verificación), matrices de soporte y rechazo de DOCX y PDF, bibliotecas candidatas y licencias (D-A04-01), y una batería de experimentos con fixtures sintéticos y controles negativos. No hay código, dependencias, API ni soporte documental; no demuestra viabilidad. Contrato: [procesamiento de documentos](docs/document-processing.md); entrada: [especificación de A04](docs/features/A04-viabilidad-y-contrato-de-documentos.md).
 
 ## Probar rápidamente
 
@@ -64,6 +69,9 @@ bash scripts/linux_docker_validate.sh /tmp/ev  # validación en Linux (Docker): 
 | [Inferencia y análisis](docs/inference-and-analysis.md) | Contrato completo de A03: fronteras, entrada, adaptador, validación, resultado, mock, errores y HTTP |
 | [Decisiones de A03](docs/decisions/A03-decisions.md) | Decisiones aprobadas, elecciones técnicas derivadas, diferencias con el playbook y backlog |
 | [Informe de implementación de A03](docs/a03-implementation-report.md) | Qué se implementó, matriz AC-A03 trazable a pruebas, comandos y resultados reales por ambiente, límites |
+| [Especificación de A04](docs/features/A04-viabilidad-y-contrato-de-documentos.md) | Alcance, experimentos EXP-01 a 10, controles negativos y matriz de aceptación de A04 (documentada; experimentos pendientes) |
+| [Procesamiento de documentos](docs/document-processing.md) | Contrato conceptual de A04: capas, identidad, mapeo, cobertura, matrices DOCX/PDF, bibliotecas y licencias (no implementado) |
+| [Decisiones de A04](docs/decisions/A04-decisions.md) | D-A04-01 a 03 aprobadas, elecciones técnicas, diferencias con el playbook y backlog |
 | [Reglas para agentes](CLAUDE.md) | Instrucciones de trabajo del repositorio |
 
 `docs/STAGE_3_PLAYBOOK.md` puede existir en el árbol de trabajo como **copia local de referencia** del playbook (revisión 6, 11 de noviembre de 2026), pero está en `.gitignore`: **no forma parte del repositorio**, un checkout limpio no la contiene y nada (tests, enlaces, wheel, sdist) la necesita. La fuente canónica está fuera de este repositorio.
