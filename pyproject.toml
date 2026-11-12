@@ -18,7 +18,7 @@ dependencies = [
 postgres = ["asyncpg>=0.30,<1"]
 sqlite = ["aiosqlite>=0.20,<1"]
 migrations = ["alembic>=1.14,<2"]
-http = ["fastapi>=0.115,<1", "uvicorn>=0.32,<1", "alembic>=1.14,<2"]
+http = ["fastapi>=0.115,<1", "uvicorn>=0.50,<1", "alembic>=1.14,<2"]
 
 [project.scripts]
 cawbase-content-engine = "cawbase_content_engine.cli:main"
@@ -31,11 +31,12 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "build>=1.2",
+    "pyyaml>=6.0.2",
     "asyncpg>=0.30,<1",
     "aiosqlite>=0.20,<1",
     "alembic>=1.14,<2",
     "fastapi>=0.115,<1",
-    "uvicorn>=0.32,<1",
+    "uvicorn>=0.50,<1",
 ]
 
 [tool.hatch.version]
@@ -45,7 +46,7 @@ path = "src/cawbase_content_engine/_version.py"
 packages = ["src/cawbase_content_engine"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/cawbase_content_engine", "tests", "docs", "examples", "README.md", "CLAUDE.md", "pyproject.toml"]
+include = ["src/cawbase_content_engine", "tests", "docs", "examples", "scripts", "README.md", "CLAUDE.md", "pyproject.toml", "uv.lock"]
 
 [tool.ruff]
 line-length = 120
@@ -57,7 +58,7 @@ select = ["E", "F", "I", "B", "UP", "ASYNC", "S"]
 ignore = ["S101", "UP046", "UP047", "ASYNC109", "S110"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S105", "S106", "S108", "S603", "S607", "S608", "E501", "ASYNC210", "ASYNC220", "B017", "E731"]
+"tests/*" = ["S105", "S106", "S108", "S603", "S607", "S608", "E501", "ASYNC210", "ASYNC220", "ASYNC221", "B017", "E731"]
 "scripts/*" = ["S603", "E501"]
 "examples/*" = ["S105", "S106", "E501"]
 
