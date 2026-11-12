@@ -4,7 +4,7 @@
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores del usuario registradas en [A01-decisions](../decisions/A01-decisions.md) y [A02-decisions](../decisions/A02-decisions.md) (estas últimas **prevalecen** sobre el playbook donde difieren; ver su [tabla de diferencias](../decisions/A02-decisions.md#4-cambios-respecto-del-playbook-revisión-6)).
 - Repositorio: `cawbase-content-engine` · rama: `feature/a02-profiles-categories-sensitive-types`.
-- Dependencias: A01 (**cerrada y aceptada**, commit `1b5ffab`). Habilita A03 (contrato de inferencia y mock).
+- Dependencias: A01 (**cerrada y aceptada**, commit `1b5ffab`). Habilita A03 (contrato de inferencia y mock; [especificada](A03-contrato-de-inferencia-y-analisis-con-mock.md), no implementada).
 
 ## 1. Objetivo, casos de uso, exclusiones y dependencias
 

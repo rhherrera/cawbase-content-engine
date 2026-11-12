@@ -282,3 +282,39 @@ El motor **no escanea** el contenido de las definiciones en busca de datos reale
 - Un `profiles:read` expone todas las definiciones del alcance (sin granularidad por perfil: no hay credenciales por perfil).
 - Un host con acceso directo a la base (§2.1) puede leer y alterar las instantáneas; la inmutabilidad la garantiza el código del motor, no el motor de base de datos.
 - Las definiciones eliminadas lógicamente siguen en la base y en las versiones hasta que exista purga.
+
+## 10. A03 — Permiso y datos del análisis (especificado)
+
+> **Especificado; NO implementado en `0.2.0`.** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
+
+### 10.1 Catálogo ampliado — propuesto
+
+El catálogo pasaría de **10** permisos (8 de A01 + 2 de A02) a **11**: A03 agrega uno de alcance.
+
+| Permiso | Nivel | Habilita |
+|---|---|---|
+| `analysis:execute` | alcance | Ejecutar análisis de texto (`analyze_text`) con un perfil publicado del propio scope. **No** concede lectura de perfiles, definiciones, ejemplos, snapshots ni versiones |
+
+Sin jerarquías ni comodines: `profiles:read`, `profiles:write`, `scope:read|write` y `admin:*` **no** conceden análisis, y `analysis:execute` no concede ninguno de ellos. `AdminContext` no ejecuta análisis. Se reutilizan `ScopeContext`, grants inmutables, API keys y delegación (D-27: subconjunto del emisor; `admin:grants:write` para scopes sin acceso directo). Las claves emitidas antes no ganan el permiso ni se reinterpretan.
+
+### 10.2 Matriz Python y HTTP — propuesto
+
+| Operación | Python | HTTP | Clave HTTP |
+|---|---|---|---|
+| Analizar texto | `ScopeContext` + `analysis:execute` | `POST /v1/scopes/{id}/analyze-text` | grant `analysis:execute` en `{id}` |
+| Resolver perfil/versión (A02) | `ScopeContext` + `profiles:read` | `GET …/resolved-profile` | grant `profiles:read` (sin cambios) |
+
+Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistinguible; con grants pero sin el permiso ⇒ 403. El resultado devuelve solo la **identidad** de la versión fijada (`version_id`, `version_number`, `content_hash`), nunca las definiciones.
+
+### 10.3 Compatibilidad y despliegue del permiso nuevo
+
+- Un runtime anterior (A01 o A02) **puede fallar al cargar grants con permisos desconocidos**, al autenticar y en operaciones administrativas que los carguen, **también los de claves revocadas** (revocar no elimina los grants almacenados; I-A02-02).
+- **Antes de emitir claves con `analysis:execute`, actualizar todos los runtimes que acceden a esos grants** (servicios independientes, hosts embebidos, workers, Lambda). Volver a una versión anterior tras emitirlas **no** es un rollback transparente; cambiar el código de A03 no corrige binarios anteriores ya desplegados. No se exige como requisito el endurecimiento opcional pendiente (B-A02-12 / B-A03-10).
+- No hay migración ni cambio de niveles por A03: la restricción es operacional, no de esquema.
+
+### 10.4 Datos sensibles del análisis
+
+- El texto, el contexto auxiliar, los fragmentos, las salidas crudas del adaptador y las ubicaciones de hallazgos son **contenido potencialmente sensible**. No se persisten, no se escriben en `admin_events` y no aparecen en logs, errores ni diagnósticos. La respuesta HTTP lleva `Cache-Control: no-store`.
+- El contexto auxiliar es **dato no confiable**: no modifica contrato, configuración ni políticas; el adaptador lo recibe rotulado como tal.
+- El adaptador recibe solo lo necesario (texto, contexto, definiciones de las capacidades ejecutables, límites): no scope, perfil, versión, prioridades, permisos, credenciales ni conexión.
+- Un adaptador remoto futuro ampliará la superficie (confidencialidad en tránsito, autenticación del servidor): se trata en A09/A10, no en A03.

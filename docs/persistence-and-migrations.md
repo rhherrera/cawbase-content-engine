@@ -402,3 +402,13 @@ Operación: el despliegue de A02 sigue «migrar (credencial DDL) → actualizar 
 | Tamaño de `snapshot` | `jsonb` (reordena claves) | texto; el `content_hash` no depende del almacenamiento |
 
 Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
+
+## 8. A03 — Sin modelo persistente (especificado)
+
+> **Especificado; NO implementado en `0.2.0`.** Todo lo de §1–§7 sigue vigente sin cambios.
+
+- A03 **no almacena** texto, contexto, resultados ni solicitudes: no hay tablas de análisis ni migración. No se crea una migración vacía.
+- Niveles: `schema_level = 2` y `min_runtime_level = 1` **no cambian**; la cabeza de migraciones sigue en `0002_profiles`. Los niveles de código (`SCHEMA_LEVEL`, `RUNTIME_LEVEL`) tampoco cambian por A03.
+- El permiso `analysis:execute` se guarda como una cadena en `api_key_scope_grants.permission` (columna `TEXT` sin restricción de valores): no requiere cambio de esquema. La compatibilidad con runtimes anteriores depende de los **grants**, no del nivel: ver [seguridad §10.3](security-and-isolation.md#103-compatibilidad-y-despliegue-del-permiso-nuevo).
+- La lectura de preparación (selección de la versión publicada) usa las tablas de A02 con el mismo patrón de acceso (`scope_id`, `profile_id`) en una transacción propia de solo lectura, que termina antes de la inferencia ([contrato §3](inference-and-analysis.md#3-preparación-versiones-y-transacciones)).
+- No se escribe contenido ni resultados en `admin_events`.

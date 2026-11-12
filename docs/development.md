@@ -103,3 +103,9 @@ Rama de implementación de A01: `feature/a01-product-foundation` (cerrada). Rama
 - Cada feature usa **sus propios** documentos de decisiones, especificación e informe: A02 → `docs/decisions/A02-decisions.md`, `docs/features/A02-…md` y, al implementarse, un informe `docs/a02-implementation-report.md`.
 - Los checks de §4 se mantienen; las pruebas de PostgreSQL siguen usando solo bases descartables `cce_t_*`; las pruebas de concurrencia de A02 se escriben por backend; se verifica el esquema 1→2 con objetos ajenos; se cuida que ningún fixture contenga secretos ni datos personales reales (usar dominios `example.test` y valores evidentemente falsos).
 - La importación liviana y el gate D-33 deben seguir cumpliéndose (el catálogo se importa de forma perezosa).
+
+## 11. A03 — Proceso previsto (especificado)
+
+- A03 está **solo especificada** (rama `feature/a03-inference-contract-mock`); **no hay código, pruebas ni informe**. Documentos propios: [`docs/decisions/A03-decisions.md`](decisions/A03-decisions.md), [`docs/features/A03-…md`](features/A03-contrato-de-inferencia-y-analisis-con-mock.md) y el contrato permanente [`docs/inference-and-analysis.md`](inference-and-analysis.md). Al implementarse se creará `docs/a03-implementation-report.md` y la versión del paquete la fijará esa implementación.
+- La matriz de aceptación ([feature A03 §7](features/A03-contrato-de-inferencia-y-analisis-con-mock.md#7-matriz-de-aceptación-para-la-implementación-posterior)) se verificará con SQLite y PostgreSQL reales (solo bases descartables `cce_t_*`), un adaptador de pruebas que devuelve salidas crudas arbitrarias y el mock; sin modelo real ni medición de calidad (A09).
+- Los checks de §4 se mantienen. La importación liviana (D-33) debe seguir cumpliéndose; no se agregan dependencias pesadas. Ningún fixture contiene secretos ni datos personales reales (dominios `example.test`, valores evidentemente falsos).

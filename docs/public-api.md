@@ -659,3 +659,49 @@ Se reutiliza `admin_events` ([persistencia §2.6](persistence-and-migrations.md#
 - El análisis JSON del adaptador HTTP rechaza `NaN` e `Infinity` en **todas** las rutas (también las de A01): 422 `validation_failed`.
 - Los filtros `status`/`state` aceptan el parámetro repetido o una lista separada por comas; `include_deleted` solo existe en los `GET` individuales.
 - Los límites de la [operación §11](installation-and-operations.md#111-límites) son campos de `Limits` (`max_profiles_per_scope`, `max_profile_rows_per_scope`, `max_elements_per_profile`, `max_element_rows_per_profile`, `max_versions_per_profile`, `max_snapshot_bytes`, `max_element_name`, `max_element_definition`, `max_example`, `max_examples_per_list`, `max_element_text_bytes`, `max_priority`).
+
+## 11. A03 — Análisis de texto (especificado)
+
+> **Especificado; NO implementado en `0.2.0`, no probado, no aceptado.** Nada de esta sección existe aún en el código: los nombres, firmas, rutas, permisos y códigos son **propuestos / no disponibles**. Todo lo de A01 (§1–§9) y A02 (§10) sigue vigente y **no cambia**; esta sección solo agrega. Contrato completo y ejemplos: [inferencia y análisis](inference-and-analysis.md). Decisiones: [A03-decisions](decisions/A03-decisions.md).
+
+### 11.1 Firma Python (`ScopedOperations`) — propuesto
+
+```python
+# Ejemplo ilustrativo — propuesto / no disponible en 0.2.0
+result = await engine.scoped(ctx).analyze_text(
+    "acme-team",
+    text="Contactar a Ana Ejemplo (ana.ejemplo@example.test).",
+    profile_id=None,            # None ⇒ perfil predeterminado del scope (A02 §8)
+    version_number=None,        # None ⇒ versión publicada vigente; sin profile_id ⇒ 422
+    capabilities=("classification", "detection"),   # predeterminado: ambas
+    context=None,               # contexto auxiliar: dato no confiable, no cubierto
+)   # -> AnalysisResult
+# El motor se compone con el adaptador (propiedad del host):  ContentEngine(config, inference=InferenceSetup(adapter))
+```
+
+Requiere `ScopeContext` con `analysis:execute`. Con `HostTransaction` ⇒ `transaction_incompatible` antes de invocar al adaptador. Sin `InferenceSetup` ⇒ `inference_not_configured`. `ContentEngine.inference_status()` informa de la capacidad de inferencia; `readiness()` no cambia.
+
+### 11.2 Ruta HTTP — propuesto
+
+| Método y ruta | Permiso | Cuerpo | Respuesta |
+|---|---|---|---|
+| `POST /v1/scopes/{scope_id}/analyze-text` | grant `analysis:execute` en `{scope_id}` | `{text, profile_id?, version_number?, capabilities?, context?}` (≤ 64 KiB; campos desconocidos ⇒ 422) | `200` con el `AnalysisResult` (también si es `inconclusive`); `Cache-Control: no-store`; sin 202, sin `GET` de resultados, sin idempotencia duradera |
+
+`request_id` (= `X-Request-ID`) sirve para correlación, no para deduplicación; repetir la solicitud la ejecuta de nuevo.
+
+### 11.3 Tipos de resultado — propuesto
+
+`AnalysisResult`: `analysis_contract_version`, `request_id`, `status` (`completed`|`inconclusive`, derivado), `profile` (`scope_id`, `profile_id`, `version_id`, `version_number`, `content_hash`, `selection`; **sin** snapshot), `input` (`text_length`, `context_provided`), `provenance`, `classification`, `detection`. Cada capacidad tiene `status ∈ {not_requested, not_configured, completed, inconclusive}`; solo las ejecutadas llevan `coverage`, `ranking`/`resolution` o `findings`. Esquema y ejemplos: [contrato §6](inference-and-analysis.md#6-construcción-del-resultado-público).
+
+### 11.4 Códigos de error nuevos — propuesto
+
+| Código | HTTP | Retryable | Cuándo |
+|---|---|---|---|
+| `inference_not_configured` | 503 | no | el motor no tiene adaptador de inferencia |
+| `capabilities_not_configured` | 409 | no | ninguna capacidad pedida está configurada en la versión fijada |
+| `inference_unavailable` | 503 | sí | adaptador apagado, cargando, inalcanzable o con fallo recuperable (`reason`) |
+| `inference_timeout` | 504 | sí | el adaptador no respondió dentro del timeout del operador |
+| `inference_output_invalid` | 502 | no | la salida del adaptador no pasó la validación (`problems` solo con códigos) |
+| `inference_fixture_not_found` | 501 | no | el mock no tiene fixture para la entrada |
+
+Se reutilizan `permission_denied`, `resource_not_accessible`, `validation_failed`, `limit_exceeded`, `payload_too_large`, `scope_disabled`, `default_profile_not_set`, `resource_not_found`, `profile_not_selectable`, `profile_not_published`, `transaction_incompatible` y `internal_error`. Tabla completa (con excepción Python y si se invocó al adaptador): [contrato §8.1](inference-and-analysis.md#81-tabla-de-errores-se-reutilizan-jerarquía-engineerror-y-envoltorio). Estados HTTP añadidos al catálogo de §9.4 solo para esta ruta: `501`, `502`, `504`.

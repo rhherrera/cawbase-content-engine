@@ -6,8 +6,9 @@
 > |---|---|
 > | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
 > | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `f4ad3e7`. GitHub Actions pasó sobre ese commit, según confirmación explícita del usuario. El merge `e149146` (PR #1) en `main` es posterior y no es el commit aceptado. Evidencia histórica y límites en el [informe de A02](docs/a02-implementation-report.md) |
+> | **A03** — contrato de inferencia y análisis con mock | **Solo especificada** (rama `feature/a03-inference-contract-mock`): sin código, sin pruebas, sin migración; el paquete sigue en `0.2.0`. No implementada ni aceptada. Entrada: [especificación de A03](docs/features/A03-contrato-de-inferencia-y-analisis-con-mock.md) |
 >
-> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de alcance: A03 en adelante (inferencia, clasificación efectiva, mock).
+> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: A03 en adelante (inferencia, clasificación efectiva, mock; A03 está solo especificada).
 
 Motor independiente de clasificación, detección y transformación de contenido, preparado para distribuirse como paquete Python y, más adelante, abrirse como código abierto. CAWbase será un consumidor del paquete; el motor no depende de CAWbase.
 
@@ -25,6 +26,10 @@ Estado de A01: **implementada, cerrada y aceptada** (commit `1b5ffab`).
 > **Implementada en `0.2.0`; cerrada y aceptada (commit `f4ad3e7`).** Sin inferencia, sin clasificación efectiva y sin mock: solo configura, versiona y resuelve la configuración de análisis. Ejemplo ejecutable: `uv run python examples/profiles_host.py`.
 
 Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles propios; configuración editable separada de **versiones publicadas inmutables**; perfil predeterminado opcional por scope; catálogo inicial versionado de tipos sensibles copiado al crear el perfil; configuración de ranking/resolución; permisos `profiles:read|write` (2 nuevos sobre los 8 de A01). Entrada: [especificación de A02](docs/features/A02-perfiles-categorias-y-tipos-sensibles.md).
+
+## A03 — Contrato de inferencia y análisis con mock (solo especificada)
+
+> **Especificada; no implementada.** Define una operación de análisis de texto (Python asíncrona y su equivalente HTTP, sin persistencia ni trabajos) sobre versiones publicadas de A02, un permiso nuevo `analysis:execute`, una interfaz de adaptador de inferencia con validación estricta de su salida y un mock determinista sobre fixtures sintéticos. No elige modelo ni afirma calidad de detección. Nada de esto está disponible en `0.2.0`. Contrato: [inferencia y análisis](docs/inference-and-analysis.md); entrada: [especificación de A03](docs/features/A03-contrato-de-inferencia-y-analisis-con-mock.md).
 
 ## Probar rápidamente
 
@@ -54,6 +59,9 @@ bash scripts/linux_docker_validate.sh /tmp/ev  # validación en Linux (Docker): 
 | [Perfiles y catálogo](docs/profiles-and-catalog.md) | Modelo, estados, revisiones, versiones, ranking/resolución y catálogo inicial |
 | [Decisiones de A02](docs/decisions/A02-decisions.md) | Decisiones aprobadas, elecciones técnicas derivadas, diferencias con el playbook y backlog |
 | [Informe de implementación de A02](docs/a02-implementation-report.md) | Qué se implementó, correspondencia con la matriz, comandos y resultados reales, límites y restricción de despliegue de permisos |
+| [Especificación de A03](docs/features/A03-contrato-de-inferencia-y-analisis-con-mock.md) | Alcance, decisiones y matriz de aceptación de A03 (solo especificada) |
+| [Inferencia y análisis](docs/inference-and-analysis.md) | Contrato completo de A03: fronteras, entrada, adaptador, validación, resultado, mock, errores y HTTP (propuesto / no disponible) |
+| [Decisiones de A03](docs/decisions/A03-decisions.md) | Decisiones aprobadas, elecciones técnicas derivadas, diferencias con el playbook y backlog |
 | [Reglas para agentes](CLAUDE.md) | Instrucciones de trabajo del repositorio |
 
 `docs/STAGE_3_PLAYBOOK.md` puede existir en el árbol de trabajo como **copia local de referencia** del playbook (revisión 6, 11 de noviembre de 2026), pero está en `.gitignore`: **no forma parte del repositorio**, un checkout limpio no la contiene y nada (tests, enlaces, wheel, sdist) la necesita. La fuente canónica está fuera de este repositorio.
