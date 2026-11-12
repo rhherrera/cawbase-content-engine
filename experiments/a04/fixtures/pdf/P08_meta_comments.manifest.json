@@ -1,0 +1,78 @@
+{
+  "fixture_id": "P08_meta_comments",
+  "kind": "pdf",
+  "file": "P08_meta_comments.pdf",
+  "sha256": "d09259b7496ee4e786fd3292f500c841add8c0b60295b38810e623feac6a0427",
+  "note": "/Info and XMP descriptive metadata, Text+Popup comment annotation (authorized removal) and a Link annotation whose URI repeats a selected value",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Texto visible Ana Ejemplo fin\nEnlace aqui"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 14,
+      "end": 25,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "remove_authorized",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "ok",
+      "replacement": "[X]",
+      "post_verification": "residue_detected_in_link_uri",
+      "allowed_residue_hows": [
+        "pct-NFC",
+        "pct-NFD"
+      ],
+      "extra_mask_user_rects": [
+        [
+          10,
+          10,
+          30,
+          30
+        ]
+      ]
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  },
+  "removal_expected": {
+    "classes": [
+      "info_authorship",
+      "info_descriptive",
+      "xmp_descriptive",
+      "comment_annotations"
+    ],
+    "residue_values": [
+      "Ana Ejemplo",
+      "EjemploNoReal-123",
+      "ana.ejemplo@example.test"
+    ],
+    "kept_link_uri_contains": "Ana%20Ejemplo"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "fixture_id": "R11_macros",
+  "file": "R11_macros.docx",
+  "sha256": "e2ea6e3739cc5828e1100b8b80691b03b720174d8d868b56eebd19296057686f",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "unknown_relationship",
+      "embedded_or_unknown_part"
+    ]
+  },
+  "note": "vbaProject.bin"
+}

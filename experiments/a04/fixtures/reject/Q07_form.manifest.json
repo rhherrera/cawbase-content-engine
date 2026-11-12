@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q07_form",
+  "file": "Q07_form.pdf",
+  "sha256": "fe4d3f5920b12c7a5ad5c629cab662b1d93204b84fed6850814580ab0190421f",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "forms"
+    ]
+  },
+  "note": "AcroForm with a text widget"
+}

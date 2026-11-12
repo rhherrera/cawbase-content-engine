@@ -1,0 +1,63 @@
+{
+  "fixture_id": "D08_all_selected",
+  "kind": "docx",
+  "file": "D08_all_selected.docx",
+  "sha256": "ec12d0df49aecfb720c077419ec603093c99ccfc39da836da672597c26dbf3b1",
+  "note": "every occurrence of v1 selected: global absence of v1 is required",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Ana Ejemplo y de nuevo Ana Ejemplo."
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Final Ana Ejemplo"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 0,
+      "end": 11,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 0,
+      "selected": true
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 23,
+      "end": 34,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 0,
+      "selected": true
+    },
+    {
+      "occ": "v1.c",
+      "value_id": "v1",
+      "start": 6,
+      "end": 17,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 1,
+      "selected": true
+    }
+  ],
+  "selected": [
+    "v1.a",
+    "v1.b",
+    "v1.c"
+  ],
+  "global_absence_required": {
+    "v1": true
+  },
+  "expected": {
+    "outcome": "transform"
+  }
+}

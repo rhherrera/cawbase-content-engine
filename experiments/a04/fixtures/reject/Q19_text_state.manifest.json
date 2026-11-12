@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q19_text_state",
+  "file": "Q19_text_state.pdf",
+  "sha256": "dee217e0367b2d52ba484cb146ac88a120d990ecd3e1acf1dc868b7a74a37b40",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "text_state_unsupported"
+    ]
+  },
+  "note": "horizontal scaling Tz"
+}

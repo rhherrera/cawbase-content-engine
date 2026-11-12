@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q15_type0_font",
+  "file": "Q15_type0_font.pdf",
+  "sha256": "e6a70c940c077846d86baf72cbb7ee70916b8086d08d45fa3a6eb8a92dba3f0d",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "font_unsupported"
+    ]
+  },
+  "note": "Type0/CID font (outside the experiment subset)"
+}

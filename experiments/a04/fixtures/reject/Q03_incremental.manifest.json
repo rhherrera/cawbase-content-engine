@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q03_incremental",
+  "file": "Q03_incremental.pdf",
+  "sha256": "985828022b47ab3eba5fd72276a75adc75ecb2ab3ca3fc64c2383bb477033b92",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "incremental_update"
+    ]
+  },
+  "note": "valid incremental update (older revision still in the file)"
+}

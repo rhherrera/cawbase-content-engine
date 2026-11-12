@@ -114,10 +114,17 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 ## 9. A03 — Inferencia y análisis (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Estructura real. Contrato: [inferencia y análisis](inference-and-analysis.md).
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Estructura real. Contrato: [inferencia y análisis](inference-and-analysis.md).
 
 - **Dos fronteras:** la API pública de análisis (autorizada, asociada a scope y perfil persistido) y la interfaz del **adaptador de inferencia** (recibe una solicitud ya preparada; devuelve una salida cruda sujeta a validación). El adaptador no consulta tablas, no resuelve perfiles, no aplica permisos y no decide ganadoras; el núcleo valida, calcula ranking/resolución/cobertura y fija la procedencia.
 - **Módulos** (carga perezosa; `import cawbase_content_engine` no los importa): `inference/` (tipos y protocolo, validación de salida, mock), `operations/selection.py` (selección de versión publicada **compartida** con `resolve_profile`, sin permisos y no pública), `operations/analysis.py` (fachada de `analyze_text`, mixin de `ScopedOperations`). La ruta HTTP vive en el adaptador HTTP; el núcleo sigue sin depender de FastAPI ni de Alembic.
 - **Flujo:** autoriza → valida entrada → prepara (lectura corta propia, fija la versión, copia defensiva) → **libera la conexión** → invoca al adaptador (timeout, cancelable) → valida → construye el resultado. Ninguna conexión ni transacción del motor se retiene durante la inferencia; `HostTransaction` se rechaza.
 - **Ownership:** el adaptador (y sus recursos) es del host y se compone explícitamente en `ContentEngine(config, inference=InferenceSetup(adapter))`; el motor no lo inicia ni lo cierra. Sin estado mutable compartido entre solicitudes. El motor funciona para A01/A02 sin inferencia.
 - **Sin persistencia:** A03 no añade tablas ni migración ([persistencia §8](persistence-and-migrations.md#8-a03--sin-modelo-persistente-implementado)).
+
+## 10. A04 — Documentos (solo documentado; no implementado)
+
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Contrato: [procesamiento de documentos](document-processing.md); especificación: [A04](features/A04-viabilidad-y-contrato-de-documentos.md).
+
+- La estructura de §3 **no cambia**: no hay módulo, extra ni dependencia documental. Los futuros módulos de documentos (extracción, mapeo, transformación) seguirán la regla de §2: viven en extras, dependen del núcleo y **no** se importan desde `__init__` compartidos; el núcleo no depende de bibliotecas PDF/DOCX.
+- El mapa documental es una estructura **separada** de `AnalysisResult` (A03 no cambia). Los scripts y artefactos experimentales (`experiments/a04/`, con entorno y lock propios) están fuera de `src/` y de los distribuibles ([contrato §17](document-processing.md#17-artefactos-experimentales-implementados)); `exclude = ["experiments"]` en la sección sdist del `pyproject.toml` impide que el sdist los incluya. Los experimentos importan el motor solo como consumidor (contrato A03 y mock), sin modificarlo.

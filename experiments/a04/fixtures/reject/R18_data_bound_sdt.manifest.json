@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R18_data_bound_sdt",
+  "file": "R18_data_bound_sdt.docx",
+  "sha256": "4c49d62feb977175e8a5bbc6ad2760858a731491a171fb7f74387eca047c21a9",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "data_bound_control"
+    ]
+  },
+  "note": "content control bound to customXml"
+}

@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R09_encrypted",
+  "file": "R09_encrypted.docx",
+  "sha256": "74a6e134d3dfb106c0e7ea80827a8f383323d270b533b4af086aa21d853aa725",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "encrypted_or_legacy"
+    ]
+  },
+  "note": "OLE compound file (EncryptedPackage container) instead of a ZIP"
+}

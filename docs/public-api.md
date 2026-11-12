@@ -662,7 +662,7 @@ Se reutiliza `admin_events` ([persistencia §2.6](persistence-and-migrations.md#
 
 ## 11. A03 — Análisis de texto (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Los nombres, firmas, rutas, permisos y códigos de esta sección siguen el código (`src/cawbase_content_engine/operations/analysis.py`, `inference/`, `http/router.py`); evidencia en el [informe de A03](a03-implementation-report.md). Todo lo de A01 (§1–§9) y A02 (§10) sigue vigente y **no cambia**; esta sección solo agrega. Contrato completo y ejemplos: [inferencia y análisis](inference-and-analysis.md). Decisiones: [A03-decisions](decisions/A03-decisions.md).
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Los nombres, firmas, rutas, permisos y códigos de esta sección siguen el código (`src/cawbase_content_engine/operations/analysis.py`, `inference/`, `http/router.py`); evidencia en el [informe de A03](a03-implementation-report.md). Todo lo de A01 (§1–§9) y A02 (§10) sigue vigente y **no cambia**; esta sección solo agrega. Contrato completo y ejemplos: [inferencia y análisis](inference-and-analysis.md). Decisiones: [A03-decisions](decisions/A03-decisions.md).
 
 ### 11.1 Firma Python (`ScopedOperations`)
 
@@ -706,3 +706,7 @@ Requiere `ScopeContext` con `analysis:execute`. Con `HostTransaction` ⇒ `trans
 | `inference_fixture_not_found` | 501 | no | el mock no tiene fixture para la entrada |
 
 Se reutilizan `permission_denied`, `resource_not_accessible`, `validation_failed`, `limit_exceeded` (también HTTP 413 por cuerpo > 64 KiB), `scope_disabled`, `default_profile_not_set`, `resource_not_found`, `profile_not_selectable`, `profile_not_published`, `transaction_incompatible` y `internal_error`. Tabla completa (con excepción Python y si se invocó al adaptador): [contrato §8.1](inference-and-analysis.md#81-tabla-de-errores-se-reutilizan-jerarquía-engineerror-y-envoltorio). Estados HTTP añadidos al catálogo de §9.4 solo para esta ruta: `501`, `502`, `504`.
+
+## 12. A04 — Sin operaciones nuevas
+
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** **A04 no añade operaciones, rutas, permisos, errores ni tipos públicos disponibles.** El catálogo sigue en 11 permisos; `AnalysisResult` y `analyze_text` no cambian. Las estructuras de [procesamiento de documentos](document-processing.md) son conceptuales (propuesto / no disponible); cualquier endpoint documental pertenece a A05 y posteriores.

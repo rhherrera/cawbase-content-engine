@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R03_text_box",
+  "file": "R03_text_box.docx",
+  "sha256": "57ed891d75cb87880b674d84042183c8402ac1d69b92f65b160df47d4aeecc20",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "text_box"
+    ]
+  },
+  "note": "text box with Choice/Fallback duplicate"
+}

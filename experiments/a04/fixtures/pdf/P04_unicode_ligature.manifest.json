@@ -1,0 +1,105 @@
+{
+  "fixture_id": "P04_unicode_ligature",
+  "kind": "pdf",
+  "file": "P04_unicode_ligature.pdf",
+  "sha256": "1864cc7828d4ff93493317cdbd355f4023361524a955548d820784610621a4c6",
+  "note": "custom encoding: code 1 = fi ligature (1 glyph -> 2 code points), code 3 -> U+1F600 (code point outside the BMP), code 4 -> U+0301 combining",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v4": "Zoé Café",
+    "v5": "Oficina Ejemplo",
+    "v6": "fi"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Emoji 😀 antes de Ana Ejemplo y Zoé Café luego\nOficina Ejemplo y de nuevo Oficina Ejemplo\nParcial: officina"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 17,
+      "end": 28,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v4.a",
+      "value_id": "v4",
+      "start": 31,
+      "end": 41,
+      "text": "Zoé Café",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v5.a",
+      "value_id": "v5",
+      "start": 48,
+      "end": 63,
+      "text": "Oficina Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v5.b",
+      "value_id": "v5",
+      "start": 75,
+      "end": 90,
+      "text": "Oficina Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v6.a",
+      "value_id": "v6",
+      "start": 102,
+      "end": 104,
+      "text": "fi",
+      "page": 0,
+      "unit_index": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "select_values",
+      "selected": [
+        "v1.a",
+        "v4.a",
+        "v5.a"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    },
+    {
+      "name": "partial_ligature",
+      "selected_ranges": [
+        [
+          "v6.a",
+          0,
+          1
+        ]
+      ],
+      "expected": "reject:localization_ambiguous",
+      "replacement": "[X]",
+      "note": "select only the 'f' of the 'fi' ligature (indivisible piece, n:1)"
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  }
+}

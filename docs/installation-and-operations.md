@@ -270,7 +270,7 @@ A02 no agrega extras ni dependencias, no carga modelos y no cambia los criterios
 
 ## 12. A03 — Límites, observabilidad y ciclo de vida (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Valores iniciales (E-A03-06), configurables mediante `Limits` y las variables del servicio. Los límites de A01 (§7.1) y A02 (§11.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB.
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Valores iniciales (E-A03-06), configurables mediante `Limits` y las variables del servicio. Los límites de A01 (§7.1) y A02 (§11.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB.
 
 ### 12.1 Límites (campos nuevos de `Limits`)
 
@@ -293,3 +293,7 @@ Sin texto, contexto, fragmentos, definiciones, salidas crudas ni secretos en log
 ### 12.5 Importación liviana y dependencias
 
 Sin efectos al importar; el módulo de inferencia, el validador y el mock se importan de forma perezosa (D-33 se mantiene). Sin dependencias pesadas ni extras vacíos por anticipación.
+
+## 13. A04 — Sin cambios operativos (solo documentado)
+
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Sin extras, variables de entorno, límites de `Limits`, dependencias ni configuración nuevos; `0.3.0` no cambia. Los experimentos viven en `experiments/a04/` (entorno propio; **no** forman parte del paquete instalable). Los límites de [contrato §16](document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20) son **elecciones técnicas de experimentos**, no límites productivos (los fijará A05). Los criterios de importación liviana (D-33) no se ven afectados: no se agrega nada al paquete.

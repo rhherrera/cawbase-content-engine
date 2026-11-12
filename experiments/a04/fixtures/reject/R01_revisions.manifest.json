@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R01_revisions",
+  "file": "R01_revisions.docx",
+  "sha256": "41e166d3bdfc43ec09ac224ee4ad4aefa829e38c8553156a47b44c677b4029c4",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "revisions"
+    ]
+  },
+  "note": "pending tracked changes (w:ins / w:del)"
+}

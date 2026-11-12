@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R08_external_field",
+  "file": "R08_external_field.docx",
+  "sha256": "4920e8730236fa1e976d54434f2594580ed5a1d8a8b9584643c77ce5613ad12a",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "external_field"
+    ]
+  },
+  "note": "INCLUDETEXT field"
+}

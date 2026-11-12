@@ -1,0 +1,13 @@
+{
+  "fixture_id": "Q20_truncated",
+  "file": "Q20_truncated.pdf",
+  "sha256": "006b6485d11a5aa6839c567708783799c0fe0c2e20af78a8af4b241a79934b05",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "corrupt_or_unreadable",
+      "repaired_by_parser"
+    ]
+  },
+  "note": "truncated file"
+}

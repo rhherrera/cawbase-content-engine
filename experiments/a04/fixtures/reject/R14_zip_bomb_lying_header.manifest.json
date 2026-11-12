@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R14_zip_bomb_lying_header",
+  "file": "R14_zip_bomb_lying_header.docx",
+  "sha256": "e17dd33dcdfc60529e0c02ca8b5e0a90174e87f4e059407fe18a9b7c119c4ca0",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "limit_exceeded"
+    ]
+  },
+  "note": "declared sizes patched to 1000 bytes; real output is 60 MiB (produced-bytes check)"
+}

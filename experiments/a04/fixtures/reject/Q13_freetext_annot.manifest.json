@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q13_freetext_annot",
+  "file": "Q13_freetext_annot.pdf",
+  "sha256": "e0c396ba55b052388bc14952e4b0731766ad005d94a4745fbc718409344febe4",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "annotation_unsupported"
+    ]
+  },
+  "note": "FreeText annotation with appearance"
+}

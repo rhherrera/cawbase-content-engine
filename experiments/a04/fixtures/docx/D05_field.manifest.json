@@ -1,0 +1,74 @@
+{
+  "fixture_id": "D05_field",
+  "kind": "docx",
+  "file": "D05_field.docx",
+  "sha256": "fb7e3b6c97ffb44dc905db70d6da3b07aad6f3518416ea475bc7dd4dc2b3648a",
+  "note": "simple field and complex field whose result holds a value; instruction text also holds a value",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test",
+    "v3": "EjemploNoReal-123"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Campo simple: Ana Ejemplo"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Compuesto: ana.ejemplo@example.test"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Texto normal EjemploNoReal-123"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 14,
+      "end": 25,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 0,
+      "selected": false
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 11,
+      "end": 35,
+      "text": "ana.ejemplo@example.test",
+      "part": "word/document.xml",
+      "unit_index": 1,
+      "selected": false
+    },
+    {
+      "occ": "v3.a",
+      "value_id": "v3",
+      "start": 13,
+      "end": 30,
+      "text": "EjemploNoReal-123",
+      "part": "word/document.xml",
+      "unit_index": 2,
+      "selected": true
+    }
+  ],
+  "selected": [
+    "v3.a"
+  ],
+  "global_absence_required": {
+    "v1": false,
+    "v2": false,
+    "v3": true
+  },
+  "expected": {
+    "outcome": "transform"
+  },
+  "field_occurrences": [
+    "v1.a",
+    "v2.a"
+  ],
+  "note_expected": "selecting v1.a or v2.a must be refused (field_result_not_transformable)"
+}

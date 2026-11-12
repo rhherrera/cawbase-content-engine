@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q09_tagged_actualtext",
+  "file": "Q09_tagged_actualtext.pdf",
+  "sha256": "a480ddbcd8be0a8ab1e9eaff63176b5a840271989416c1b293af9a93f62fa500",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "tagged_structure_text"
+    ]
+  },
+  "note": "structure element with /ActualText"
+}

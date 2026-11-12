@@ -1,0 +1,69 @@
+{
+  "fixture_id": "D06_comments_meta",
+  "kind": "docx",
+  "file": "D06_comments_meta.docx",
+  "sha256": "420ff0758717509cda29b941a008de801e615a9009738e9c12463892bb78a610",
+  "note": "comments (+extended, ids, people), core/app/custom properties and thumbnail carry values; body keeps visible text",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Texto anotado Ana Ejemplo aqui."
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Otro parrafo sin valores."
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 14,
+      "end": 25,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 0,
+      "selected": true
+    }
+  ],
+  "selected": [
+    "v1.a"
+  ],
+  "global_absence_required": {
+    "v1": true
+  },
+  "expected": {
+    "outcome": "transform"
+  },
+  "removal_expected": {
+    "classes": [
+      "comments",
+      "authorship",
+      "descriptive_properties",
+      "company",
+      "custom_properties",
+      "thumbnail"
+    ],
+    "parts_removed": [
+      "word/comments.xml",
+      "word/commentsExtended.xml",
+      "word/commentsIds.xml",
+      "word/people.xml",
+      "docProps/custom.xml",
+      "docProps/thumbnail.png"
+    ],
+    "residue_values": [
+      "Ana Ejemplo",
+      "ana.ejemplo@example.test",
+      "EjemploNoReal-123",
+      "Ejemplo SA"
+    ],
+    "visible_text_kept": [
+      "Texto anotado",
+      "Otro parrafo sin valores."
+    ]
+  }
+}

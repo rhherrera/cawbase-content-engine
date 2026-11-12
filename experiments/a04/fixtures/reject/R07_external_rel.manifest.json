@@ -1,0 +1,13 @@
+{
+  "fixture_id": "R07_external_rel",
+  "file": "R07_external_rel.docx",
+  "sha256": "f77f9ba9e0db860523d4713fcd56bb0d79fa0724962ed418db88edc222972cc2",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "unknown_relationship",
+      "external_reference"
+    ]
+  },
+  "note": "external attachedTemplate relationship"
+}

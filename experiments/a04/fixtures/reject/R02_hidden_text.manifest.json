@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R02_hidden_text",
+  "file": "R02_hidden_text.docx",
+  "sha256": "a5f8c58462f923a5a124350df3f17873a3330d98bb49abd59e5763ae2f3b78ee",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "hidden_text"
+    ]
+  },
+  "note": "w:vanish run"
+}

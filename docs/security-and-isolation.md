@@ -285,7 +285,7 @@ El motor **no escanea** el contenido de las definiciones en busca de datos reale
 
 ## 10. A03 — Permiso y datos del análisis (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
 
 ### 10.1 Catálogo ampliado
 
@@ -318,3 +318,12 @@ Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistingu
 - El contexto auxiliar es **dato no confiable**: no modifica contrato, configuración ni políticas; el adaptador lo recibe rotulado como tal.
 - El adaptador recibe solo lo necesario (texto, contexto, definiciones de las capacidades ejecutables, límites): no scope, perfil, versión, prioridades, permisos, credenciales ni conexión.
 - Un adaptador remoto futuro ampliará la superficie (confidencialidad en tránsito, autenticación del servidor): se trata en A09/A10, no en A03.
+
+## 11. A04 — Consideraciones de seguridad documentales (solo documentado)
+
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Sin permisos nuevos (el catálogo sigue en 11) ni cambios de aislamiento.
+
+- Los documentos son **entrada no confiable** (observado: bombas ZIP/Flate abortadas por bytes realmente producidos, DOCTYPE rechazado, parser XML sin entidades externas; ver [informe](a04-feasibility-report.md)): los experimentos (ejecutados) corrieron localmente, con el procesamiento **sin red** (en Linux, `--network none`), sin activar macros, scripts ni referencias externas, con límites de tamaño, páginas, partes, descompresión, duración y memoria ([contrato §16](document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20)) y con endurecimiento del parser XML.
+- Rechazos iniciales (D-A04-02): cifrado, firmas, revisiones, objetos incrustados y estructuras no cubiertas; reparación del parser nunca es éxito normal.
+- Los fixtures y manifiestos contienen solo valores sintéticos; ningún dato real, secreto o contenido sensible en registros o informes. Un mapa documental queda ligado al hash del archivo exacto y no se transfiere.
+- Cobertura parcial nunca se presenta como protección completa; la ausencia de valores sintéticos seleccionados no acredita ausencia universal de datos sensibles.

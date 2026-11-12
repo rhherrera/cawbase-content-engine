@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R19_settings_docvars",
+  "file": "R19_settings_docvars.docx",
+  "sha256": "623330c4e9b6e2d9b6f494679e5fd6a454f65cb02207e24278533b664bf68957",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "settings_payload_or_external"
+    ]
+  },
+  "note": "settings.xml carries w:docVars"
+}

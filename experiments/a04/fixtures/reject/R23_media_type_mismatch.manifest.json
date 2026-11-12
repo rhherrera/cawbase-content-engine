@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R23_media_type_mismatch",
+  "file": "R23_media_type_mismatch.docx",
+  "sha256": "9b333f1e132885058de4499e05948cdf19cfa98457b57a053816cf3c1a11bc03",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "media_type_mismatch"
+    ]
+  },
+  "note": "word/media/x.png that is not an image"
+}

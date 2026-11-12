@@ -1,0 +1,52 @@
+{
+  "fixture_id": "D07_aux_copy",
+  "kind": "docx",
+  "file": "D07_aux_copy.docx",
+  "sha256": "2eb969eb782dd391f221bb8fd494b28eaad21a6490b3d9aa1451e11b8e8648c7",
+  "note": "selected value also copied in hyperlink target, image alt text and docVars-like settings; verification must detect",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Visible Ana Ejemplo aqui."
+    },
+    {
+      "part": "word/document.xml",
+      "text": "enlace"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 8,
+      "end": 19,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 0,
+      "selected": true
+    }
+  ],
+  "selected": [
+    "v1.a"
+  ],
+  "global_absence_required": {
+    "v1": true
+  },
+  "expected": {
+    "outcome": "transform",
+    "post_verification": "residue_detected"
+  },
+  "aux_copies": [
+    {
+      "value_id": "v1",
+      "where": "word/_rels/document.xml.rels hyperlink Target (percent-encoded)"
+    },
+    {
+      "value_id": "v1",
+      "where": "word/document.xml wp:docPr@descr"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q12_mixed",
+  "file": "Q12_mixed.pdf",
+  "sha256": "bfd896d5544faae5a5e29562de021a2ffbb840a212d152a59d803bcad15c7e68",
+  "kind": "pdf",
+  "expected": {
+    "partial": [
+      "image"
+    ]
+  },
+  "note": "text plus image: processable with the image declared N"
+}

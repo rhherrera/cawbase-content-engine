@@ -1,0 +1,13 @@
+{
+  "fixture_id": "R04_custom_xml",
+  "file": "R04_custom_xml.docx",
+  "sha256": "a062365ebc97e19f01759787b0241a3af0047424fc4f0f4a86a6f4cfc80975d9",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "unknown_relationship",
+      "embedded_or_unknown_part"
+    ]
+  },
+  "note": "customXml part"
+}

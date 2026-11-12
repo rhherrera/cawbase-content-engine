@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q16_flate_bomb",
+  "file": "Q16_flate_bomb.pdf",
+  "sha256": "259d4e3a2e93d15933c1c83d797aebf1d06751aaa7c722b14d7b05356f941cd5",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "limit_exceeded"
+    ]
+  },
+  "note": "content stream inflating to 60 MiB from ~60 KiB"
+}

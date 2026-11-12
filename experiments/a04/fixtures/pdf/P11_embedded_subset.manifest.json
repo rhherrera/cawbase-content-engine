@@ -1,0 +1,84 @@
+{
+  "fixture_id": "P11_embedded_subset",
+  "kind": "pdf",
+  "file": "P11_embedded_subset.pdf",
+  "sha256": "4e779a1219974f5b4acb86f0842a07c2a157ec866225b85ae9c8f3919099be96",
+  "note": "embedded subset TrueType (DejaVu Sans, Bitstream Vera license; subset keeps only the document characters plus [X]); WinAnsi encoding",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Cliente: Ana Ejemplo y de nuevo Ana Ejemplo\nCorreo: ana.ejemplo@example.test fin"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 9,
+      "end": 20,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 32,
+      "end": 43,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 52,
+      "end": 76,
+      "text": "ana.ejemplo@example.test",
+      "page": 0,
+      "unit_index": 0
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  },
+  "font_source": {
+    "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "program_chars": " .:@ACEX[]adefijlmnoprstuvxy",
+    "program_sha256": "28c8ef9542228d9f6f2194fa5ca036db82dcb50cc07df1fe1c626215e47fccb9"
+  },
+  "cases": [
+    {
+      "name": "subset_glyphs",
+      "selected": [
+        "v1.a",
+        "v2.a"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    },
+    {
+      "name": "glyph_not_in_subset",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "reject:substitute_glyph_unavailable",
+      "replacement": "Q"
+    }
+  ]
+}

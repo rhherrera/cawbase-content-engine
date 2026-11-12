@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q10_invisible_text",
+  "file": "Q10_invisible_text.pdf",
+  "sha256": "466fff20f39d196167df4a8100961aab9a22443d12fc50e53482723e0ac5a424",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "invisible_or_clipped_text"
+    ]
+  },
+  "note": "text render mode 3"
+}

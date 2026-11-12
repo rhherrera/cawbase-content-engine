@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R16_orphan_header",
+  "file": "R16_orphan_header.docx",
+  "sha256": "a7b5708baaf5caf33bc8e0e7d857f28d45f83f637eca86f76ffda87092671aed",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "orphan_header_footer"
+    ]
+  },
+  "note": "header part present but not referenced by any section"
+}

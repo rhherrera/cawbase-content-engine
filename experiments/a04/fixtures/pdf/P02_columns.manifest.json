@@ -1,0 +1,62 @@
+{
+  "fixture_id": "P02_columns",
+  "kind": "pdf",
+  "file": "P02_columns.pdf",
+  "sha256": "e6040d82fe8dba728937a6e67041db3ca6f439ad9bb3523053ed21dbe421073c",
+  "note": "two columns at the same height; unit text concatenates in stream order (no semantic segmentation)",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Columna izq Ana Ejemplo fin\nColumna der ana.ejemplo@example.test fin"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 12,
+      "end": 23,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 40,
+      "end": 64,
+      "text": "ana.ejemplo@example.test",
+      "page": 0,
+      "unit_index": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "select_both_columns",
+      "selected": [
+        "v1.a",
+        "v2.a"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        520.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  }
+}

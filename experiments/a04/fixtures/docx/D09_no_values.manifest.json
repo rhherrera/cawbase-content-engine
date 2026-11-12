@@ -1,0 +1,28 @@
+{
+  "fixture_id": "D09_no_values",
+  "kind": "docx",
+  "file": "D09_no_values.docx",
+  "sha256": "04802ee548bc2a670307bf8a7dcba35ec1650bfeb60036dec086c7395e2b0a71",
+  "note": "document without the selected values (selection references values that do not occur)",
+  "values": {},
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Texto sin ningun valor sintetico."
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Otro parrafo neutro."
+    }
+  ],
+  "occurrences": [],
+  "selected": [],
+  "global_absence_required": {},
+  "expected": {
+    "outcome": "transform",
+    "no_occurrences": true
+  },
+  "values_not_present": {
+    "v1": "Ana Ejemplo"
+  }
+}

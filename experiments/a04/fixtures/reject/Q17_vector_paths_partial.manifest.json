@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q17_vector_paths_partial",
+  "file": "Q17_vector_paths_partial.pdf",
+  "sha256": "79ca869b56e84fc7594141e03d2581bc834c32e3b28a8095dccb1ff320a5b0cd",
+  "kind": "pdf",
+  "expected": {
+    "partial": [
+      "vector_graphics"
+    ]
+  },
+  "note": "text plus painted paths (text-as-paths cannot be verified): N"
+}

@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q18_unknown_catalog",
+  "file": "Q18_unknown_catalog.pdf",
+  "sha256": "0c26b32b52bdb2da506cdd5ca1cd12ec7dc54c9221abef07d55a69ec4a69b4c5",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "unknown_catalog_entry"
+    ]
+  },
+  "note": "unknown catalog entry"
+}

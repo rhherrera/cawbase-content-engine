@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R15_xml_entity_bomb",
+  "file": "R15_xml_entity_bomb.docx",
+  "sha256": "2d1b433d24fbd9103b10df6cb9edd2f7847fc99f4bfbb593be3426407ceaab98",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "xml_doctype"
+    ]
+  },
+  "note": "DOCTYPE with nested entities in document.xml"
+}

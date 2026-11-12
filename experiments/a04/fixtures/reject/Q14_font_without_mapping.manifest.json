@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q14_font_without_mapping",
+  "file": "Q14_font_without_mapping.pdf",
+  "sha256": "49cb8dbabb48d6ceddc2e85ad0790961920db3584c8502f73cc70b32e083a96b",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "font_mapping_insufficient"
+    ]
+  },
+  "note": "custom glyph names and no ToUnicode"
+}

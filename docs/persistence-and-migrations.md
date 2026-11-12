@@ -405,10 +405,14 @@ Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
 
 ## 8. A03 — Sin modelo persistente (implementado)
 
-> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Todo lo de §1–§7 sigue vigente sin cambios.
+> **Implementado en `0.3.0` (A03); A03 cerrada y aceptada por el usuario ([informe](a03-implementation-report.md#0-estado-por-nivel-de-evidencia)).** Todo lo de §1–§7 sigue vigente sin cambios.
 
 - A03 **no almacena** texto, contexto, resultados ni solicitudes: no hay tablas de análisis ni migración. No se crea una migración vacía.
 - Niveles: `schema_level = 2` y `min_runtime_level = 1` **no cambian**; la cabeza de migraciones sigue en `0002_profiles`. Los niveles de código (`SCHEMA_LEVEL`, `RUNTIME_LEVEL`) tampoco cambian por A03.
 - El permiso `analysis:execute` se guarda como una cadena en `api_key_scope_grants.permission` (columna `TEXT` sin restricción de valores): no requiere cambio de esquema. La compatibilidad con runtimes anteriores depende de los **grants**, no del nivel: ver [seguridad §10.3](security-and-isolation.md#103-compatibilidad-y-despliegue-del-permiso-nuevo).
 - La lectura de preparación (selección de la versión publicada) usa las tablas de A02 con el mismo patrón de acceso (`scope_id`, `profile_id`) en una transacción propia de solo lectura, que termina antes de la inferencia ([contrato §3](inference-and-analysis.md#3-preparación-versiones-y-transacciones)).
 - No se escribe contenido ni resultados en `admin_events`.
+
+## 9. A04 — Sin persistencia ni migraciones (solo documentado)
+
+> **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** **No hay tablas, migraciones ni cambios de esquema** (`schema_level = 2`, `min_runtime_level = 1` se mantienen). Los inventarios, mapas e informes de A04 son estructuras conceptuales y artefactos de experimento; su persistencia, la retención de originales/resultados y las referencias opacas corresponden a A05.
