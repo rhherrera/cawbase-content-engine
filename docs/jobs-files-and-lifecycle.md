@@ -1,6 +1,6 @@
 # Trabajos, archivos y ciclo de vida — contrato de A05
 
-> **Estado: ESPECIFICADO / NO IMPLEMENTADO (A05, revisión 2 de la especificación, pendiente de revisión).** Ninguna operación, ruta, permiso, tabla, migración, extra, variable ni comando de este documento existe en `0.3.0`: todo es **propuesto / no disponible** hasta que haya código y pruebas. La versión del paquete no cambia. Las decisiones de producto son `D-A05-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A05-nn` y **no** son decisiones de producto ([A05-decisions](decisions/A05-decisions.md)). Alcance y aceptación: [especificación de A05](features/A05-trabajos-archivos-y-ciclo-de-vida.md).
+> **Estado: ESPECIFICADO / NO IMPLEMENTADO (A05, revisión 3 de la especificación, pendiente de revisión).** Ninguna operación, ruta, permiso, tabla, migración, extra, variable ni comando de este documento existe en `0.3.0`: todo es **propuesto / no disponible** hasta que haya código y pruebas. La versión del paquete no cambia. Las decisiones de producto son `D-A05-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A05-nn` y **no** son decisiones de producto ([A05-decisions](decisions/A05-decisions.md)). Alcance y aceptación: [especificación de A05](features/A05-trabajos-archivos-y-ciclo-de-vida.md).
 
 Relacionado: [arquitectura](architecture.md) · [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md) · [perfiles (A02)](profiles-and-catalog.md) · [inferencia y análisis (A03)](inference-and-analysis.md) · [procesamiento de documentos (A04)](document-processing.md).
 
@@ -69,21 +69,23 @@ El motor **nunca** borra, mueve ni modifica un original externo del host, ni pro
 class ManagedStorage(Protocol):
     @property
     def descriptor(self) -> StorageDescriptor: ...
-        # backend_id estable; durabilidad declarada; transient_overhead_factor (≥ 1); inventario opcional
-    async def put_new(self, key: str, chunks: AsyncIterable[bytes], *, max_bytes: int, not_after: datetime) -> PutReceipt: ...
+        # backend_id estable; durabilidad declarada; transient_overhead_factor (≥ 1);
+        # capacidades obligatorias: create_only, seal, writer_release_evidence; inventario opcional
+    async def put_new(self, key: str, chunks: AsyncIterable[bytes], *, max_bytes: int, abort_after: datetime) -> PutReceipt: ...
         # crea un objeto PRIVADO e INMUTABLE; create-only (falla si la clave existe o está sellada);
-        # aborta sin crear el objeto al superar max_bytes; NO hace visible el objeto después de not_after;
+        # aborta sin crear el objeto al superar max_bytes; abort_after = plazo de aborto COOPERATIVO (no garantía);
         # devuelve size y sha256; retorna solo cuando el objeto es durable según el descriptor
     async def open_read(self, key: str) -> AsyncIterator[bytes]: ...   # ObjectMissing si no existe o está sellada
     async def stat(self, key: str) -> ObjectInfo | None: ...          # None = ausencia confirmada; error = transitorio
     async def delete(self, key: str) -> None: ...                     # objeto registrado: idempotente (ausente = éxito)
-    async def delete_and_seal(self, key: str) -> None: ...            # escritura de resultado desconocido (§4.4)
+    async def delete_and_seal(self, key: str) -> None: ...            # escritura de resultado desconocido (§4.4); idempotente; nunca retira un sello
+    async def writers_released(self, key: str) -> bool: ...           # True solo con evidencia de que ningún escritor de la clave sigue vivo (§4.4)
     # opcional (descriptor.inventory = True):
     async def list_keys(self, prefix: str, *, after: str | None, limit: int) -> Sequence[str]: ...
 ```
 
 - El motor genera **todas** las claves (una por intención, nunca reutilizada); ni clientes ni hosts las eligen.
-- **Garantías exigidas** al backend: (a) *create-only*; (b) `max_bytes` aplicado durante la escritura; (c) **no visibilidad tardía**: un objeto cuya escritura no se hizo visible antes de `not_after` no puede hacerse visible después; (d) `delete_and_seal` deja la clave **permanentemente** imposible de crear (un sello que no es un objeto legible), de modo que ninguna escritura en curso puede materializarla tras el sello; (e) `stat` distingue ausencia confirmada (`None`) de error transitorio (excepción). La garantía (c) se considera cumplida si el backend ofrece (d): el motor solo sella después de `not_after`. Un backend que no pueda ofrecer (a)–(e) es **incompatible** con el storage administrado de A05; no se promete limpieza universal.
+- **Garantías exigidas** al backend (tres garantías distintas, §4.4): (a) *create-only*; (b) `max_bytes` aplicado durante la escritura; (c) **sello**: cuando `delete_and_seal` retorna, el sello es durable y la clave **no puede volver a hacerse visible** ni comenzar en ella una escritura nueva; `delete` normal y otras limpiezas nunca retiran un sello; (d) **evidencia de liberación**: `writers_released(key)` devuelve `True` solo si el backend puede demostrar que ningún escritor que haya empezado sobre esa clave sigue vivo (por terminación, cierre o muerte del proceso), de modo que, con el sello ya confirmado, los bytes de esa escritura quedaron liberados o lo quedarán sin intervención; ante duda devuelve `False`; (e) `stat` distingue ausencia confirmada (`None`) de error transitorio (excepción). El sello **no** acredita por sí solo liberación física: un escritor suspendido puede conservar un descriptor del temporal ya desvinculado y seguir escribiendo hasta `max_bytes`. `abort_after` es solo un plazo de aborto cooperativo: comprobar la hora y después hacer visible el nombre no es atómico, y **ninguna garantía de seguridad depende de relojes** del backend. Un backend **sin** las capacidades (a)–(e) es **incompatible** (`configuration_invalid` al componer `StorageSetup`); uno compatible pero **temporalmente incapaz** (errores, escritor aún vivo) deja la purga pendiente (§4.4) sin inventar éxito. No se promete limpieza universal.
 - **Verificación**: el motor compara el recibo con lo que contó y hasheó él mismo; `stat` cierra el paso 3 de §4. Toda lectura posterior recalcula SHA-256 y tamaño (§3.7, §4.2).
 - **Reconciliación sin inventario obligatorio**: la intención (fila con su clave) se registra **antes** de escribir; los huérfanos se descubren desde la base. `list_keys` es opcional (objetos sin fila, p. ej. tras restaurar una copia de la base) y nunca condición para borrar algo referenciado.
 - No se exigen versiones de objeto, URLs firmadas, *multipart* ni listados.
@@ -93,10 +95,11 @@ class ManagedStorage(Protocol):
 `FilesystemStorage(root)` (propuesta; E-A05-06):
 
 - Raíz exclusiva del motor `0700`, archivos `0600`; no se sirve como estático. Claves `cce/<2 hex>/<32 hex>` (sin datos del cliente). Validación estricta de la forma de la clave; resolución relativa al descriptor de la raíz con `O_NOFOLLOW`/`openat` (o equivalente verificado en macOS): sin traversal ni symlinks.
-- **Escritura**: temporal con nombre **determinista por clave** `tmp/<clave>.part`, abierto con `O_CREAT|O_EXCL`; escritura con contador (`max_bytes`); `fsync`; comprobación de `not_after` con el reloj del sistema; `link(tmp, final)` **por ruta** (falla con `EEXIST` si el nombre final existe; nunca `rename` sobre el nombre final, que reemplazaría); `unlink(tmp)`; `fsync` del directorio. No se usa `linkat` sobre descriptores (eludiría el sello del temporal).
-- **Sello** (`delete_and_seal`): para el nombre final y para el temporal, en este orden: eliminar el temporal si existe y crear en su lugar un **directorio vacío** (sello); eliminar el final si existe y crear un directorio vacío en su lugar; repetir si una creación falla porque reapareció un archivo. Un directorio en esas rutas hace fallar `O_EXCL` y `link` del escritor tardío; `open_read`/`stat` tratan un sello como ausencia. Los sellos son permanentes (entradas vacías por cada escritura de resultado desconocido); su compactación es backlog (B-A05-13) y solo podría hacerse con un mecanismo que conserve la garantía (d).
+- **Escritura**: (1) abrir o crear `tmp/<clave>.lock` con `O_CLOEXEC` y tomar `flock(LOCK_EX)` sobre él, retenido durante toda la escritura; (2) abrir el temporal **determinista por clave** `tmp/<clave>.part` con `O_CREAT|O_EXCL|O_CLOEXEC` (falla si existe o si hay un sello); (3) escribir con contador (`max_bytes`) y aborto cooperativo pasado `abort_after`; `fsync`; (4) `link(tmp, final)` **por ruta** (falla con `EEXIST` si el nombre final existe o está sellado; nunca `rename` sobre el final ni `linkat` por descriptor, que eludirían el sello); `unlink(tmp)`; `fsync` del directorio; (5) cerrar el descriptor del temporal y, **al final**, liberar el `flock` y cerrar el bloqueo. Ningún descriptor se hereda a procesos hijos.
+- **Sello** (`delete_and_seal`), idempotente y en este orden real: (1) **temporal**: si en `tmp/<clave>.part` hay un archivo, `unlink`; crear allí un **directorio vacío** (sello); si `mkdir` falla porque reapareció un archivo, repetir; si ya hay un directorio, el paso está hecho; (2) **final**: lo mismo en el nombre final; (3) `fsync` de ambos directorios padres: el sello es durable cuando el método retorna. Tras (1), un escritor que aún no abrió el temporal no puede abrirlo y uno que ya lo tiene abierto no puede publicarlo (`link` desde un directorio falla); tras (2) el nombre final no puede crearse. Un directorio en esas rutas es un sello: `open_read`/`stat` lo tratan como ausencia, `delete` lo deja intacto (devuelve éxito sin retirarlo) y solo la compactación del backlog (B-A05-13) podría retirarlo conservando la garantía.
+- **Evidencia de liberación** (`writers_released`): con el sello confirmado, el backend intenta `flock(LOCK_EX|LOCK_NB)` sobre `tmp/<clave>.lock`. Si el archivo de bloqueo no existe o el bloqueo se obtiene, ningún escritor lo retiene: el escritor terminó, cerró sus descriptores o murió (el núcleo libera `flock` y los descriptores al morir el proceso), por lo que el inode desvinculado del temporal ya no tiene referencias y sus bytes quedan liberados; se elimina el archivo de bloqueo **mientras se lo retiene** y se devuelve `True`. Un escritor que abrió el bloqueo antes y lo obtiene después encontrará el sello en el temporal y fallará sin escribir. Si el bloqueo está tomado (escritor vivo, aunque esté suspendido) ⇒ `False`. Un timeout de corrutina nunca sustituye esta evidencia. Limpiezas concurrentes sobre la misma clave son inocuas: crear un sello existente y probar un bloqueo son idempotentes.
 - `transient_overhead_factor = 1` (el temporal se convierte en el final por `link`; nunca coexisten dos copias completas).
-- **Alcance de despliegue**: un nodo, o varios nodos solo sobre un sistema de archivos compartido con las mismas semánticas (`O_EXCL`, `link` exclusivo, `fsync` efectivo, coherencia tras cierre). NFS u otros sin esas garantías no están soportados.
+- **Alcance de despliegue**: un nodo, o varios nodos solo sobre un sistema de archivos compartido con las mismas semánticas (`O_EXCL`, `link` exclusivo, `fsync` efectivo, coherencia tras cierre y `flock` coherente entre nodos con liberación al morir el proceso). NFS u otros sin esas garantías no están soportados.
 
 ### 3.5 Referencias externas (`ExternalSourceResolver`, solo Python)
 
@@ -133,7 +136,8 @@ class ExternalSourceResolver(Protocol):
 
 - **Carga HTTP** (`POST …/files`): cuerpo binario por stream con límite propio (`max_file_bytes`), independiente del límite JSON de 64 KiB. Se cuentan los bytes **realmente recibidos**; un `Content-Length` mayor que el límite ⇒ 413 antes de leer; superar la reserva (§12.3) o el límite durante el stream ⇒ se corta, `limit_exceeded`/`content_mismatch`, la reserva pasa a abandonada (§4.1). Desconexión, plazo total o inactividad ⇒ `upload_aborted` y reserva abandonada.
 - **Cargas repetidas e idempotencia**: §8.4.
-- **Descarga verificada** (originales y resultados): antes de enviar encabezados, el motor lee el objeto completo verificando SHA-256 y tamaño hacia un **spool privado** (directorio `0700` del motor o memoria, acotado por `max_spool_bytes` por proceso con semáforo; el objeto mayor posible es ≤ 64 MiB, §12.2). Solo si la verificación pasa se envía `200` con `Content-Length` desde el spool, y el spool se elimina al terminar o fallar. Si falla: hash/tamaño ⇒ `lost` + `stored_object_unavailable`; error transitorio ⇒ `storage_unavailable` (503, reintentable); sin capacidad de spool ⇒ `storage_unavailable` (503, reintentable). Así, un cliente nunca recibe una respuesta completa de un objeto no verificado. **Límite declarado**: la verificación garantiza que el contenido enviado coincide con el hash registrado; no protege frente a corrupción posterior en el cliente o en tránsito (TLS es del despliegue).
+- **Descarga verificada** (originales y resultados): antes de enviar encabezados, el motor lee el objeto completo verificando SHA-256 y tamaño hacia un **spool privado** (memoria, o archivos en un directorio local `0700` del motor; el objeto mayor posible es ≤ 32 MiB, §12.2). Solo si la verificación pasa se envía `200` con `Content-Length` desde el spool. Si falla: hash/tamaño ⇒ `lost` + `stored_object_unavailable`; error transitorio ⇒ `storage_unavailable` (503, reintentable); sin capacidad de spool ⇒ `storage_unavailable` (503, reintentable). Un cliente nunca recibe una respuesta completa de un objeto no verificado. **Límite declarado**: la verificación garantiza que lo enviado coincide con el hash registrado; no protege frente a corrupción posterior en el cliente o en tránsito (TLS es del despliegue).
+- **Temporales del spool en disco**: cada proceso crea al iniciar su propio subdirectorio `spool/<instancia>/` (identificador aleatorio) y retiene durante toda su vida un `flock` exclusivo sobre `spool/<instancia>/.owner`; sus archivos se crean ahí con `O_EXCL`, `0600`, y se eliminan al terminar cada descarga. El semáforo del proceso limita su propio uso a `max_spool_bytes`. **Residuos de procesos muertos**: al iniciar, y en cada `run_cleanup` ejecutado en ese nodo, se recorre `spool/` y se elimina todo subdirectorio cuyo `.owner` pueda bloquearse sin espera (su dueño murió); nunca se toca el de un proceso vivo. El disco de spool de un nodo queda acotado por `procesos vivos × max_spool_bytes` más, como máximo, el residuo de los procesos muertos desde la última limpieza local (cada uno ≤ `max_spool_bytes`). El spool es local, privado y descartable: no es storage administrado ni cuenta en las cuotas de scope; nunca se sirve ni expone su ruta.
 - Python (`open_file_content`, `open_job_artifact`) usa el mismo spool verificado antes de entregar el primer fragmento.
 - Respuesta: `Cache-Control: no-store`, `Content-Disposition: attachment; filename="<file_id>.<docx|pdf|txt>"` (o `<job_id>-result.json`/`<job_id>-source-map.json`), `X-Content-Type-Options: nosniff`, tipo detectado. Sin URLs firmadas, sin claves de storage, rutas, resolvers ni referencias. No se conserva el nombre original (E-A05-24).
 - **Descargable** = original `stored`, no vencido, con validación `passed` vigente (§10.7); o resultado `available` no vencido. Nada en `reserved`, cuarentena (`pending`), `rejected`, `abandoned`, `deleted`, `expired`, `lost` o no publicado es descargable: 404 `resource_not_found` idéntico (sin revelar el motivo), salvo `job_data_expired` (410) para resultados de un trabajo todavía consultable y `stored_object_unavailable` para objetos perdidos detectados en la propia lectura.
@@ -144,8 +148,8 @@ No hay transacción distribuida. Todo objeto administrado sigue **cinco pasos**:
 
 | Paso | Dónde | Qué |
 |---|---|---|
-| 1. Reservar | transacción corta | fila (`stored_file` o `job_artifact`) en `reserved` con clave generada, dueño (carga con `upload_generation`; intento con `attempt_no`/`lease_token`), `not_after` y reserva de cuota (§12.3) |
-| 2. Transferir | fuera de transacción | `put_new(key, …, max_bytes = reserva, not_after)` |
+| 1. Reservar | transacción corta | fila (`stored_file` o `job_artifact`) en `reserved` con clave generada, dueño (carga con `upload_generation`; intento con `attempt_no`/`lease_token`), `abort_after` y reservas de cuota de bytes y de sello potencial (§12.3) |
+| 2. Transferir | fuera de transacción | `put_new(key, …, max_bytes = reserva, abort_after)` |
 | 3. Verificar | fuera de transacción | tamaño y hash propios = recibo = esperado (si lo hay); `stat` confirma |
 | 4. Registrar | transacción corta | `reserved → stored`/`written`, **condicionado al dueño vigente** (carga: misma generación y plazo no vencido; intento: posesión vigente, §6.3); fija `size`, `sha256`, `received_at`/`written_at`; convierte la reserva en bytes almacenados |
 | 5. Publicar | transacción corta | solo artefactos: transición T3 con todas sus precondiciones (§6.5); una **única** referencia autoritativa al manifiesto y al mapa |
@@ -156,15 +160,15 @@ Claves **específicas de cada intención**; *create-only*; ningún worker sobres
 
 | Falla | Estado | Recuperación |
 |---|---|---|
-| Tras 1, sin objeto | `reserved` | al vencer el dueño (plazo de carga o posesión) la limpieza marca `abandoned`/`discarded` con `abandoned_at`; la reserva pasa a **bytes inciertos** (no se libera); tras 24 h se ejecuta `delete_and_seal` (resultado de escritura desconocido, §4.4) y se libera el cargo al confirmarse |
-| Durante 2 (objeto parcial) | `reserved`; temporal del backend | igual; el sello cubre también el temporal |
+| Tras 1, sin objeto | `reserved` | al vencer el dueño (plazo de carga o posesión) la limpieza marca `abandoned`/`discarded` con `abandoned_at`; la reserva pasa a **bytes inciertos** (no se libera); tras 24 h, sello y evidencia de liberación (§4.4); el cargo se libera solo con ambas |
+| Durante 2 (objeto parcial o escritor suspendido con el temporal abierto) | `reserved`; temporal del backend | igual; el sello cubre el temporal y el cargo se conserva mientras `writers_released` sea `False` |
 | Tras 2–3, sin registro | objeto completo, fila `reserved` | igual: no se adopta el objeto «por existir» |
 | Tras 4 de un artefacto, sin publicación | `written` de un intento sin posesión | al terminar/perder el intento pasa a `discarded` (bytes inciertos); tras 24 h `delete` normal (escritura completada) y confirmación |
 | Publicación confirmada con respuesta perdida | trabajo `succeeded` con los artefactos del intento | reconciliación antes de repetir (§7.3) |
 | Objeto perdido o corrupto después de registrarse | `stat` = `None` o hash distinto | archivo `lost` / resultado `data_state = lost`; `stored_object_unavailable`; no se reintenta ni regenera en silencio |
-| Eliminación física fallida (error transitorio) | marca de purga vigente o vencida | la limpieza reintenta en lotes posteriores; el cargo incierto se mantiene; el acceso ya estaba denegado |
+| Eliminación física fallida (error transitorio) o escritor aún vivo | marca de purga vigente o vencida | la limpieza reintenta en lotes posteriores; el cargo incierto y la intención se mantienen; el resumen informa `purge_pending_backend_error` / `purge_pending_writer_active`; el acceso ya estaba denegado |
 | Worker obsoleto escribe tras perder la posesión | puede completar `put_new` | el paso 4/5 falla por *fencing*; su fila queda `reserved` (o `written` de un intento sin posesión) ⇒ abandono/descarte y borrado con sello o normal según §4.4 |
-| Escritura tardía tras la limpieza | ver contraejemplo de §4.4 | imposible: el sello impide materializar la clave |
+| Escritura tardía tras la limpieza | ver contraejemplos de §4.4 | el sello impide materializar la clave; el cargo se libera solo con evidencia de que el escritor terminó |
 
 ### 4.2 Integridad
 
@@ -174,19 +178,29 @@ Toda lectura (validación, extracción, descarga, resultados) verifica hash y ta
 
 - La limpieza actúa **solo** sobre filas en estados de datos terminales e irreversibles (`abandoned`, `discarded`, `deleted`, `expired`, `lost`) con `delete_after` vencido; un objeto `lost` se registró (escritura completada) y se elimina con `delete` normal por si quedan bytes corruptos. Nunca borra algo porque una consulta momentánea no encuentre su publicación.
 - `delete_after`: abandono/descarte ⇒ `abandoned_at + 24 h`; eliminación lógica o expiración de objetos registrados ⇒ transición + `purge_grace_s` (≥ `download_timeout_s` + margen), para que una descarga **iniciada antes** termine (las nuevas se deniegan desde la transición). Una descarga que supere su plazo se corta; como la entrega es desde el spool verificado (§3.7), cortar el origen no altera lo ya verificado.
-- **Fencing de la limpieza**: cada fila candidata se reclama con `UPDATE … SET purge_token = :t, purge_claim_expires_at = ahora + purge_claim_ttl WHERE <estado terminal> AND delete_after <= ahora AND (purge_token IS NULL OR purge_claim_expires_at <= ahora)`. Tras la operación de storage, el resultado se registra con `UPDATE … WHERE purge_token = :t AND purge_claim_expires_at > ahora`: si no afecta filas, el limpiador **perdió la posesión** y no registra nada ni toca contadores; como el estado de datos es irreversible y `delete`/`delete_and_seal` son idempotentes, lo que haya hecho en el storage es inocuo y el nuevo dueño lo repetirá.
+- **Fencing de la limpieza**: cada fila candidata se reclama con `UPDATE … SET purge_token = :t, purge_claim_expires_at = ahora + purge_claim_ttl WHERE <estado terminal> AND delete_after <= ahora AND (purge_token IS NULL OR purge_claim_expires_at <= ahora)`. Tras la operación de storage, el resultado se registra con `UPDATE … WHERE purge_token = :t AND purge_claim_expires_at > ahora`: si no afecta filas, el limpiador **perdió la posesión** y no registra nada ni toca contadores; como el estado de datos es irreversible y `delete`/`delete_and_seal`/`writers_released` son idempotentes y nunca retiran un sello, lo que haya hecho en el storage es inocuo y el nuevo dueño lo repetirá.
 
-### 4.4 Escritores tardíos y sellos
+### 4.4 Escritores tardíos, sellos y liberación física
 
-Contraejemplo que el protocolo debe cubrir: (1) un worker inicia `put_new` y queda suspendido; (2) pierde el lease, pasa el abandono y el plazo de limpieza; (3) la limpieza borra, encuentra ausencia y marca eliminado; (4) el `put_new` termina y crea el objeto; (5) la intención ya no se revisa: huérfano permanente.
+Tres garantías **distintas**, cada una con su propio mecanismo:
+
+| Garantía | Mecanismo | Qué no acredita |
+|---|---|---|
+| **P — no publicar** fuera de posesión | *fencing* en la base: el registro (paso 4) y la publicación (paso 5) exigen la posesión vigente (§6.3, §6.5) | nada sobre el storage |
+| **S — no rematerializar** una clave sellada | `delete_and_seal` confirmado (§3.3 (c)) | que los bytes de un escritor en curso se hayan liberado |
+| **L — bytes liberados** | sello confirmado **y** `writers_released(key) = True` (§3.3 (d)), o `delete` + `stat = None` para escrituras completadas | — |
+
+Contraejemplos que el protocolo cubre: (A) un worker inicia `put_new`, pierde el lease y queda suspendido; la limpieza borra, encuentra ausencia y marca eliminado; el `put_new` termina y crea el objeto ⇒ **cerrado por S**: tras el sello el `link` falla. (B) el escritor ya abrió el temporal y conserva el descriptor; `delete_and_seal` desvincula el temporal y crea el sello; el escritor sigue escribiendo en el inode desvinculado hasta `max_bytes` ⇒ el sello no basta: **L** exige la evidencia de liberación y el cargo se conserva mientras el escritor viva. (C) el escritor comprueba `abort_after`, se suspende y publica el nombre después ⇒ no hay equivalencia entre plazo y visibilidad: la seguridad viene de **P** (la base rechaza registrarlo) y de **S/L** (la limpieza sella y espera evidencia).
 
 Protocolo:
 
-1. Toda escritura lleva `not_after` = fin de la posesión que la autoriza: carga ⇒ `upload_deadline_at`; artefacto ⇒ `attempt_deadline_at` (§6.3). Un timeout de la corrutina **no** prueba que el backend no pueda completar: solo cuenta la garantía (c)/(d) de §3.3.
-2. Filas con **escritura de resultado desconocido** (`reserved` abandonadas, sin registro): la limpieza espera `delete_after` (≥ `not_after`) y ejecuta `delete_and_seal`. Tras el sello ninguna escritura puede materializar esa clave; recién entonces se registra `physically_deleted_at` y se libera el cargo incierto.
-3. Filas con **escritura completada** (`stored`/`written` antes de su terminación lógica): `delete` y confirmación por `stat` = `None`. El escritor ya terminó; no hay escritura en curso para esa clave.
-4. **Intención mínima**: si los metadatos de la fila (archivo, artefacto, trabajo) deben purgarse (§13.3) antes de confirmar la eliminación física, la fila se reduce a un `storage_tombstone` `{scope_id, tombstone_id, storage_backend_id, storage_key, write_state (completed|unknown), charged_bytes, delete_after, purge_token…}` **sin contenido, hash, referencia externa ni datos del cliente**. El tombstone vive independientemente del plazo de metadatos del trabajo y se elimina **solo** cuando el borrado (o sello) quedó confirmado. Nunca se borra la última intención mientras pueda materializarse una escritura.
-5. Si el backend falla de forma persistente, el tombstone permanece y su cargo sigue contando (§12.3): el problema queda visible en el resumen de limpieza, no se oculta.
+1. `abort_after` = fin de la posesión que autoriza la escritura (carga ⇒ `upload_deadline_at`; artefacto ⇒ `attempt_deadline_at`) se pasa al backend solo como plazo de aborto cooperativo. Ninguna decisión depende de su cumplimiento ni de márgenes de reloj.
+2. **Escritura de resultado desconocido** (fila `reserved` abandonada o descartada): al vencer `delete_after` la limpieza ejecuta `delete_and_seal` y registra `seal_confirmed_at`; luego consulta `writers_released`. Solo con `True` registra `writers_released_at`/`physically_deleted_at` y libera el cargo incierto. Con `False` (escritor vivo, aunque suspendido) o error, conserva la intención y el cargo y vuelve a intentarlo en lotes posteriores; el resumen informa `purge_pending_writer_active` o `purge_pending_backend_error`. Nunca se registra éxito sin evidencia.
+3. **Escritura completada** (`stored`/`written` antes de su terminación lógica): el escritor terminó; `delete` y confirmación con `stat = None`.
+4. **Intención mínima**: si los metadatos de la fila deben purgarse (§13.3) antes de completar L, la fila se reduce a un `storage_tombstone` `{scope_id, tombstone_id, storage_backend_id, storage_key, write_state (completed|unknown), seal_confirmed_at, charged_bytes, delete_after, purge_token…}` sin contenido, hash, referencia externa ni datos del cliente. Vive independientemente de los metadatos del trabajo y se elimina **solo** tras L. Nunca se borra la última intención mientras pueda quedar una escritura viva.
+5. **Sellos y su límite**: cada escritura de resultado desconocido termina en un sello permanente. Se contabilizan como **capacidad de sellos**: una reserva de escritura administrada (paso 1) consume también un **sello potencial**; al registrarse con éxito (paso 4) lo devuelve; al abandonarse queda como sello pendiente y, confirmado, como sello permanente (`sealed_keys`, nunca decrementado salvo una compactación futura que conserve S). Antes de reservar, `sealed_keys + pending_seals + open_reservations` del scope y de la instalación debe quedar bajo `max_seals_per_scope`/`max_seals_total` (§12.3); si no, la reserva se rechaza con `quota_exceeded` (motivo `seal_capacity`) y diagnóstico operativo, sin retirar sellos de forma insegura.
+6. **Limpiezas concurrentes** sobre una clave: se excluyen por el *fencing* de §4.3; si un limpiador obsoleto actúa igual, sellar dos veces y probar el bloqueo son idempotentes y ningún camino retira un sello.
+7. **Backend incompatible ≠ temporalmente incapaz**: la falta de capacidades (§3.3) impide componer el storage (`configuration_invalid`); errores transitorios o escritores vivos solo dejan la purga pendiente con su cargo.
 
 ## 5. Trabajos
 
@@ -242,7 +256,7 @@ Autoridad temporal §6.1; orden de bloqueos §6.2. Notación: **dueño** = trans
 
 ### 6.1 Autoridad temporal
 
-Toda hora que decide estado se toma **de la base** en la misma sentencia/transacción que la compara: PostgreSQL `clock_timestamp()`; SQLite `strftime('%Y-%m-%d %H:%M:%f','now')` (reloj del único nodo). Los relojes de los workers solo planifican heartbeats; `not_after` (§4.4) se pasa al backend como hora absoluta y el backend lo compara con su propio reloj, por lo que se deja un margen (`not_after` = vencimiento de la posesión − `clock_skew_margin_s`, 30 s). Los timestamps de A01–A03 no cambian.
+Toda hora que decide estado se toma **de la base** en la misma sentencia/transacción que la compara: PostgreSQL `clock_timestamp()`; SQLite `strftime('%Y-%m-%d %H:%M:%f','now')` (reloj del único nodo). Los relojes de workers y backends solo planifican heartbeats y abortos cooperativos (`abort_after`, §4.4); la seguridad de registro y publicación no depende de sincronizarlos. Los timestamps de A01–A03 no cambian.
 
 ### 6.2 Orden común de bloqueos
 
@@ -266,20 +280,25 @@ Toda transacción que tome más de un bloqueo los adquiere en este orden **ascen
 
 | Operación | Secuencia |
 |---|---|
-| `submit_*` | 1 share → 2 (lectura; si requiere escritura del fence, se aborta y se repite con 1 exclusivo, §9.2) → 3 → 4 → 5 → 6 share (entrada y contexto) → 7 (lectura) → 8 (inserción) |
+| `submit_*` (transacción propia) | 1 share → 2 (lectura; si hace falta escribir el fence, se cierra la transacción y se repite con 1 `FOR NO KEY UPDATE`, §9.2 I6) → 3 → 4 → 5 → 6 share (entrada y contexto) → 7 (lectura) → 8 (inserción) |
+| `submit_document_analysis` con `HostTransaction` | en el savepoint, desde el principio: 1 `FOR NO KEY UPDATE` → 2 (creación o reconciliación del fence si hace falta) → 3 → 4 → 5 → 6 share → 7 (lectura) → 8 (inserción); sin segunda conexión (§9.2 I7) |
 | Carga/registro: paso 1 y 4 | 1 share → 3 → 4 → 5 → 6 |
-| `claim` | lectura previa **no autoritativa** de candidatos (sin bloqueos); por cada candidato, una transacción: 1 share → 2 → 3 → 6 share → 8 `FOR UPDATE SKIP LOCKED` → revalidación → T2 |
+| `claim` | lectura previa **no autoritativa** de candidatos (sin bloqueos); por cada candidato, una transacción: 1 share → 2 → 3 (`running_jobs` del scope) → 4 (`running_jobs` de la instalación) → 6 share → 8 `FOR UPDATE SKIP LOCKED` → revalidación → T2 y actualización de ambos contadores → 9 (inserción del intento) |
 | Publicación | 1 share → 2 → 3 → 4 → 6 share (entrada y contexto) → 7 (lectura de la validación fijada) → 8 → 9 |
-| Validación (resultado) | 6 share → 7 inserción → 8 (condición de dueño) |
+| Validación (resultado) | 6 share → 7 inserción → 8 (condición de dueño, sin cambio de contadores) |
 | Deshabilitación / reconciliación del fence / cambios A05 del scope | 1 `FOR NO KEY UPDATE` → 2 → 3 → 4 → 8 (`UPDATE` de los no terminales del scope) → 9 |
-| `cancel_job` | 1 share → 3 → 4 → 8 → 9 |
+| `cancel_job` | 1 share → 3 → 4 → 8 → 9 (los contadores se bloquean siempre antes del trabajo, aunque T5 no los cambie) |
 | `delete_file` | 1 share → 3 → 4 → 6 `FOR UPDATE` |
 | `delete_job_data` | 1 share → 3 → 4 → 8 → 9 |
-| Limpieza (transiciones de trabajos) | como `cancel_job`; (marcas de purga) hoja; (registro de borrado) 3 → 4 → 6/9/10 |
-| Recalcular cuotas | 3 → 4 (lecturas de 6/8/9/10 del scope sin bloquear) |
+| Recuperación de leases vencidos, transiciones terminales del dueño (T7, T8, T6) y de la limpieza (T9) | 1 share → 2 → 3 → 4 → 8 → 9; el dueño también, porque cambia contadores (solo el heartbeat y el cambio de fase son hoja) |
+| Limpieza: marcas de purga | hoja |
+| Limpieza: abandono/descarte, registro de borrado, sello o liberación | 3 → 4 → 6 / 9 / 10 |
+| Purga de metadatos (sin cambio de contadores) | 5 → 6 → 7 → 8 → 9 → 10 |
+| Recalcular cuotas | por scope: 3 → 4 (lecturas de 6/8/9/10 del scope sin bloquear; aplica a `engine_usage` la diferencia); instalación: 4 (suma de `scope_usage` confirmados) |
 
+- **Regla de contadores**: toda transacción que cambie un contador bloquea 3 y 4 (en ese orden) **antes** de bloquear archivos, trabajos o artefactos y actualiza los contadores en la misma transacción que la transición; ninguna vuelve a 3 o 4 después de tomar 6–10.
 - **Lotes de reclamación**: una transacción por candidato (o por scope, con candidatos en orden ascendente de `job_id`); nunca se retienen bloqueos de trabajos de un scope mientras se piden los de otro, ni bloqueos de trabajos antes que su scope. `SKIP LOCKED` solo en el nivel 8, tras los niveles superiores: saltar no espera, así que no hay ciclo.
-- **Sin garantía universal de ausencia de interbloqueos**: el orden evita ciclos entre operaciones del motor, pero `HostTransaction` (bloqueos retenidos por el host) o SQL ajeno pueden provocarlos. Se conserva la traducción de A02: `40P01`/`40001` ⇒ `database_unavailable` reintentable; con `HostTransaction` se revierte el savepoint y la transacción del host sigue utilizable; el motor no reintenta por su cuenta salvo la repetición acotada de §9.2 dentro de transacciones propias.
+- **Sin garantía universal de ausencia de interbloqueos**: el orden evita ciclos entre operaciones del motor, pero `HostTransaction` (bloqueos retenidos por el host antes del savepoint) o SQL ajeno pueden provocarlos. Se conserva la traducción de A01–A02: `40P01`/`40001` ⇒ `database_unavailable` reintentable; con `HostTransaction` se revierte el savepoint (lo que **no** libera bloqueos tomados antes por el host) y la transacción exterior sigue utilizable; el motor no reintenta por su cuenta salvo la repetición acotada de I6 en transacciones propias.
 
 ### 6.3 Posesión y plazos del intento
 
@@ -377,7 +396,7 @@ La misma regla aplica a cargas (§8.4) y a `submit_*` con respuesta perdida (§8
 4. **Transacción de aceptación** (orden de §6.2): `INSERT … ON CONFLICT DO NOTHING` del registro de idempotencia con el `job_id` pregenerado. Si se insertó: selección y fijación (§8.5), cuotas, inserción del trabajo y vínculo de los objetos de entrada al trabajo. Si no se insertó (otra solicitud concurrente ganó): se lee el registro existente **en la misma transacción** (sin error ni transacción abortada), se responde como en el paso 2 y los objetos de entrada de la solicitud perdedora se marcan `abandoned` en esa transacción (su cargo pasa a incierto y se eliminan por limpieza).
 5. **Respuesta perdida**: tras el paso 3 y antes de 4 ⇒ no hay trabajo; un reintento con la misma clave repite desde el paso 3 con objetos nuevos, y los anteriores, no vinculados al vencer `link_deadline_at`, se abandonan. Después del paso 4 ⇒ el reintento obtiene el trabajo en el paso 2.
 6. **Dos primeras solicitudes concurrentes**: PostgreSQL — la segunda `INSERT … ON CONFLICT DO NOTHING` espera a la primera y, al confirmarse, no inserta; SQLite — el único escritor las serializa. En ambos casos rige el paso 4.
-7. **`HostTransaction`**: solo `submit_document_analysis` sin contexto (no escribe en storage). El `ON CONFLICT DO NOTHING` evita errores de unicidad: el savepoint no queda abortado y la lectura posterior es válida; si el conflicto proviene de una transacción no confirmada que después revierte, la inserción procede tras la espera. Cualquier otro error revierte solo el savepoint (A01 D-23).
+7. **`HostTransaction`**: solo `submit_document_analysis` sin contexto (no escribe en storage), con la secuencia de §6.2 y el camino I7 de §9.2 para el fence. El `ON CONFLICT DO NOTHING` evita errores de unicidad: el savepoint no queda abortado y la lectura posterior es válida; si el conflicto proviene de una transacción no confirmada que después revierte, la inserción procede tras la espera. Cualquier otro error revierte solo el savepoint (A01 D-23). La repetición resuelta por la clave no reselecciona perfil ni versión.
 
 ### 8.4 Cargas y registros externos
 
@@ -440,9 +459,10 @@ Durante los 30 días de metadatos de un trabajo, repetir su clave devuelve el tr
 - **I3** — Mutaciones A05 del scope (en el mismo bloqueo, tras I2): cambio efectivo de metadatos ⇒ `O = nueva revisión`; `set_scope_status` efectivo a `disabled` ⇒ `O = nueva revisión`, `G += 1`, T10 de no terminales; a `active` ⇒ `O = nueva revisión` (G sin cambio); sin cambio efectivo ⇒ no escribe `scopes` ni avanza `O` (I2 puede haber reconciliado igualmente). La semántica pública de A01 (control optimista estricto D-30, errores, eventos) no cambia: la reconciliación no modifica `scopes.revision` ni produce `revision_conflict`.
 - **I4** — **Idempotencia de la reconciliación**: dos reconciliadores concurrentes se serializan por el bloqueo del scope; el segundo relee `O = scopes.revision` y no hace nada. Una divergencia ya reconciliada no vuelve a incrementar `G`.
 - **I5** — **Inicialización perezosa**: la fila del fence se crea solo con el scope bloqueado `FOR NO KEY UPDATE`, con `O = scopes.revision` y `G = 1 + max(fence_generation)` de los trabajos existentes del scope (o `G = 0` si no hay ninguno), y aplica T10 a los no terminales existentes. Por construcción (todo trabajo se inserta con su fence ya presente) no debería haber ninguno; si los hay (datos restaurados, SQL ajeno), se tratan como de generación desconocida y se cancelan, nunca como nuevos. La fila nunca se elimina.
-- **I6** — Lectores con bloqueo compartido (submit, claim, publicación) que detectan divergencia o ausencia de la fila **no deciden**: abortan su transacción, ejecutan la reconciliación (I2/I5) en una transacción propia y repiten una vez; si persiste, `database_unavailable` reintentable.
+- **I6** — **Transacción propia**: un lector con bloqueo compartido (submit, claim, publicación) que detecta divergencia o ausencia de la fila **no decide**: revierte su transacción, ejecuta la reconciliación (I2/I5) en una transacción propia y repite una vez; si persiste, `database_unavailable` reintentable.
+- **I7** — **`HostTransaction`**: el motor no confirma ni revierte la transacción exterior, no abre una conexión secundaria que dependa de que esa transacción termine y no supone que revertir un savepoint libera bloqueos que el host tomó antes. Por eso la operación (solo `submit_document_analysis` sin contexto) adquiere **desde el comienzo** del savepoint el scope `FOR NO KEY UPDATE` (SQLite: la transacción exterior debe ser o volverse escritora; si la promoción falla por otro escritor ⇒ `database_unavailable`, reintentable, A01) y, en la **misma** conexión y savepoint, crea el fence (I5) o reconcilia (I2) si hace falta, y continúa con la aceptación. Si el host revierte su transacción, se revierten juntas la reconciliación y la aceptación: la divergencia vuelve a estar presente y I1 sigue impidiendo reclamar o publicar hasta que otra operación la reconcilie, por lo que la reversión no debilita ninguna garantía. Si el host ya retenía bloqueos en orden incompatible y PostgreSQL detecta un interbloqueo ⇒ `database_unavailable` con el savepoint revertido y la transacción exterior utilizable. Coste: mientras el host no confirme, otros envíos, reclamaciones y publicaciones del scope esperan ese bloqueo; el host debe mantener corta su transacción. Las lecturas (`get_job`, `list_jobs`) dentro de `HostTransaction` no reconcilian: informan el estado almacenado.
 
-**Contraejemplo cubierto**: (1) trabajo aceptado con G y revisión R; (2) un runtime anterior deshabilita y rehabilita ⇒ R+2, G sin cambio; (3) un runtime A05 edita metadatos ⇒ por I2, antes de su escritura ve `R+2 ≠ R`, hace `G+1` y cancela el trabajo, y solo entonces escribe R+3 y `O = R+3`; (4) la publicación ve `fence_generation = G ≠ G+1` ⇒ no publica (I1). Sin la edición del paso 3, la publicación ve `R+2 ≠ O` ⇒ I6 reconcilia y cancela.
+**Contraejemplo cubierto**: (1) trabajo aceptado con G y revisión R; (2) un runtime anterior deshabilita y rehabilita ⇒ R+2, G sin cambio; (3) un runtime A05 edita metadatos ⇒ por I2, antes de su escritura ve `R+2 ≠ R`, hace `G+1` y cancela el trabajo, y solo entonces escribe R+3 y `O = R+3`; (4) la publicación ve `fence_generation = G ≠ G+1` ⇒ no publica (I1). Sin la edición del paso 3, la publicación ve `R+2 ≠ O` ⇒ I6 reconcilia y cancela. Dentro de `HostTransaction`, el envío hace lo mismo en su propio savepoint (I7).
 
 **Coste** (elección técnica propuesta, no decisión del usuario): mientras convivan runtimes anteriores, cualquier cambio efectivo que hagan sobre un scope —incluida una edición de metadatos— se trata como posible deshabilitación y cancela los trabajos no terminales del scope. No se usa `admin_events` para reconstruir deshabilitaciones.
 
@@ -632,11 +652,11 @@ Elecciones técnicas iniciales, configurables (`Limits`/`JobsSetup`, nombres pro
 | `max_job_duration_s` | 86 400 | trabajo | `deadline_exceeded` |
 | `max_attempts` | 5 | trabajo | `retries_exhausted` |
 | `lease_ttl_s` / `heartbeat_interval_s` | 60 / 20 (`≤ lease_ttl_s / 3`) | intento | `lease_lost` |
-| `clock_skew_margin_s` | 30 | `not_after` | — |
+| `abort_after` | = fin de la posesión (carga o intento) | escritura | aborto cooperativo, sin garantía (§4.4) |
 | `upload_timeout_s` / `upload_idle_timeout_s` | 600 / 60 | carga | `upload_aborted` |
 | `submit_link_timeout_s` | 600 | objetos de texto/contexto no vinculados | abandono |
 | `download_timeout_s` | 600 | descarga | conexión cortada |
-| `max_spool_bytes` | 256 MiB por proceso | descargas verificadas | `storage_unavailable` |
+| `max_spool_bytes` | 256 MiB por proceso (residuos de procesos muertos eliminados al iniciar y en `run_cleanup` local, §3.7) | descargas verificadas | `storage_unavailable` |
 | `purge_grace_s` | `download_timeout_s` + 300 | eliminación física | — |
 | `purge_claim_ttl_s` | 300 | marca de limpieza | — |
 
@@ -648,8 +668,9 @@ Elecciones técnicas iniciales, configurables (`Limits`/`JobsSetup`, nombres pro
 |---|---|
 | `reserved_bytes` | capacidad prometida a escrituras en curso (paso 1 sin paso 4) |
 | `stored_bytes` | objetos administrados registrados y no terminales (`stored`, `written`, `published`) |
-| `uncertain_bytes` | bytes que **pueden existir** en el storage: reservas abandonadas o descartadas (por su reserva completa), objetos registrados lógicamente eliminados/vencidos/perdidos/descartados (por su tamaño) y tombstones, hasta que la eliminación o el sello se **confirmen** (§4.4) |
+| `uncertain_bytes` | bytes que **pueden existir** en el storage: reservas abandonadas o descartadas (por su reserva completa), objetos registrados lógicamente eliminados/vencidos/perdidos/descartados (por su tamaño) y tombstones, hasta que la **liberación** (L de §4.4) quede confirmada; un sello sin evidencia de liberación no basta |
 | `live_files` | archivos y registros externos no terminales (`reserved`, `stored`) |
+| `open_reservations` / `pending_seals` / `sealed_keys` | escrituras administradas reservadas sin registrar (sello potencial) / abandonadas aún sin sello confirmado / sellos permanentes confirmados |
 | `active_jobs` / `running_jobs` | no terminales / `running` |
 
 **Cargo de storage** = `reserved_bytes + stored_bytes + uncertain_bytes`; debe ser ≤ `max_storage_bytes_per_scope` (2 GiB) y el agregado ≤ `max_storage_bytes_total` (100 GiB). Los bytes cuentan **hasta la eliminación física confirmada**.
@@ -661,7 +682,8 @@ Elecciones técnicas iniciales, configurables (`Limits`/`JobsSetup`, nombres pro
 | Registrar (paso 4) | `reserved −= R·f`; `stored += size` real |
 | Abandonar/descartar sin registro | `reserved −= R·f`; `uncertain += R·f` (no se libera porque falló el registro) |
 | Eliminar/expirar/perder/descartar un objeto registrado | `stored −= size`; `uncertain += size` |
-| Confirmar eliminación o sello (§4.4) | `uncertain −=` cargo de la fila |
+| Confirmar L (§4.4): `delete` + `stat = None`, o sello + `writers_released` | `uncertain −=` cargo de la fila |
+| Reservar escritura administrada / registrarla / abandonarla / confirmar su sello | `open_reservations += 1` / `−= 1` / `−= 1` y `pending_seals += 1` / `pending_seals −= 1` y `sealed_keys += 1` |
 | T1 / estados terminales | `active_jobs += 1` / `−= 1` (scope e instalación) |
 | T2 / salir de `running` (T3, T5b, T6, T7, T8, T10 desde `running`) | `running_jobs += 1` / `−= 1` |
 | Carga/registro: reservar / estado terminal | `live_files += 1` / `−= 1` |
@@ -677,6 +699,7 @@ Elecciones técnicas iniciales, configurables (`Limits`/`JobsSetup`, nombres pro
 | `max_active_jobs_per_scope` / `max_active_jobs_total` | 100 / 10 000 | `quota_exceeded` (429) |
 | `max_running_jobs_per_scope` | 4 | (no se reclama) |
 | `max_live_files_per_scope` | 1000 | `quota_exceeded` |
+| `max_seals_per_scope` / `max_seals_total` (`sealed_keys + pending_seals + open_reservations`) | 10 000 / 1 000 000 | `quota_exceeded` (motivo `seal_capacity`) + diagnóstico; nunca se retiran sellos para liberar capacidad |
 | Concurrencia del ejecutor de referencia | 4 trabajos | — |
 | `cleanup_batch_size` | 500 | — |
 | `admin_events_purge_batch_size` | 1000 (máx. 10 000) | `validation_failed` |
@@ -849,6 +872,7 @@ El scope es la unidad de aislamiento (granularidad por archivo: B-A05-05). **Res
 | Código | HTTP | Reintentable | Cuándo |
 |---|---|---|---|
 | `storage_not_configured` / `documents_not_configured` | 503 | no | falta `StorageSetup` / `DocumentSetup` o el extra |
+| `configuration_invalid` (A01) | — | no | `ManagedStorage` sin las capacidades obligatorias (§3.3) |
 | `storage_unavailable` | 503 | sí | fallo transitorio de storage/resolver, o sin capacidad de spool |
 | `stored_object_unavailable` | 503 | no | objeto `lost` (ausente o corrupto) |
 | `isolation_unavailable` | — (superficie local) | no | aislamiento exigido no verificable |
@@ -857,7 +881,7 @@ El scope es la unidad de aislamiento (granularidad por archivo: B-A05-05). **Res
 | `content_mismatch` | 422 | no | hash o tamaño distinto del declarado, o carga que supera `declared_size` |
 | `file_not_usable` | 409 | no | archivo no `stored`, vencido, eliminado, perdido o con validación vigente `rejected` |
 | `file_expiring` | 409 | no | entrada o contexto vencen antes de `deadline_at` |
-| `quota_exceeded` | 429 | sí | §12.3 |
+| `quota_exceeded` | 429 | sí (tras liberar) | §12.3 (bytes, archivos, trabajos o `seal_capacity`; este último solo se libera con una compactación futura o una decisión del operador) |
 | `job_not_succeeded` | 409 | no | resultado de un trabajo no `succeeded` |
 | `job_not_terminal` | 409 | no | `delete_job_data` sobre un no terminal |
 | `job_data_expired` | 410 | no | resultado vencido, eliminado o perdido |
@@ -872,16 +896,16 @@ Namespace fijo; `scope_id` en toda PK y FK; ninguna garantía depende solo de FK
 
 | Tabla | Clave | Columnas principales | Índices / restricciones |
 |---|---|---|---|
-| `stored_files` | (`scope_id`, `file_id`) | `origin`, `state`, `integrity_failure`, `storage_backend_id`, `storage_key`, `write_state`, `resolver_id`, `external_ref`, `external_version`, `size_bytes`, `sha256`, `detected_format`, `reserved_bytes`, `upload_generation`, `upload_deadline_at`, `link_job_id`, `link_deadline_at`, `reserved_at`, `received_at`, `retention_s`, `expires_at`, `abandoned_at`, `deleted_at`, `end_of_life_at`, `file_metadata_expires_at`, `delete_after`, `purge_token`, `purge_claim_expires_at`, `physically_deleted_at`, `created_at` | UNIQUE `file_id`; UNIQUE (`storage_backend_id`, `storage_key`); (`state`, `delete_after`); (`expires_at`); (`file_metadata_expires_at`); `CHECK` de estados |
+| `stored_files` | (`scope_id`, `file_id`) | `origin`, `state`, `integrity_failure`, `storage_backend_id`, `storage_key`, `write_state`, `seal_confirmed_at`, `writers_released_at`, `resolver_id`, `external_ref`, `external_version`, `size_bytes`, `sha256`, `detected_format`, `reserved_bytes`, `upload_generation`, `upload_deadline_at`, `link_job_id`, `link_deadline_at`, `reserved_at`, `received_at`, `retention_s`, `expires_at`, `abandoned_at`, `deleted_at`, `end_of_life_at`, `file_metadata_expires_at`, `delete_after`, `purge_token`, `purge_claim_expires_at`, `physically_deleted_at`, `created_at` | UNIQUE `file_id`; UNIQUE (`storage_backend_id`, `storage_key`); (`state`, `delete_after`); (`expires_at`); (`file_metadata_expires_at`); `CHECK` de estados |
 | `file_validations` | (`scope_id`, `file_id`, `validation_identity`) | `validator_id`, `validator_version`, `validator_config_sha256`, `result`, `reason`, `job_id`, `attempt_no`, `validated_at` | solo inserción; FK → `stored_files` |
 | `jobs` | (`scope_id`, `job_id`) | `operation`, `state`, `phase`, `input_file_id`, `context_file_id`, `validation_identity`, perfil fijado, `capabilities`, `execution_snapshot`, `execution_snapshot_hash`, `requirements_key`, `request_fingerprint`, `fence_generation`, `attempt_no`, `max_attempts`, `lease_token`, `lease_owner`, `attempt_started_at`, `attempt_deadline_at`, `lease_expires_at`, `heartbeat_at`, `available_at`, `accepted_at`, `started_at`, `terminated_at`, `deadline_at`, `cancel_requested_at`, `cancel_reason`, `failure_code`, `last_error_code`, `published_attempt_no`, `result_artifact_id`, `source_map_artifact_id`, `data_state`, `result_retention_s`, `result_expires_at`, `metadata_retention_s`, `metadata_expires_at`, `updated_at` | UNIQUE `job_id`; (`state`, `requirements_key`, `available_at`); (`state`, `lease_expires_at`); (`scope_id`, `state`, `accepted_at`); (`metadata_expires_at`); `CHECK` terminal ⇔ `terminated_at` |
 | `job_attempts` | (`scope_id`, `job_id`, `attempt_no`) | `worker_id`, `lease_token_hash`, `attempt_started_at`, `attempt_deadline_at`, `ended_at`, `outcome`, `error_code` | FK → `jobs` |
-| `job_artifacts` | (`scope_id`, `artifact_id`) | `job_id`, `attempt_no`, `kind`, `state` (`reserved`/`written`/`published`/`discarded`/`expired`/`deleted`/`lost`), `storage_backend_id`, `storage_key`, `write_state`, `reserved_bytes`, `not_after`, `size_bytes`, `sha256`, `reserved_at`, `written_at`, `abandoned_at`, `delete_after`, `purge_token`, `purge_claim_expires_at`, `physically_deleted_at` | UNIQUE (`storage_backend_id`, `storage_key`); (`state`, `delete_after`); FK → `jobs` |
-| `storage_tombstones` | (`scope_id`, `tombstone_id`) | `storage_backend_id`, `storage_key`, `write_state` (`completed`/`unknown`), `charged_bytes`, `delete_after`, `purge_token`, `purge_claim_expires_at`, `created_at` | UNIQUE (`storage_backend_id`, `storage_key`); sin contenido |
+| `job_artifacts` | (`scope_id`, `artifact_id`) | `job_id`, `attempt_no`, `kind`, `state` (`reserved`/`written`/`published`/`discarded`/`expired`/`deleted`/`lost`), `storage_backend_id`, `storage_key`, `write_state`, `reserved_bytes`, `abort_after`, `seal_confirmed_at`, `writers_released_at`, `size_bytes`, `sha256`, `reserved_at`, `written_at`, `abandoned_at`, `delete_after`, `purge_token`, `purge_claim_expires_at`, `physically_deleted_at` | UNIQUE (`storage_backend_id`, `storage_key`); (`state`, `delete_after`); FK → `jobs` |
+| `storage_tombstones` | (`scope_id`, `tombstone_id`) | `storage_backend_id`, `storage_key`, `write_state` (`completed`/`unknown`), `seal_confirmed_at`, `charged_bytes`, `delete_after`, `purge_token`, `purge_claim_expires_at`, `created_at` | UNIQUE (`storage_backend_id`, `storage_key`); sin contenido |
 | `idempotency_records` | (`scope_id`, `operation`, `key_hash`) | `request_fingerprint`, `job_id` \| `file_id`, `upload_generation`, `created_at`, `expires_at` | (`expires_at`) |
 | `scope_job_fences` | `scope_id` | `observed_scope_revision`, `disable_generation`, `updated_at` | FK → `scopes`; nunca se elimina |
-| `scope_usage` | `scope_id` | `reserved_bytes`, `stored_bytes`, `uncertain_bytes`, `live_files`, `active_jobs`, `running_jobs`, `updated_at` | `CHECK ≥ 0` |
-| `engine_usage` | `id = 1` | `reserved_bytes`, `stored_bytes`, `uncertain_bytes`, `active_jobs`, `running_jobs`, `updated_at` | fila única |
+| `scope_usage` | `scope_id` | `reserved_bytes`, `stored_bytes`, `uncertain_bytes`, `live_files`, `open_reservations`, `pending_seals`, `sealed_keys`, `active_jobs`, `running_jobs`, `updated_at` | `CHECK ≥ 0`; fila creada perezosamente con el scope bloqueado `FOR NO KEY UPDATE` |
+| `engine_usage` | `id = 1` | `reserved_bytes`, `stored_bytes`, `uncertain_bytes`, `open_reservations`, `pending_seals`, `sealed_keys`, `active_jobs`, `running_jobs`, `updated_at` | fila única |
 
 **Migración `0003_jobs_files`** (aditiva, solo hacia adelante): crea tablas e índices; no altera tablas existentes; no migra ni purga datos (los fences se crean perezosamente, §9.2 I5); `schema_level` 2 → **3**; mismo procedimiento de A01.
 
@@ -894,7 +918,7 @@ Namespace fijo; `scope_id` en toda PK y FK; ninguna garantía depende solo de FK
 | Operación | Con `HostTransaction` | Motivo |
 |---|---|---|
 | `upload_file`, `register_external_file`, `submit_text_analysis`, `submit_document_analysis` con `context`, `open_file_content`, `get_job_result`, `open_job_artifact` | rechazada antes de efectos (`transaction_incompatible`) | E/S de storage; un rollback del host dejaría objetos sin intención |
-| `submit_document_analysis` sin `context`, `cancel_job`, `delete_file`, `delete_job_data`, `get_file`, `list_files`, `get_job`, `list_jobs` | permitida en un savepoint (A01 D-23), con el orden de §6.2 y `ON CONFLICT DO NOTHING` (§8.3) | solo base; el host avisa tras su commit |
+| `submit_document_analysis` sin `context`, `cancel_job`, `delete_file`, `delete_job_data`, `get_file`, `list_files`, `get_job`, `list_jobs` | permitida en un savepoint (A01 D-23), con el orden de §6.2 y `ON CONFLICT DO NOTHING` (§8.3); el envío adquiere el scope exclusivo desde el comienzo y crea o reconcilia el fence en la misma conexión (§9.2 I7) | solo base; el host avisa tras su commit; sin conexiones secundarias ni commits ocultos |
 | `job_worker`, `maintenance` | no aceptan transacción | propias y cortas |
 
 Compartir engine no implica compartir transacción. Las filas bloqueadas permanecen bloqueadas hasta el commit del host.

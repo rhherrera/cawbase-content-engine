@@ -1,6 +1,6 @@
 # A05 — Trabajos, archivos y ciclo de vida
 
-> **Estado: ESPECIFICADA / NO IMPLEMENTADA, pendiente de revisión del usuario (revisión 2 de la especificación: correcciones previas a la implementación, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)).** Entrega solo documental: sin código, migraciones, tests, scripts, dependencias, configuración ejecutable ni cambio de versión (`0.3.0`). Ninguna operación, ruta, permiso, tabla ni comando de A05 está disponible. No está cerrada ni aceptada.
+> **Estado: ESPECIFICADA / NO IMPLEMENTADA, pendiente de revisión del usuario (revisión 3 de la especificación: correcciones previas a la implementación, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)).** Entrega solo documental: sin código, migraciones, tests, scripts, dependencias, configuración ejecutable ni cambio de versión (`0.3.0`). Ninguna operación, ruta, permiso, tabla ni comando de A05 está disponible. No está cerrada ni aceptada.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A05), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md), [A05](../decisions/A05-decisions.md)), que prevalecen.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a05-jobs-files-lifecycle`, creada desde `main` en `58001e0` (merge del PR #3 de A04).
@@ -17,7 +17,7 @@
 
 ## 2. Decisiones
 
-Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios administrativos después de aceptar), texto en [A05-decisions §2](../decisions/A05-decisions.md#2-decisiones-aprobadas). Elecciones técnicas `E-A05-01` a `31` en [§3](../decisions/A05-decisions.md#3-elecciones-técnicas-derivadas) (no son decisiones de producto). Diferencias con el playbook y backlog: §4–§5 del registro.
+Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios administrativos después de aceptar), texto en [A05-decisions §2](../decisions/A05-decisions.md#2-decisiones-aprobadas). Elecciones técnicas `E-A05-01` a `34` en [§3](../decisions/A05-decisions.md#3-elecciones-técnicas-derivadas) (no son decisiones de producto). Diferencias con el playbook y backlog: §4–§5 del registro.
 
 ## 3. Mapa del contrato
 
@@ -50,7 +50,7 @@ Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios admi
 
 ## 5. Matriz de aceptación (para la implementación posterior)
 
-Criterios trazables al contrato (AC-A05-01 a 42). Estado de todos: **especificado / no implementado / no probado**.
+Criterios trazables al contrato (AC-A05-01 a 52). Estado de todos: **especificado / no implementado / no probado**.
 
 | AC | Criterio verificable | Contrato | Evidencia exigida |
 |---|---|---|---|
@@ -87,7 +87,7 @@ Criterios trazables al contrato (AC-A05-01 a 42). Estado de todos: **especificad
 | AC-A05-31 | Orden común de bloqueos: reclamación, publicación, deshabilitación/reconciliación, cancelación, `delete_file`, `delete_job_data` y limpieza concurrentes sobre el mismo scope sin interbloqueos entre operaciones del motor (PostgreSQL); interbloqueo provocado con `HostTransaction` traducido a `database_unavailable` con el savepoint revertido | §6.2 | pruebas de concurrencia por backend |
 | AC-A05-32 | Publicación frente a `delete_file`, expiración y pérdida de la entrada **y** del contexto, en ambos órdenes: si gana la eliminación no hay publicación; si gana la publicación, eliminar después no borra el resultado | §6.5 | pruebas con barreras por backend |
 | AC-A05-33 | Plazos: lease inicial acotado por `attempt_deadline_at` y `deadline_at`; publicación rechazada con plazo de intento o de trabajo vencido aunque no haya ocurrido un heartbeat; cancelar un `running` con lease vencido (T5b); toda transición terminal fija timestamps, cierra intentos, descarta artefactos y ajusta contadores; mutaciones del dueño anterior fallan tras una recuperación | §5.3, §6.3, §6.5 | pruebas con reloj de la base |
-| AC-A05-34 | **Escritor tardío** (contraejemplo de §4.4): un `put_new` suspendido que reanuda después del sello no materializa el objeto (filesystem: temporal y nombre final); el tombstone sobrevive a la purga de metadatos y solo desaparece con la confirmación; un limpiador que perdió la posesión no registra resultados ni toca contadores | §3.3–§3.4, §4.3–§4.4 | pruebas con escritor bloqueado en un punto controlado |
+| AC-A05-34 | **Escritor tardío** (contraejemplo A de §4.4): un `put_new` suspendido que reanuda después del sello no materializa el objeto (filesystem: temporal y nombre final); el tombstone sobrevive a la purga de metadatos y solo desaparece con la liberación confirmada; un limpiador que perdió la posesión no registra resultados ni toca contadores | §3.3–§3.4, §4.3–§4.4 | pruebas con escritor bloqueado en un punto controlado |
 | AC-A05-35 | Idempotencia de envíos y cargas: el contexto exacto forma parte de la huella (ausente ≠ presente); repetición sin crear objetos nuevos; dos primeras solicitudes concurrentes con texto materializado (objetos de la perdedora abandonados y contabilizados); respuesta perdida antes y después de aceptar; conflicto con `HostTransaction` resuelto sin abortar la transacción exterior; carga reiniciada cuyo escritor antiguo no puede finalizar la reserva nueva; repetición de registro externo sin volver a llamar a `describe` | §8.2–§8.4 | pruebas por backend |
 | AC-A05-36 | Validaciones por identidad: dos configuraciones distintas sobre el mismo archivo coexisten; el primer resultado de una identidad es autoritativo; escritura de un worker obsoleto rechazada; admisión y descarga según la identidad vigente | §10.7 | pruebas |
 | AC-A05-37 | `delete_job_data`: no terminal ⇒ `job_not_terminal`; terminal sin datos ⇒ sin cambio; no elimina entradas compartidas; lectura de resultados frente a expiración/eliminación | §14.1 | pruebas |
@@ -96,12 +96,22 @@ Criterios trazables al contrato (AC-A05-01 a 42). Estado de todos: **especificad
 | AC-A05-40 | Matriz conservadora: `/Rotate 270`, texto oblicuo, object streams, `/Contents` en arreglo, linearización, anidación de tablas > 2 y varias secciones DOCX ⇒ rechazo con motivo cerrado; lo `S` de §11.2 extraído con oráculo | §11.2 | fixtures por variante |
 | AC-A05-41 | Retención de metadatos: archivos, validaciones, `external_ref` e idempotencia de cargas/registros purgados a los 30 días de `end_of_life_at`; trabajos e idempotencia a los 30 días de `terminated_at`; sobreviven solo tombstones sin contenido si falta la confirmación física | §13.3 | pruebas con reloj de la base |
 | AC-A05-42 | Cuotas bajo fallos: cargas fallidas repetidas, `declared_size` falso (menor y mayor), limpieza averiada (backend que falla el borrado) y reintentos concurrentes no hacen crecer el cargo de storage por encima de la cuota; los bytes solo se liberan tras confirmación | §12.3, §4.4 | pruebas con storage de prueba con fallos inyectados |
+| AC-A05-43 | Escritor suspendido **con el descriptor del temporal abierto** durante el sello (contraejemplo B): el sello se confirma, `writers_released` devuelve `False`, el cargo incierto y el tombstone se conservan y el resumen informa `purge_pending_writer_active`; al terminar o matar el escritor, la siguiente limpieza obtiene la evidencia y libera el cargo | §3.4, §4.4 | proceso escritor detenido (`SIGSTOP`) y luego terminado; filesystem real |
+| AC-A05-44 | Pausa entre comprobar `abort_after` y publicar el nombre (contraejemplo C): la base rechaza el registro (`lease_lost`) y la limpieza sella y espera la evidencia; ninguna publicación ni liberación prematura | §4.4, §6.3 | punto de pausa inyectado en la implementación de referencia |
+| AC-A05-45 | Limpiezas concurrentes sobre una clave sellada: sellado y prueba de bloqueo idempotentes; nunca se retira un sello; solo el dueño vigente de la marca registra la liberación; `delete` normal deja el sello intacto | §3.4, §4.3–§4.4 | dos limpiadores con barreras |
+| AC-A05-46 | Cargas fallidas repetidas que consumen sellos: `sealed_keys + pending_seals + open_reservations` alcanza el límite del scope ⇒ `quota_exceeded` (`seal_capacity`) con diagnóstico; ningún sello retirado; otros scopes no afectados hasta el límite de instalación | §4.4, §12.3 | prueba con límites reducidos |
+| AC-A05-47 | Proceso de descarga muerto con spool en disco: su subdirectorio se elimina al iniciar otro proceso o en `run_cleanup` local; el de un proceso vivo no se toca; ningún archivo de spool expuesto | §3.7 | proceso terminado a mitad de una descarga |
+| AC-A05-48 | `HostTransaction` (PostgreSQL y SQLite): primer `submit_document_analysis` con el fence todavía inexistente crea el fence en la misma conexión y savepoint; sin conexión secundaria esperando al llamador | §9.2 I7, §19 | prueba con conteo de conexiones del pool |
+| AC-A05-49 | `HostTransaction` con divergencia del fence (runtime anterior simulado): el envío reconcilia antes de aceptar, en el mismo savepoint; D-30 intacto; una repetición por clave no reselecciona perfil | §9.2 I2/I7 | pruebas por backend |
+| AC-A05-50 | Host que ya retenía bloqueos antes del savepoint (en orden compatible e incompatible): éxito o `database_unavailable` con savepoint revertido y transacción exterior utilizable; el motor no asume que el savepoint liberó bloqueos del host | §6.2, §9.2 I7 | pruebas por backend (interbloqueo real en PostgreSQL; escritor bloqueado en SQLite) |
+| AC-A05-51 | Rollback exterior después de una reconciliación y una aceptación: no queda trabajo, la divergencia persiste y ningún trabajo previo puede reclamarse ni publicarse hasta la siguiente reconciliación | §9.2 I1/I7 | pruebas por backend |
+| AC-A05-52 | Contadores y orden de bloqueos: reclamación, recuperación de leases, transiciones terminales del dueño y de la limpieza y cancelación bloquean `scope_usage` y `engine_usage` antes del trabajo, actualizan `running_jobs`/`active_jobs` de scope e instalación en la misma transacción y no regresan a niveles anteriores; el recálculo concurrente no pierde cambios | §6.2, §12.3 | pruebas de concurrencia por backend y prueba estática del orden en el código |
 
 ## 6. Riesgos y límites declarados
 
 - La extracción se limita al subconjunto conservador de §11.2 del contrato; muchos PDF y DOCX reales (Type0/CID, object streams, varias secciones) se rechazarán; las ampliaciones son backlog y D-A04-04 sigue en A08.
 - Mientras convivan runtimes anteriores, sus cambios efectivos sobre un scope cancelan trabajos pendientes (elección propuesta E-A05-10, pendiente de revisión).
-- Los sellos del filesystem de referencia son permanentes (B-A05-13).
+- Los sellos del filesystem de referencia son permanentes y su capacidad es finita (E-A05-33, B-A05-13); un escritor suspendido indefinidamente retiene su cargo.
 - La garantía de aislamiento depende del perfil configurado; en macOS no hay sandbox.
 - Los límites son elecciones iniciales sin medición; la capacidad no se acredita por haberlos fijado.
 - El mock no mide calidad de detección; ningún indicador de cobertura acredita protección.
