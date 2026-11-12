@@ -631,6 +631,7 @@ def exp05_docx() -> None:
         docx_case(m, m["selected"], "[SUSTITUTO]", "short" if False else "std")
     m1 = [x for x in man("docx") if x["fixture_id"] == "D01_runs"][0]
     docx_case(m1, m1["selected"], "[X]", "shorter")
+    docx_case(m1, m1["selected"], "", "removed_empty")
     docx_case(
         m1,
         m1["selected"],

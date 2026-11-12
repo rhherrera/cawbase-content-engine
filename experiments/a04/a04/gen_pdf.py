@@ -261,6 +261,13 @@ def p_replacements() -> Spec:
     s.cases = [
         {"name": "short", "selected": ["v1.a"], "expected": "ok", "replacement": "[X]"},
         {
+            "name": "removed_empty",
+            "selected": ["v1.a"],
+            "expected": "ok",
+            "replacement": "",
+            "note": "elimination: the value is removed without a substitute (layout of the rest preserved)",
+        },
+        {
             "name": "equal_width",
             "selected": ["v1.a"],
             "expected": "ok",
