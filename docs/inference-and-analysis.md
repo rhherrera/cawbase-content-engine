@@ -265,7 +265,7 @@ El núcleo valida **antes** de calcular nada. Toda violación ⇒ `inference_out
 | Capacidades | Toda capacidad enviada está presente (`capability_missing`); ninguna no enviada lo está (`capability_not_executed`) |
 | Estado | `status ∈ {completed, inconclusive}` (`invalid_status`); `reason` nulo si `completed` y obligatorio y del conjunto cerrado si `inconclusive` (`reason_invalid`); `completed` exige cobertura completa de la capacidad (todos los ids, todo el texto) (`status_coverage_mismatch`); `reason = partial_coverage` exige cobertura **incompleta** (`reason_coverage_mismatch`) |
 | Cobertura | ids conocidos de **esa** capacidad (`unknown_id`, sin repetir el id en el error) y sin duplicados entre grupos (`duplicate_id`); grupos y regiones no vacíos (`empty_group`); regiones en rango y canónicas (`region_out_of_range`, `regions_not_canonical`); máximo de regiones (`regions_limit_exceeded`) |
-| Puntuaciones | números finitos en [0, 1]; se rechazan booleanos, NaN, ±∞ y cadenas (`invalid_score`); ids conocidos y sin duplicados (`unknown_id`, `duplicate_id`); el conjunto de ids puntuados **coincide exactamente** con el de ids evaluados en la cobertura (`scores_coverage_mismatch`) |
+| Puntuaciones | números reales en [0, 1]; se rechazan booleanos, NaN, ±∞, cadenas y **cualquier entero o flotante fuera de rango, incluidos enteros enormes de cualquier signo** (`invalid_score`; se comparan sin convertir a `float`, de modo que no hay desbordamiento ni se convierten en 500); no se recortan ni normalizan; ids conocidos y sin duplicados (`unknown_id`, `duplicate_id`); el conjunto de ids puntuados **coincide exactamente** con el de ids evaluados en la cobertura (`scores_coverage_mismatch`) |
 | Hallazgos | `type_id` conocido (`unknown_id`); `start`/`end` enteros con `0 ≤ start < end ≤ len(text)` (`invalid_offset`, `offset_out_of_range`); `end − start ≤ max_finding_chars` (`finding_too_long`); `text == texto[start:end]` por puntos de código (`fragment_mismatch`); el hallazgo está contenido en una región de cobertura de **su** tipo (`finding_outside_coverage`, también si el tipo no fue evaluado); sin duplicados exactos `(type_id, start, end)` (`duplicate_finding`); total ≤ `max_analysis_findings` (`findings_limit_exceeded`) |
 
 Aclaraciones:
@@ -529,7 +529,21 @@ Un fixture asocia de forma verificable una entrada a un resultado crudo (o a un 
 
 ### 8.2 `problems` de `inference_output_invalid`
 
-Lista acotada (≤ 20) de objetos `{"code": …, "capability": "classification"|"detection"?, "index": "n"?}` con **solo** códigos del §5 y posiciones numéricas; nunca contenido, fragmentos ni ids provistos por el adaptador.
+Lista acotada (≤ 20) de objetos `{"code": …, "capability": "classification"|"detection"?, "index": "n"?}` con **solo** códigos del catálogo cerrado de §5 (más `adapter_diagnostic_invalid`, ver §8.4) y posiciones numéricas (≤ 6 dígitos); nunca contenido, fragmentos ni ids provistos por el adaptador.
+
+### 8.4 Frontera de excepciones del adaptador (precisión de implementación I-A03-13)
+
+El adaptador **no puede imponer** códigos, estados HTTP, mensajes ni detalles públicos. El protocolo de errores de inferencia es **cerrado** y consta solo de:
+
+| Lo que `infer()` puede lanzar | Lo que el núcleo reconstruye |
+|---|---|
+| `InferenceUnavailableError(reason)` | `inference_unavailable` con mensaje genérico; `reason` solo si pertenece a `loading`, `stopped`, `unreachable`, `transient_failure` (otro valor ⇒ `unreachable`) |
+| `InferenceTimeoutError` y `TimeoutError` | `inference_timeout` con mensaje genérico |
+| `InferenceOutputInvalidError(problems)` | `inference_output_invalid` con mensaje genérico; `problems` solo si es una lista ≤ 20 de objetos con claves `code` (del catálogo cerrado), `capability` (`classification`/`detection`) e `index` (dígitos ASCII, ≤ 6); si algo no cumple, se sustituye **toda** la lista por `[{"code": "adapter_diagnostic_invalid"}]` |
+| `InferenceFixtureNotFoundError` (error previsto del mock) | `inference_fixture_not_found` con mensaje genérico |
+| `asyncio.CancelledError` | se propaga sin cambios |
+
+Cualquier otra excepción —incluidos otros `EngineError` como `ValidationFailedError`, `PermissionDeniedError`, `LimitExceededError`, errores de base de datos o `InferenceNotConfiguredError`— es un **fallo inesperado del adaptador**: `internal_error` (500) con mensaje genérico, sin `field`, `problems` ni `request_id` del adaptador, y se registra únicamente el **nombre de la clase**. El error público se levanta fuera del manejador, de modo que no queda cadena de excepciones (`__cause__`/`__context__`) con texto del adaptador. La jerarquía de errores y el manejo HTTP de A01/A02 no cambian.
 
 ### 8.3 Timeout y cancelación (E-A03-15)
 

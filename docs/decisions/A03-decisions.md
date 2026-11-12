@@ -16,7 +16,8 @@ Contratos que usan estas decisiones: [feature A03](../features/A03-contrato-de-i
 | Rev. | Contenido |
 |---|---|
 | 1 | Primera redacción del contrato de A03: D-A03-01 a D-A03-03 (aprobadas), E-A03-01 a E-A03-18, diferencias con el playbook y backlog. Solo documentación. |
-| 2 | Implementación (`0.3.0`): precisiones P-A03-01 a 06 y decisiones de implementación I-A03-01 a 12 (§3.1–§3.2). Ninguna `D-A03-nn` cambia. |
+| 2 | Implementación (`0.3.0`): precisiones P-A03-01 a 06 y decisiones de implementación I-A03-01 a 14 (§3.1–§3.2). Ninguna `D-A03-nn` cambia. |
+| 3 | Correcciones posteriores al informe (frontera de excepciones del adaptador y puntuaciones enteras enormes): I-A03-13 y I-A03-14. Ninguna `D-A03-nn` cambia. |
 
 ## 1. Fuente, precedencia y herencia
 
@@ -98,6 +99,8 @@ Surgidas al implementar; **no son decisiones de producto** y no cambian D-A03-01
 | I-A03-10 | Archivo de fixtures: `{"fixtures": [{fixture_id, match:{text_sha256, context_sha256, capabilities, definitions_digest}, outcome}]}`; `outcome.kind ∈ {output, unavailable, hang, crash}`; claves o ids duplicados ⇒ `configuration_invalid`; `output` puede ser inválido a propósito | §7.2 del contrato |
 | I-A03-11 | Los límites de entrada se comprueban en este orden: tipo, vacío, longitud en puntos de código, codificabilidad UTF-8, bytes | Rechazar antes de codificar textos enormes |
 | I-A03-12 | El registro `cawbase_content_engine.analysis` emite `analysis_completed`, `analysis_failed` y `analysis_cancelled` con `request_id`, código/estado, `adapter_kind` y `duration_ms`; el formateador JSON del servicio admite esos campos | Observabilidad sin contenido |
+| I-A03-13 | **Frontera de excepciones del adaptador.** Protocolo cerrado (`InferenceUnavailableError`, `InferenceTimeoutError`/`TimeoutError`, `InferenceOutputInvalidError`, `InferenceFixtureNotFoundError`); cada error se reconstruye con mensaje público genérico y atributos validados (`reason` del conjunto cerrado; `problems` contra el catálogo cerrado y sus límites, o `[{"code": "adapter_diagnostic_invalid"}]`); cualquier otra excepción, incluido cualquier otro `EngineError`, es `internal_error` genérico; el error se levanta fuera del manejador. Corrige un defecto reproducido (un `ValidationFailedError` del adaptador se propagaba como 422 con su mensaje). No cambia la jerarquía global ni el manejo HTTP | Un adaptador no debe imponer códigos ni texto públicos ni filtrar contenido |
+| I-A03-14 | **Puntuaciones enteras enormes.** La validación comprueba `isfinite` solo para `float` y compara el rango sin convertir; `10**400` o su negativo ⇒ `invalid_score` ⇒ `inference_output_invalid` (502), no `OverflowError`/500 | Defecto reproducido; el contrato exige rechazar la salida completa |
 
 ## 4. Diferencias respecto del playbook (revisión 6)
 

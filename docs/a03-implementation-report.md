@@ -10,7 +10,7 @@ Relacionado: [especificación](features/A03-contrato-de-inferencia-y-analisis-co
 |---|---|---|
 | 1 | **Implementado** | Sí (`0.3.0`): permiso `analysis:execute`, `analyze_text`, ruta HTTP, adaptador y mock, validador, resultado, errores, composición del servicio |
 | 2 | **Probado en macOS** | Sí: §3.1 |
-| 3 | **Probado en Linux local (Docker)** | Sí, sobre `86bae54`: §3.2 |
+| 3 | **Probado en Linux local (Docker)** | Sí: sobre `86bae54` (§3.2, histórico) y, tras las correcciones posteriores, sobre `20d9211` (§3.6) |
 | 4 | **Probado en GitHub Actions** | **No.** No se hizo push ni se ejecutó el workflow; no se informa ningún resultado de Actions sobre A03 |
 | 5 | **Aceptación del usuario** | **Pendiente.** No la emite este informe |
 
@@ -18,7 +18,9 @@ Una corrida Linux local en Docker **no equivale** a una ejecución de GitHub Act
 
 **Diferencia fundamental:** estas pruebas validan la **ingeniería del contrato** (autorización, selección y fijación de versiones, validador, ranking/resolución, cobertura, errores, límites, cancelación, mock) con un **mock** y adaptadores de prueba. **No** miden ni acreditan calidad de detección o clasificación reales (pendiente de **A09**, que debe fijar umbrales de precisión/recall antes de evaluar). El cierre de A03 no depende de ellos.
 
-**Commits de esta entrega** (sobre `e149146`, merge de A02): `a3993a2` (cierre documental de A02), `61813ad` (especificación de A03), `2e30c65` (precisiones P-A03-01 a 06), `ba21db4` (código, pruebas y ejemplo), `86bae54` (ajuste de una prueba del catálogo de permisos) y el commit de documentación/informe que contiene este archivo. El código y las pruebas no cambian después de `86bae54` (verificado con `git diff 86bae54 -- src tests scripts examples pyproject.toml uv.lock`: vacío; hash de árbol de código `6cca12af7b6133b1e5b5e5ce340dcabc308a22d1`).
+**Corrección posterior al informe inicial (`20d9211`):** se reprodujeron y corrigieron dos defectos (frontera de excepciones del adaptador y puntuaciones enteras enormes), ver §3.6. Las corridas de §3.1–§3.3 corresponden a `86bae54`/`ba21db4` y **no se reatribuyen** al código corregido; los resultados sobre `20d9211` están en §3.6.
+
+**Commits de esta entrega** (sobre `e149146`, merge de A02): `a3993a2` (cierre documental de A02), `61813ad` (especificación de A03), `2e30c65` (precisiones P-A03-01 a 06), `ba21db4` (código, pruebas y ejemplo), `86bae54` (ajuste de una prueba del catálogo de permisos), `e57b8b2` (informe inicial y evidencia), `20d9211` (corrección de los dos defectos y sus regresiones) y el commit de documentación/informe de esa corrección. Entre `86bae54` y `e57b8b2` no hubo cambios de código ni de pruebas (hash de árbol de código `6cca12af7b6133b1e5b5e5ce340dcabc308a22d1`); `20d9211` sí los cambia (`inference/service.py`, `inference/output.py` y tres archivos de pruebas).
 
 ## 1. Qué se implementó
 
@@ -69,9 +71,25 @@ PostgreSQL de las pruebas: contenedor descartable dedicado `cce-test-pg17` (`pos
 
 **No ejecutado sobre A03.** No se hizo push; no se afirma ningún resultado de Actions.
 
+### 3.5 Defectos corregidos tras el informe inicial
+
+1. **Frontera de excepciones del adaptador.** `_invoke()` dejaba pasar cualquier `EngineError` del adaptador: un `ValidationFailedError("SYNTHETIC_CONTENT_MARKER")` llegaba como `validation_failed`/422 con su mensaje serializado por HTTP. Ahora solo el protocolo cerrado (indisponibilidad con `reason` válido, timeout, salida inválida con `problems` validados contra el catálogo cerrado y sus límites, fixture inexistente) se reconstruye con mensajes genéricos; cualquier otra excepción, incluido otro `EngineError`, es `internal_error`/500 genérico, sin cadena de excepciones y registrando solo el nombre de la clase ([contrato §8.4](inference-and-analysis.md#84-frontera-de-excepciones-del-adaptador-precisión-de-implementación-i-a03-13), I-A03-13).
+2. **Puntuaciones enteras enormes.** `math.isfinite(10**400)` lanzaba `OverflowError` ⇒ `internal_error`/500. Ahora `isfinite` solo se aplica a `float` y el rango se compara sin convertir: todo entero o flotante fuera de [0, 1], de cualquier signo, ⇒ `invalid_score` ⇒ `inference_output_invalid`/502 (I-A03-14).
+
+Regresiones nuevas (falla el código anterior: 48 casos en rojo con `src` previo, verde con la corrección): `test_a03_contract.py::TestValidatorRejections::test_out_of_range_numbers_are_rejected_safely` y `test_boundary_scores_still_accepted_unchanged`; `test_a03_analysis.py::TestAdapterErrorBoundary` (errores ajenos ⇒ `internal_error`, errores permitidos reconstruidos, `problems` manipulados sustituidos, diagnósticos válidos conservados, `TimeoutError`, enteros enormes ⇒ 502); `test_a03_http.py::TestHttpErrorBoundary` (500 y no 422, sin marcador en respuestas ni registros, enteros enormes ⇒ 502).
+
+### 3.6 Resultados sobre el código corregido (`20d9211`)
+
+Solo se repiten estos checks (todos sobre `20d9211`; el árbol de código no cambia después):
+
+- **macOS** (contenedor descartable `cce-test-pg17`, bases `cce_t_*`): ruff check/format y mypy limpios (la validación Linux los repite); `uv run pytest -q -rs`: **793 passed, 13 skipped, 8 deselected**; `-m dist`: **8 passed**.
+- **Linux local (Docker)**, `SNAPSHOT=head` ([`evidence/a03-fix1-linux-local-summary.txt`](evidence/a03-fix1-linux-local-summary.txt)): ruff, format y mypy limpios; PostgreSQL 15.19, 16.15, 17.11 y 18.6: **792 passed, 14 skipped** cada una; cotas inferiores: 792 passed, 14 skipped; `dist` 8 passed; auditoría de artefactos 0 hallazgos. Importación (wheel): caliente mediana 237,2 ms (gate D-33 ≤ 300 ms sobre la mediana; máximo 360,5 ms), 28 311 KiB ([`evidence/a03-fix1-measure-import-linux.json`](evidence/a03-fix1-measure-import-linux.json)). La mediana caliente de `86bae54` fue 186,7 ms; la diferencia es ruido de la máquina, no se investigó otra causa.
+- **Piso de SQLite**: 3.38.5 ⇒ **793 passed, 13 skipped**; 3.37.2 rechazado ([`evidence/a03-fix1-sqlite-floor-summary.txt`](evidence/a03-fix1-sqlite-floor-summary.txt)).
+- **GitHub Actions:** no ejecutado.
+
 ## 4. <a id="matriz-ac-a03-trazable"></a>Matriz AC-A03 trazable
 
-Todas las pruebas de la matriz corren sobre SQLite y PostgreSQL reales cuando dependen de la base (parámetro `db`); las puras (`test_a03_contract.py`) no usan base de datos. Estado de todas: implementadas y pasan en los ambientes de §3; el nivel «aceptado» no aplica.
+Todas las pruebas de la matriz corren sobre SQLite y PostgreSQL reales cuando dependen de la base (parámetro `db`); las puras (`test_a03_contract.py`) no usan base de datos. Estado de todas: implementadas y pasan en los ambientes de §3 (las filas AC-A03-20, 40, 45 y 55 incluyen las regresiones de §3.5, ejecutadas solo desde `20d9211`); el nivel «aceptado» no aplica.
 
 | AC | Evidencia (pruebas en `tests/`) |
 |---|---|
@@ -89,7 +107,7 @@ Todas las pruebas de la matriz corren sobre SQLite y PostgreSQL reales cuando de
 | AC-A03-15 | test_a03_analysis.py::TestTransactionsAndConnections::test_host_transaction_rejected_untouched |
 | AC-A03-16 | test_a03_analysis.py::TestTransactionsAndConnections::test_defensive_copy_of_version_and_output; test_a03_contract.py::TestValidatorRejections::test_output_is_copied_before_use; TestMockConfiguration::test_fixtures_copied_on_load_and_per_call |
 | AC-A03-17 | test_a03_analysis.py::TestPermissionsAndIsolation::test_execute_without_profiles_read (resolve_profile sigue exigiendo profiles:read); suites A02 completas (regresión) |
-| AC-A03-20 | test_a03_contract.py::TestValidatorRejections::test_rejected_whole (score booleano, NaN, ∞, cadena, fuera de rango) |
+| AC-A03-20 | test_a03_contract.py::TestValidatorRejections::test_rejected_whole (score booleano, NaN, ∞, cadena, fuera de rango), ::test_out_of_range_numbers_are_rejected_safely (enteros enormes), ::test_boundary_scores_still_accepted_unchanged; test_a03_analysis.py::TestAdapterErrorBoundary::test_huge_integer_score_is_502_not_500; test_a03_http.py::TestHttpErrorBoundary::test_huge_integer_score_is_502 |
 | AC-A03-21 | test_a03_contract.py::TestExactNumerics (todas); TestRankingAndResolution::test_boundaries_of_tolerance |
 | AC-A03-22 | test_a03_contract.py::TestRankingAndResolution::test_ranking_order_ties_and_technical_tiebreak; test_a03_analysis.py::TestJourney::test_ranking_mode_has_resolution_null |
 | AC-A03-23 | test_a03_contract.py::TestRankingAndResolution (boundaries, transitive, priority); test_a03_analysis.py::TestJourney::test_python_journey |
@@ -108,13 +126,13 @@ Todas las pruebas de la matriz corren sobre SQLite y PostgreSQL reales cuando de
 | AC-A03-42 | test_a03_analysis.py::TestInputsAndLimits::test_invalid_text, ::test_whitespace_text_is_valid_and_exact, ::test_context_rules; test_a03_http.py::TestAuthorizationOrder::test_validation_errors |
 | AC-A03-43 | test_a03_analysis.py::TestAdapterFailures::test_unavailable_reasons, ::test_timeout_without_retry_or_orphans, ::test_mock_hang_and_crash, ::test_adapter_own_timeout_error_is_a_timeout; test_a03_http.py::TestErrorMapping::test_adapter_errors |
 | AC-A03-44 | test_a03_analysis.py::TestAdapterFailures::test_caller_cancellation_propagates; test_a03_http.py::TestDisconnect::test_client_disconnect_cancels_the_adapter |
-| AC-A03-45 | test_a03_http.py::TestErrorMapping; test_remaining_acceptance.py (catálogo de códigos); test_a03_analysis.py::TestAdapterFailures::test_unexpected_adapter_exception_is_internal_error |
+| AC-A03-45 | test_a03_analysis.py::TestAdapterErrorBoundary (frontera de excepciones); test_a03_http.py::TestHttpErrorBoundary, ::TestErrorMapping; test_remaining_acceptance.py (catálogo de códigos); test_a03_analysis.py::TestAdapterFailures::test_unexpected_adapter_exception_is_internal_error |
 | AC-A03-50 | test_a03_contract.py::TestMockConfiguration::test_must_be_explicit; test_a03_http.py::TestStandaloneServiceComposition, ::TestErrorMapping::test_not_configured_service; test_a03_analysis.py::TestAdapterFailures::test_not_configured_engine_still_serves_a01_a02 |
 | AC-A03-51 | test_a03_analysis.py::TestJourney::test_python_journey; test_a03_http.py::TestJourney::test_http_equals_python; test_a03_contract.py::TestMockConfiguration::test_file_loading_and_descriptor |
 | AC-A03-52 | test_a03_analysis.py::TestAdapterFailures::test_fixture_missing_and_incompatible, ::test_ranking_changes_reuse_fixture_definitions_digest; test_a03_contract.py::TestMockConfiguration (duplicados, estructura, digest, claves) |
 | AC-A03-53 | test_a03_analysis.py (M1 journey, M2 espacios/sin hallazgos, M5/M6 ranking y sin elegibles, M7 inconcluso, M8 cobertura parcial, M9 estados, M10 inválida, M11 truncated, M12 hang, M13/M14 unavailable, M15 sin fixture); test_a03_contract.py (M3 superposición, M4 empate, M16 categorías/tipos personalizados vía synthetic()) |
 | AC-A03-54 | test_a03_analysis.py::TestTransactionsAndConnections::test_concurrent_requests_do_not_contaminate; test_a03_contract.py::TestMockConfiguration::test_fixtures_copied_on_load_and_per_call |
-| AC-A03-55 | test_a03_analysis.py::TestPersistenceAndObservability::test_no_content_in_logs_or_errors; test_a03_http.py::TestObservabilityAndPersistence; test_a03_contract.py::TestValidatorRejections::test_problems_are_bounded_and_contentless |
+| AC-A03-55 | test_a03_analysis.py::TestPersistenceAndObservability::test_no_content_in_logs_or_errors, ::TestAdapterErrorBoundary; test_a03_http.py::TestHttpErrorBoundary; test_a03_http.py::TestObservabilityAndPersistence; test_a03_contract.py::TestValidatorRejections::test_problems_are_bounded_and_contentless |
 | AC-A03-56 | test_a03_analysis.py::TestPersistenceAndObservability::test_nothing_persisted; test_a03_http.py::TestObservabilityAndPersistence |
 | AC-A03-57 | test_a03_analysis.py::TestPersistenceAndObservability::test_no_schema_change; test_migrations.py / test_a02_migration.py (sin cambios) |
 | AC-A03-58 | test_a03_analysis.py::TestPersistenceAndObservability::test_import_does_not_load_inference, ::TestAdapterFailures::test_inference_status_states, ::test_not_configured_engine_still_serves_a01_a02; test_import_light.py (completo); pytest -m dist |
@@ -133,7 +151,7 @@ Los runtimes anteriores (A01 y A02) fallan al cargar grants con permisos descono
 - Los adaptadores que **bloquean el bucle de eventos o ignoran la cancelación** quedan fuera de la garantía de cancelación/timeout; no se promete detener trabajo ya iniciado en un futuro servidor remoto.
 - La **concurrencia de preparación** (lecturas sucesivas) se prueba con operaciones confirmadas mientras el adaptador está bloqueado (después de preparar), no con intercalados forzados entre las sentencias de la selección.
 - La compatibilidad con runtimes anteriores se prueba con una reproducción del cargador, no con binarios reales.
-- **Calidad de inferencia real: no evaluada** (A09). No se fijaron umbrales de precisión/recall.
+- La corrección de §3.5 no se probó con un servidor remoto real ni con adaptadores reales, solo con adaptadores de prueba. **Calidad de inferencia real: no evaluada** (A09). No se fijaron umbrales de precisión/recall.
 - Backlog no implementado: [B-A03-01 a 12](decisions/A03-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).
 - La aceptación del usuario sigue **pendiente** y no la emite este informe.
 

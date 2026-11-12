@@ -101,7 +101,7 @@ Casos verificables; las pruebas que los cubren y sus resultados reales por ambie
 
 | ID | Criterio | Backend |
 |---|---|---|
-| AC-A03-20 | Puntuaciones finitas en [0, 1]; se rechazan booleanos, NaN, ±∞, cadenas y valores fuera de rango (`inference_output_invalid`) | — |
+| AC-A03-20 | Puntuaciones finitas en [0, 1]; se rechazan booleanos, NaN, ±∞, cadenas, valores fuera de rango y **enteros enormes de cualquier signo sin desbordar** (`inference_output_invalid` 502, nunca 500) | — |
 | AC-A03-21 | Elegibilidad `score ≥ umbral` con bordes (`==` umbral elegible; un paso por debajo no; umbral 0 y 1; puntuaciones 0 y 1; números extremos); comparación racional exacta independiente del contexto decimal del host | — |
 | AC-A03-22 | Ranking descendente, empates con el mismo `rank`, desempate técnico por `category_id`; sin top-k ni exclusiones; no elegibles presentes con `eligible = false`; **sin ganadora implícita** en modo `ranking` (`resolution: null`) | — |
 | AC-A03-23 | Resolución: candidatas = elegibles con `max − score ≤ tolerancia` (borde `==` incluido, p. ej. 0.9/0.7/0.2; un paso por encima excluido), sin empates transitivos; gana la menor prioridad; prioridades no alteran puntuaciones ni ranking; motivos `highest_score` / `priority_tiebreak` | — |
@@ -130,7 +130,7 @@ Casos verificables; las pruebas que los cubren y sus resultados reales por ambie
 | AC-A03-42 | Texto vacío ⇒ 422; solo espacios válido; sustitutos aislados (Python y `\ud800` en JSON) ⇒ 422; el texto no se normaliza ni recorta (el resultado y los offsets lo confirman); contexto vacío ⇒ 422 | PG, SQ |
 | AC-A03-43 | Timeout (`hang`) ⇒ `inference_timeout` (504, retryable); apagado/cargando/inalcanzable/fallo recuperable ⇒ `inference_unavailable` (503, retryable, `reason`); sin reintentos automáticos (contador de llamadas = 1), sin fallback, sin esperar readiness | PG, SQ |
 | AC-A03-44 | Cancelación del llamador: `CancelledError` se propaga, el adaptador recibe la cancelación, no hay resultado ni se convierte en éxito/timeout; HTTP: desconexión del cliente tampoco produce éxito | PG, SQ |
-| AC-A03-45 | Tabla de errores completa (código, excepción, HTTP, retryable, adaptador invocado sí/no) verificada por caso; 422 de entrada distinto de 502 de salida del adaptador; excepción inesperada del adaptador ⇒ `internal_error` | PG, SQ |
+| AC-A03-45 | Tabla de errores completa (código, excepción, HTTP, retryable, adaptador invocado sí/no) verificada por caso; 422 de entrada distinto de 502 de salida del adaptador; excepción inesperada del adaptador ⇒ `internal_error`; **frontera de excepciones**: solo el protocolo cerrado cruza (reconstruido con mensajes genéricos y detalles validados); cualquier otro `EngineError` lanzado por el adaptador (p. ej. `ValidationFailedError`) ⇒ `internal_error` 500 sin filtrar su mensaje, por Python y HTTP | PG, SQ |
 
 ### 7.6 Mock, observabilidad, persistencia y entrega
 
