@@ -1315,8 +1315,12 @@ def main() -> None:
         else os.environ.get("GIT_DIRTY", "")
     )
 
+    import resource
+
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     env = {
         "env": ENV,
+        "peak_rss_mb": round(rss / (1024 * 1024 if sys.platform == "darwin" else 1024), 1),
         "git_rev": os.environ.get("GIT_REV") or git("rev-parse", "HEAD"),
         "code_tree_dirty": bool(code_dirty),
         "code_tree_dirty_files": code_dirty.splitlines()[:10],
