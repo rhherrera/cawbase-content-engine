@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q02_signed",
+  "file": "Q02_signed.pdf",
+  "sha256": "494d3292f8053e4cf69ba47f4ed3f4be1f86be7c1e2c8c0c80c707ba0d07bde0",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "signed"
+    ]
+  },
+  "note": "AcroForm with SigFlags (signature present)"
+}

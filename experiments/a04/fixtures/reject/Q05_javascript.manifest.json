@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q05_javascript",
+  "file": "Q05_javascript.pdf",
+  "sha256": "8dcf938f41ec88b91fd68e32d3701928518ac8390bec2b18c8fbc38cc9dcc59f",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "actions"
+    ]
+  },
+  "note": "OpenAction JavaScript"
+}

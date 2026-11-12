@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R12_corrupt_zip",
+  "file": "R12_corrupt_zip.docx",
+  "sha256": "89f60fc541f84def69ebe420069e691ccab16f6594e50414505d0ce59a3e4340",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "corrupt_or_unreadable"
+    ]
+  },
+  "note": "truncated ZIP (central directory lost)"
+}

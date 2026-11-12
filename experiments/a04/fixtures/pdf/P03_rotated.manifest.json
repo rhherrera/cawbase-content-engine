@@ -1,0 +1,94 @@
+{
+  "fixture_id": "P03_rotated",
+  "kind": "pdf",
+  "file": "P03_rotated.pdf",
+  "sha256": "004ff12d8f4b91816445a2247a6b69d9641f010f36ffd025356b4f07c834d4f9",
+  "note": "page /Rotate 90; page with 90-degree text matrix; page with 180-degree text matrix",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Pagina rotada Ana Ejemplo fin"
+    },
+    {
+      "page": 1,
+      "text": "Texto girado Ana Ejemplo fin"
+    },
+    {
+      "page": 2,
+      "text": "Texto invertido ana.ejemplo@example.test fin"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 14,
+      "end": 25,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 13,
+      "end": 24,
+      "text": "Ana Ejemplo",
+      "page": 1,
+      "unit_index": 1
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 16,
+      "end": 40,
+      "text": "ana.ejemplo@example.test",
+      "page": 2,
+      "unit_index": 2
+    }
+  ],
+  "cases": [
+    {
+      "name": "select_all_rotated",
+      "selected": [
+        "v1.a",
+        "v1.b",
+        "v2.a"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    }
+  ],
+  "reference": {
+    "pages": 3,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ],
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ],
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      90,
+      0,
+      0
+    ]
+  }
+}

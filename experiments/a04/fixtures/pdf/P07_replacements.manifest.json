@@ -1,0 +1,76 @@
+{
+  "fixture_id": "P07_replacements",
+  "kind": "pdf",
+  "file": "P07_replacements.pdf",
+  "sha256": "416a53ac01dabe3265961bb3b861d6eb12a42f38c2e6484dbf51462c93edf022",
+  "note": "same value, replacements shorter / equal / longer than the original and with a glyph not available in the font",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Valor Ana Ejemplo en linea y mas texto despues"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 6,
+      "end": 17,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "short",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    },
+    {
+      "name": "equal_width",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "ok",
+      "replacement": "Aoa Ejemplo",
+      "note": "n and o have the same advance width in Helvetica (556): equal total width"
+    },
+    {
+      "name": "wider_than_original",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "reject:replacement_overflow",
+      "replacement": "WWWWWWWWWWWWWW"
+    },
+    {
+      "name": "glyph_unavailable",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "reject:substitute_glyph_unavailable",
+      "replacement": "Łukasz"
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  }
+}

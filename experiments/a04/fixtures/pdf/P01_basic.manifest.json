@@ -1,0 +1,103 @@
+{
+  "fixture_id": "P01_basic",
+  "kind": "pdf",
+  "file": "P01_basic.pdf",
+  "sha256": "777bfc44ba0723f118cc5544278358c20dd93a80e281e479917ca727f8d28ef5",
+  "note": "value split across Tj operators and a TJ array with kerning; identical unselected occurrence",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test",
+    "v3": "EjemploNoReal-123"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Contactar a Ana Ejemplo hoy.\nCorreo: ana.ejemplo@example.test\nRepetida sin seleccionar: Ana Ejemplo."
+    },
+    {
+      "page": 1,
+      "text": "Clave EjemploNoReal-123 final.\nOtra Ana Ejemplo mencion"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 12,
+      "end": 23,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 37,
+      "end": 61,
+      "text": "ana.ejemplo@example.test",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 88,
+      "end": 99,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v3.a",
+      "value_id": "v3",
+      "start": 6,
+      "end": 23,
+      "text": "EjemploNoReal-123",
+      "page": 1,
+      "unit_index": 1
+    },
+    {
+      "occ": "v1.c",
+      "value_id": "v1",
+      "start": 36,
+      "end": 47,
+      "text": "Ana Ejemplo",
+      "page": 1,
+      "unit_index": 1
+    }
+  ],
+  "cases": [
+    {
+      "name": "select_a",
+      "selected": [
+        "v1.a",
+        "v2.a",
+        "v3.a",
+        "v1.c"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    }
+  ],
+  "reference": {
+    "pages": 2,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ],
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0,
+      0
+    ]
+  }
+}

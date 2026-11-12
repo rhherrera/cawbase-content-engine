@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q08_layers",
+  "file": "Q08_layers.pdf",
+  "sha256": "f674a925a8910663510b0a217c3a5a18a7e9f337ed1347a39863e935ce463840",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "optional_content"
+    ]
+  },
+  "note": "optional content (OCProperties)"
+}

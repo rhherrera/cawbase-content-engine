@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R10_signed",
+  "file": "R10_signed.docx",
+  "sha256": "f26a236a5d2ea279ca0441469b4955b27c232ae47be3fd7a2997e94c40a6956f",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "signed"
+    ]
+  },
+  "note": "digital signature origin + signature part"
+}

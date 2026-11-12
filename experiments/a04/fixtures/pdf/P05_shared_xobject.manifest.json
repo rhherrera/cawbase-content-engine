@@ -1,0 +1,93 @@
+{
+  "fixture_id": "P05_shared_xobject",
+  "kind": "pdf",
+  "file": "P05_shared_xobject.pdf",
+  "sha256": "8f8650f238c27b7857b46d50bf6f433d10cbccf8cf866bd98e3cd50712257250",
+  "note": "Form XObject used on two pages; partial selection of a shared object must fail",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Pagina uno Ana Ejemplo\nPie compartido ana.ejemplo@example.test fin"
+    },
+    {
+      "page": 1,
+      "text": "Pagina dos\nPie compartido ana.ejemplo@example.test fin"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 11,
+      "end": 22,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 38,
+      "end": 62,
+      "text": "ana.ejemplo@example.test",
+      "object": "xo1",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v2.b",
+      "value_id": "v2",
+      "start": 26,
+      "end": 50,
+      "text": "ana.ejemplo@example.test",
+      "object": "xo1",
+      "page": 1,
+      "unit_index": 1
+    }
+  ],
+  "cases": [
+    {
+      "name": "both_uses",
+      "selected": [
+        "v1.a",
+        "v2.a",
+        "v2.b"
+      ],
+      "expected": "ok",
+      "replacement": "[X]"
+    },
+    {
+      "name": "one_use_only",
+      "selected": [
+        "v2.a"
+      ],
+      "expected": "reject:shared_object_partial",
+      "replacement": "[X]"
+    }
+  ],
+  "reference": {
+    "pages": 2,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ],
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0,
+      0
+    ]
+  }
+}

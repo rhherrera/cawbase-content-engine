@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q01_encrypted",
+  "file": "Q01_encrypted.pdf",
+  "sha256": "97f754d1eb1880b9965c08bd34bd87c5ba3a9338a2c6dbc7834494c900c0ae60",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "encrypted"
+    ]
+  },
+  "note": "RC4/AES with empty user password: openable by the library, still rejected"
+}

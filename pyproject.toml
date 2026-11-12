@@ -47,6 +47,8 @@ packages = ["src/cawbase_content_engine"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/cawbase_content_engine", "tests", "docs", "examples", "scripts", "README.md", "CLAUDE.md", "pyproject.toml", "uv.lock"]
+# A04 experiments live in experiments/a04 with their own pyproject.toml/uv.lock; the bare-name patterns above would match them.
+exclude = ["experiments"]
 
 [tool.ruff]
 line-length = 120

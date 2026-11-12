@@ -1,0 +1,113 @@
+{
+  "fixture_id": "D02_tables",
+  "kind": "docx",
+  "file": "D02_tables.docx",
+  "sha256": "8fb92bce54206a0051fb82dd581f5cd17314572c3ae580efc0dc38864d5751f9",
+  "note": "simple table, nested table (depth 2), gridSpan and vMerge",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test",
+    "v3": "EjemploNoReal-123"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Tabla:"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Nombre"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Dato"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Ana Ejemplo"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "x"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Interna ana.ejemplo@example.test"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "tras anidada"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Combinada EjemploNoReal-123"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Fila vM"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "c1"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "c2 Ana Ejemplo"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 0,
+      "end": 11,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 3,
+      "selected": true
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 8,
+      "end": 32,
+      "text": "ana.ejemplo@example.test",
+      "part": "word/document.xml",
+      "unit_index": 5,
+      "selected": true
+    },
+    {
+      "occ": "v3.a",
+      "value_id": "v3",
+      "start": 10,
+      "end": 27,
+      "text": "EjemploNoReal-123",
+      "part": "word/document.xml",
+      "unit_index": 7,
+      "selected": true
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 3,
+      "end": 14,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 10,
+      "selected": false
+    }
+  ],
+  "selected": [
+    "v1.a",
+    "v2.a",
+    "v3.a"
+  ],
+  "global_absence_required": {
+    "v1": false,
+    "v2": true,
+    "v3": true
+  },
+  "expected": {
+    "outcome": "transform"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q11_scanned",
+  "file": "Q11_scanned.pdf",
+  "sha256": "773b18257667f0a12c42240d5a87fbc5748a0c9936b697d0b88038d86c3989c8",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "scanned_document"
+    ]
+  },
+  "note": "page that is only an image"
+}

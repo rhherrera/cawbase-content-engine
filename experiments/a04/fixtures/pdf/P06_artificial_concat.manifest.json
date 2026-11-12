@@ -1,0 +1,51 @@
+{
+  "fixture_id": "P06_artificial_concat",
+  "kind": "pdf",
+  "file": "P06_artificial_concat.pdf",
+  "sha256": "580cacf83b718a08a412981f44e0d03ba58c7734ca16b56dd58c60ee89dded6b",
+  "note": "value broken across two text objects (line wrap): the interval includes a synthesized separator",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Linea que corta Ana\nEjemplo en la siguiente"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "page": 0,
+      "start": 16,
+      "end": 27,
+      "text": "Ana\nEjemplo",
+      "unit_index": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "wrapped_value",
+      "selected": [
+        "v1.a"
+      ],
+      "expected": "reject:localization_ambiguous",
+      "replacement": "[X]"
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  }
+}

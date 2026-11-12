@@ -1,0 +1,124 @@
+{
+  "fixture_id": "D03_headers_notes",
+  "kind": "docx",
+  "file": "D03_headers_notes.docx",
+  "sha256": "30a5d955b480111ecb39a7d9546a331486bb82751c9ea44bbb50aa2be16abdb9",
+  "note": "default/first/even headers+footers, titlePg, evenAndOddHeaders, footnote, endnote",
+  "values": {
+    "v1": "Ana Ejemplo",
+    "v2": "ana.ejemplo@example.test",
+    "v3": "EjemploNoReal-123"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Cuerpo con nota"
+    },
+    {
+      "part": "word/document.xml",
+      "text": "Cuerpo Ana Ejemplo en el cuerpo."
+    },
+    {
+      "part": "word/header1.xml",
+      "text": "Encabezado default Ana Ejemplo"
+    },
+    {
+      "part": "word/header2.xml",
+      "text": "Encabezado primera pagina ana.ejemplo@example.test"
+    },
+    {
+      "part": "word/header3.xml",
+      "text": "Encabezado par"
+    },
+    {
+      "part": "word/footer1.xml",
+      "text": "Pie default EjemploNoReal-123"
+    },
+    {
+      "part": "word/footnotes.xml",
+      "text": "Nota al pie Ana Ejemplo"
+    },
+    {
+      "part": "word/endnotes.xml",
+      "text": "Nota final ana.ejemplo@example.test"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.c",
+      "value_id": "v1",
+      "start": 7,
+      "end": 18,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 1,
+      "selected": true
+    },
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 19,
+      "end": 30,
+      "text": "Ana Ejemplo",
+      "part": "word/header1.xml",
+      "unit_index": 2,
+      "selected": true
+    },
+    {
+      "occ": "v2.a",
+      "value_id": "v2",
+      "start": 26,
+      "end": 50,
+      "text": "ana.ejemplo@example.test",
+      "part": "word/header2.xml",
+      "unit_index": 3,
+      "selected": true
+    },
+    {
+      "occ": "v3.a",
+      "value_id": "v3",
+      "start": 12,
+      "end": 29,
+      "text": "EjemploNoReal-123",
+      "part": "word/footer1.xml",
+      "unit_index": 5,
+      "selected": true
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 12,
+      "end": 23,
+      "text": "Ana Ejemplo",
+      "part": "word/footnotes.xml",
+      "unit_index": 6,
+      "selected": true
+    },
+    {
+      "occ": "v2.b",
+      "value_id": "v2",
+      "start": 11,
+      "end": 35,
+      "text": "ana.ejemplo@example.test",
+      "part": "word/endnotes.xml",
+      "unit_index": 7,
+      "selected": true
+    }
+  ],
+  "selected": [
+    "v1.a",
+    "v1.b",
+    "v1.c",
+    "v2.a",
+    "v2.b",
+    "v3.a"
+  ],
+  "global_absence_required": {
+    "v1": true,
+    "v2": true,
+    "v3": true
+  },
+  "expected": {
+    "outcome": "transform"
+  }
+}

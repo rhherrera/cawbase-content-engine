@@ -1,0 +1,38 @@
+{
+  "fixture_id": "P10_no_values",
+  "kind": "pdf",
+  "file": "P10_no_values.pdf",
+  "sha256": "50605040befbd33d547ff95b69bdd6ee36c9ee73aee36bd685c138bc6c61462b",
+  "note": "document without the selected values",
+  "values": {},
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Texto neutro sin valores."
+    }
+  ],
+  "occurrences": [],
+  "cases": [
+    {
+      "name": "none_present",
+      "selected": [],
+      "expected": "ok",
+      "replacement": "[X]",
+      "note": "selection refers to value absent from the document"
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  }
+}

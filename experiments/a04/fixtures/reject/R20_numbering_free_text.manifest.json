@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R20_numbering_free_text",
+  "file": "R20_numbering_free_text.docx",
+  "sha256": "694d3f2e6a18c881037c562a5da5d24be2c7ca4a718704d7206df8a79f7a473b",
+  "kind": "docx",
+  "expected": {
+    "partial": [
+      "word/numbering.xml"
+    ]
+  },
+  "note": "numbering lvlText with free text: P inspection reclassifies to N (partial coverage, not reject)"
+}

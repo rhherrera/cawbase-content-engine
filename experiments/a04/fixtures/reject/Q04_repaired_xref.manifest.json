@@ -1,0 +1,13 @@
+{
+  "fixture_id": "Q04_repaired_xref",
+  "file": "Q04_repaired_xref.pdf",
+  "sha256": "509cba3574f559cba1e7e660821f0ec022370488c0ccd223d972c82072fb95a7",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "repaired_by_parser",
+      "corrupt_or_unreadable"
+    ]
+  },
+  "note": "wrong startxref: the parser reconstructs the xref table"
+}

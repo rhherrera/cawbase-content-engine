@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R06_chart",
+  "file": "R06_chart.docx",
+  "sha256": "d82857d8c3f9d37dbe2d93905ba9a8b9b682b6c2b469eea1f095cbbd795513bf",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "chart_or_diagram"
+    ]
+  },
+  "note": "chart graphic"
+}

@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R21_image_partial",
+  "file": "R21_image_partial.docx",
+  "sha256": "3f1d28803c6f197cf43c1aba1150d26e6777905f138face0437040e6656104ee",
+  "kind": "docx",
+  "expected": {
+    "partial": [
+      "word/media/image1.png"
+    ]
+  },
+  "note": "valid PNG image (N): processable, document_coverage_complete must be false"
+}

@@ -1,0 +1,74 @@
+{
+  "fixture_id": "P09_all_selected",
+  "kind": "pdf",
+  "file": "P09_all_selected.pdf",
+  "sha256": "6bf698f4474b9fddbacb9df6b1d62fc0a31493d56949ebfad1822f56a66093dd",
+  "note": "every occurrence of v1 selected (global absence); and a control without the values",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "page": 0,
+      "text": "Ana Ejemplo y Ana Ejemplo\nFinal Ana Ejemplo"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 0,
+      "end": 11,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v1.b",
+      "value_id": "v1",
+      "start": 14,
+      "end": 25,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    },
+    {
+      "occ": "v1.c",
+      "value_id": "v1",
+      "start": 32,
+      "end": 43,
+      "text": "Ana Ejemplo",
+      "page": 0,
+      "unit_index": 0
+    }
+  ],
+  "cases": [
+    {
+      "name": "all",
+      "selected": [
+        "v1.a",
+        "v1.b",
+        "v1.c"
+      ],
+      "expected": "ok",
+      "replacement": "[X]",
+      "global_absence": [
+        "v1"
+      ]
+    }
+  ],
+  "reference": {
+    "pages": 1,
+    "mediaboxes": [
+      [
+        0.0,
+        0.0,
+        400.0,
+        300.0
+      ]
+    ],
+    "rotations": [
+      0
+    ]
+  }
+}

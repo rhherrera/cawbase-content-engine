@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R17_unknown_part",
+  "file": "R17_unknown_part.docx",
+  "sha256": "1e0373f42342d5a2fdacac265ab6e3e0917afce981d4961e9f8581667cabcc37",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "unknown_part"
+    ]
+  },
+  "note": "vendor part with no rule"
+}

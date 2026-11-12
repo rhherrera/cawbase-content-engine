@@ -1,0 +1,37 @@
+{
+  "fixture_id": "D10_sdt",
+  "kind": "docx",
+  "file": "D10_sdt.docx",
+  "sha256": "4882456b02291b0e61e6c7a2bd86927e65bd14ec6c4da8808418351368245aaf",
+  "note": "block and inline content controls with plain text",
+  "values": {
+    "v1": "Ana Ejemplo"
+  },
+  "expected_units": [
+    {
+      "part": "word/document.xml",
+      "text": "Control Ana Ejemplo fin"
+    }
+  ],
+  "occurrences": [
+    {
+      "occ": "v1.a",
+      "value_id": "v1",
+      "start": 8,
+      "end": 19,
+      "text": "Ana Ejemplo",
+      "part": "word/document.xml",
+      "unit_index": 0,
+      "selected": true
+    }
+  ],
+  "selected": [
+    "v1.a"
+  ],
+  "global_absence_required": {
+    "v1": true
+  },
+  "expected": {
+    "outcome": "transform"
+  }
+}

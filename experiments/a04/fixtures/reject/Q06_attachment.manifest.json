@@ -1,0 +1,12 @@
+{
+  "fixture_id": "Q06_attachment",
+  "file": "Q06_attachment.pdf",
+  "sha256": "eb68455e87bf38dd9498a6b53f072c8f52fd07e4a7e6ebb4471d8f97ff7f448c",
+  "kind": "pdf",
+  "expected": {
+    "reject": [
+      "attachments"
+    ]
+  },
+  "note": "EmbeddedFiles name tree"
+}

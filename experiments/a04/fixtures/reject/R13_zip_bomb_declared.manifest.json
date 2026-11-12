@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R13_zip_bomb_declared",
+  "file": "R13_zip_bomb_declared.docx",
+  "sha256": "73539063c5ee9818c5ca5b12ee66b9c63d54f608b22ad2a96220ecb4955fce39",
+  "kind": "docx",
+  "expected": {
+    "reject": [
+      "limit_exceeded"
+    ]
+  },
+  "note": "member declares and produces 60 MiB (declared-size check)"
+}

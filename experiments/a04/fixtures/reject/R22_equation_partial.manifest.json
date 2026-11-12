@@ -1,0 +1,12 @@
+{
+  "fixture_id": "R22_equation_partial",
+  "file": "R22_equation_partial.docx",
+  "sha256": "08d2268ffa99d3d127c0474982d6bd3cd309a2a80a8c0124383af510d189c507",
+  "kind": "docx",
+  "expected": {
+    "partial": [
+      "equation"
+    ]
+  },
+  "note": "OMML equation (N)"
+}
