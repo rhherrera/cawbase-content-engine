@@ -1,0 +1,12 @@
+A02 — macOS local run (not Linux, not GitHub Actions)
+platform: macOS 27.0.1 arm64 | python 3.13.16 | sqlite3 3.54.0 | PostgreSQL 17.11 (disposable container cce-test-pg17, 127.0.0.1:55417)
+code state: commit f2bdb92 (tests-only change on top of acce216; the working tree additionally holds documentation edits)
+
+uv run ruff check .                                  -> All checks passed!
+uv run ruff format --check src tests examples scripts -> 70 files already formatted
+uv run mypy                                          -> Success: no issues found in 41 source files
+CCE_REQUIRE_POSTGRES=1 CCE_TEST_POSTGRES_URL=... uv run pytest -q -rs
+                                                     -> 478 passed, 13 skipped, 8 deselected in 143.61s
+   skips (13): 12 are "PostgreSQL only" tests collected for the SQLite parameter or PostgreSQL-only classes;
+               1 is CCE_EXPECT_SQLITE_VERSION not set (the SQLite floor is run by scripts/sqlite_floor_validate.sh)
+uv run pytest -m dist -q                             -> 8 passed (run on acce216 + the distribution-test edit; the later commit only touches test_a02_concurrency.py)

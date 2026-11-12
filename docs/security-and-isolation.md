@@ -1,6 +1,6 @@
 # Seguridad y aislamiento
 
-> **Estado: A01 implementada en la versión 0.1.0, **cerrada y aceptada por el usuario** (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). Los resultados de pruebas conservan en el informe su atribución histórica a los commits donde se obtuvieron. A02 está **en especificación** (no implementada ni aceptada): lo marcado «especificado para A02; no implementado» no existe en el código.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [instalación y operación](installation-and-operations.md).
 
@@ -212,24 +212,24 @@ Alcanza únicamente los datos que A01 introduce.
 - Sin caché de autenticación: cada solicitud lee la base (costo aceptado a cambio de revocación inmediata).
 - En SQLite, la seguridad entre aplicaciones que comparten archivo depende del sistema de archivos.
 
-## 9. A02 — Permisos y datos de perfiles (especificado; no implementado)
+## 9. A02 — Permisos y datos de perfiles (implementado)
 
-> **Especificado para A02; no implementado.** En `0.1.0` el catálogo tiene **8** permisos. A02 especifica **2 adicionales** (10 en total) y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
+> **Implementado en `0.2.0` (A02); no aceptado.** El catálogo pasa de **8** permisos (A01) a **10**: A02 agrega 2 y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
 
 ### 9.1 Catálogo ampliado
 
 | Permiso | Nivel | Estado | Habilita |
 |---|---|---|---|
 | `scope:read`, `scope:write`, `admin:scopes:read`, `admin:scopes:write`, `admin:clients:read`, `admin:clients:write`, `admin:grants:write`, `admin:diagnostics:read` | — | **implementados en A01** | Ver §3.1 (sin cambios) |
-| `profiles:read` | alcance | **especificado para A02; no implementado** | Leer perfiles, sus categorías y tipos sensibles, la configuración de ranking, las versiones publicadas y la designación predeterminada; **resolver** un perfil y versión |
-| `profiles:write` | alcance | **especificado para A02; no implementado** | Crear, editar, desactivar/reactivar y eliminar (lógicamente) perfiles, categorías y tipos; modificar el ranking; **publicar** versiones; designar y quitar el predeterminado |
+| `profiles:read` | alcance | **implementado en 0.2.0 (A02)** | Leer perfiles, sus categorías y tipos sensibles, la configuración de ranking, las versiones publicadas y la designación predeterminada; **resolver** un perfil y versión |
+| `profiles:write` | alcance | **implementado en 0.2.0 (A02)** | Crear, editar, desactivar/reactivar y eliminar (lógicamente) perfiles, categorías y tipos; modificar el ranking; **publicar** versiones; designar y quitar el predeterminado |
 
 Reglas:
 
 - **Sin jerarquías implícitas.** `profiles:write` no incluye `profiles:read`: una clave que escribe y también necesita leer recibe ambos grants. No hay comodines.
 - `scope:read` y `scope:write` **conservan su significado**: no otorgan `profiles:*` automáticamente (ni al revés). `admin:*` (incluido `admin:grants:write` o `admin:scopes:read`) **no concede acceso al contenido de perfiles**: un `AdminContext` no puede invocar las operaciones de perfiles, y las rutas `/v1/admin/*` no exponen perfiles. Quien administra alcances no lee sus definiciones sin un grant de alcance explícito.
 - Se reutilizan `ScopeContext`, `ScopedOperations`, API keys y las [reglas de delegación D-27](#32-reglas-de-delegacion-d-27) sin cambios: un permiso `profiles:*` sobre un alcance es un grant de alcance como cualquier otro (subconjunto de lo que posee el emisor, o `admin:grants:write` para alcances existentes sin acceso directo). **No hay credenciales por perfil.**
-- **Los grants existentes son inmutables y no se reinterpretan.** Las claves emitidas antes de A02 no ganan `profiles:*`. Para ampliar el acceso HTTP se emite una clave nueva (y se revoca la anterior) conforme a las reglas vigentes. Ver el aviso de despliegue mixto en [persistencia §7.5](persistence-and-migrations.md#75-migración-desde-a01-plan-no-escrita).
+- **Los grants existentes son inmutables y no se reinterpretan.** Las claves emitidas antes de A02 no ganan `profiles:*`. Para ampliar el acceso HTTP se emite una clave nueva (y se revoca la anterior) conforme a las reglas vigentes. Ver el aviso de despliegue mixto, que incluye por qué **revocar no recupera la compatibilidad con A01**, en [persistencia §7.5](persistence-and-migrations.md#75-migración-desde-a01-0002_profiles).
 - Los contextos Python se construyen con los nuevos permisos: `engine.trusted_scope_context(scope_id, {ScopePermission.PROFILES_READ, …})`; el límite del contexto Python (§2.1) se mantiene.
 - Bootstrap y recuperación administrativa siguen emitiendo solo los seis `admin:*`: no incluyen permisos de alcance.
 
@@ -259,6 +259,8 @@ Nombres, definiciones, ejemplos, traducciones e instantáneas **pueden contener 
 | Fixtures, ejemplos y catálogo del paquete | Sintéticos: nunca secretos ni datos personales reales |
 
 El motor **no escanea** el contenido de las definiciones en busca de datos reales y no promete evitar que el consumidor los cargue.
+
+**Registros de terceros.** Los registros propios del motor (`cawbase_content_engine.*`) no incluyen contenido (probado con marcadores únicos en `tests/test_a02_profiles.py::TestObservability` y `tests/test_a02_http.py::TestObservabilityOverHttp`). Los *drivers* y SQLAlchemy, en cambio, pueden imprimir parámetros enlazados (incluido el contenido de definiciones) si se activa su nivel `DEBUG` (se observó con `aiosqlite` en `DEBUG`). Esos registradores no deben activarse en `DEBUG` en producción; el servicio independiente solo configura sus propios registradores.
 
 ### 9.4 Retención, eliminación y alcance deshabilitado
 

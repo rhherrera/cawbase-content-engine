@@ -1,6 +1,6 @@
 # Arquitectura
 
-> **Estado: A01 implementada en la versión 0.1.0, **cerrada y aceptada por el usuario** (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). Los resultados de pruebas conservan en el informe su atribución histórica a los commits donde se obtuvieron. A02 está **en especificación** (no implementada ni aceptada): lo marcado «especificado para A02; no implementado» no existe en el código.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). La estructura de paquetes descrita es la real.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). La estructura de paquetes descrita es la real.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 
@@ -53,7 +53,7 @@ src/cawbase_content_engine/
   constants.py           # namespace fijo, niveles de esquema/runtime, clave del advisory lock
   config.py              # EngineConfig, Limits, from_env (explícito), lectura de secretos (*_FILE)
   errors.py              # jerarquía estable de errores
-  permissions.py         # catálogo de 8 permisos
+  permissions.py         # catálogo de 10 permisos (8 de A01 + profiles:read|write de A02)
   contexts.py            # ScopeContext, AdminContext, AuthenticatedPrincipal
   validation.py          # validación compartida por Python y HTTP
   auth.py                # formato de claves, codificación canónica, hash, comparación
@@ -62,9 +62,10 @@ src/cawbase_content_engine/
   transactions.py        # HostTransaction, transacción propia y savepoint del host
   schema.py              # estado y compatibilidad del esquema, check_schema
   bootstrap.py           # create_initial_admin_key, recover_admin_access, SecretFileSink
-  operations/            # scopes, clients, api_keys: lógica de negocio única
+  catalog.py             # catálogo inicial de tipos sensibles (A02); datos, sin E/S, importación perezosa
+  operations/            # scopes, clients, api_keys + profiles, elements, versions, profile_common, profile_facade (A02)
   persistence/           # dialect, tables (Core), types, engines, sqlite_support (privado)
-  migrations/            # upgrade(), runner (un bloqueo, una transacción), ns, versions/0001_initial.py  [extra migrations]
+  migrations/            # upgrade(), runner (un bloqueo, una transacción), ns, versions/0001_initial.py, 0002_profiles.py  [extra migrations]
   http/                  # router (create_router, create_health_router), service (lanzador, fábrica)    [extra http]
 tests/  examples/  scripts/  .github/workflows/ci.yml
 ```
@@ -100,12 +101,12 @@ Clasificación, detección, ranking, inferencia y mock (A03); PDF/DOCX; protecci
 
 Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabla con `scope_id`, repositorio que lo exige, operaciones por contexto, permisos en el catálogo y pruebas de acceso cruzado. Los nuevos extras (`inference`, `documents`) deben pasar las mismas comprobaciones de importación liviana.
 
-## 8. A02 — Perfiles, categorías y tipos sensibles (especificado; no implementado)
+## 8. A02 — Perfiles, categorías y tipos sensibles (implementado)
 
-> **Especificado para A02; no implementado.** La estructura de §3 es la real de `0.1.0`; lo siguiente es el plan. Modelo: [perfiles y catálogo](profiles-and-catalog.md).
+> **Implementado en `0.2.0` (A02); no aceptado.** Estructura real. Modelo: [perfiles y catálogo](profiles-and-catalog.md).
 
 - A02 **no cambia los principios** (§1) ni la dirección de dependencias (§2): nuevos recursos de alcance siguiendo §7 (tabla con `scope_id`, operaciones por contexto, permisos en el catálogo, pruebas de acceso cruzado).
-- Módulos previstos, todos en el **núcleo liviano** (sin FastAPI ni Alembic): `operations/profiles.py`, `operations/profile_elements.py` (categorías y tipos), `operations/profile_versions.py` (publicación, listado, resolución) y `operations/profile_defaults.py`; `catalog.py` (datos del catálogo inicial, sin E/S, importado de forma perezosa); validación compartida en `validation.py`; tablas en `persistence/tables.py`; `http/router.py` agrega las rutas de [API pública §10.4](public-api.md#104-rutas-http-v1-extra-http) sin lógica propia (D-07); `migrations/versions/0002_profiles.py`.
+- Módulos, todos en el **núcleo liviano** (sin FastAPI ni Alembic): `operations/profiles.py` (perfiles, ranking, predeterminado y resolución), `operations/elements.py` (categorías y tipos, una implementación parametrizada por clase), `operations/versions.py` (instantánea, proyección efectiva, publicación, consulta de versiones), `operations/profile_common.py` (bloqueos, mapeo de filas, eventos), `operations/profile_facade.py` (validación, permisos y despacho: mixin de `ScopedOperations`); `catalog.py` (datos del catálogo inicial, sin E/S, importado de forma perezosa); validación compartida en `validation.py`; tablas en `persistence/tables.py`; `http/router.py` agrega las rutas de [API pública §10.4](public-api.md#104-rutas-http-v1-extra-http) sin lógica propia (D-07); `migrations/versions/0002_profiles.py`.
 - No se agregan dependencias ni extras. No se cargan modelos. `import cawbase_content_engine` no importa el catálogo ni las operaciones de perfiles hasta que se usan (sin efectos al importar, D-11).
 - Flujo de **publicación**: host autoriza → `engine.scoped(ctx).publish_profile(…)` → una transacción: bloqueo de la fila del perfil (`SELECT … FOR UPDATE` en PostgreSQL; la transacción de escritura de A01 en SQLite) → comprobación de estado y `draft_revision` → lectura de elementos `enabled` → comparación de la proyección de configuración efectiva con la versión vigente (si es igual, se devuelve la vigente y termina sin escribir) → validación → serialización canónica y `content_hash` de integridad → `INSERT` de la versión → actualización de `current_version_number` → evento → commit. Sin llamadas remotas.
 - Flujo de **resolución**: `resolve_profile` es una lectura; devuelve la versión concreta que A03/A05 fijarán. A02 no ejecuta análisis, no incluye mock y no define el contrato de inferencia (A03).

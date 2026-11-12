@@ -1,8 +1,8 @@
 # Perfiles, categorías, tipos sensibles y versiones (modelo de A02)
 
-> **Estado: especificado para A02; no implementado.** Nada de este documento existe en el código (`0.1.0`, que solo contiene A01). Las decisiones de producto son de [A02-decisions](decisions/A02-decisions.md) (`D-A02-nn`, aprobadas por el usuario); las elecciones técnicas derivadas son `E-A02-nn` (adoptadas por criterio, revisables). Alcance y aceptación: [feature A02](features/A02-perfiles-categorias-y-tipos-sensibles.md).
+> **Estado: implementado en `0.2.0` (A02); no aceptado por el usuario.** Describe el código real; evidencia en el [informe de A02](a02-implementation-report.md). Las decisiones de producto son de [A02-decisions](decisions/A02-decisions.md) (`D-A02-nn`, aprobadas por el usuario); las elecciones técnicas derivadas son `E-A02-nn` (adoptadas por criterio, revisables). Alcance y aceptación: [feature A02](features/A02-perfiles-categorias-y-tipos-sensibles.md).
 
-Este documento fija la **semántica** del modelo (qué es cada cosa, estados, revisiones, versiones, catálogo inicial, ranking/resolución). Los demás contratos viven en: [API pública §10](public-api.md#10-a02--perfiles-categorías-y-tipos-sensibles-especificado-no-implementado) (firmas, rutas, errores), [persistencia §7](persistence-and-migrations.md#7-a02--modelo-persistente-y-migración-especificado-no-implementado) (tablas, índices, migración), [seguridad §9](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-especificado-no-implementado) (permisos, datos sensibles), [operación §11](installation-and-operations.md#11-a02--límites-y-observabilidad-especificado-no-implementado) (límites, observabilidad).
+Este documento fija la **semántica** del modelo (qué es cada cosa, estados, revisiones, versiones, catálogo inicial, ranking/resolución). Los demás contratos viven en: [API pública §10](public-api.md#10-a02--perfiles-categorías-y-tipos-sensibles-implementado) (firmas, rutas, errores), [persistencia §7](persistence-and-migrations.md#7-a02--modelo-persistente-y-migración-implementado) (tablas, índices, migración), [seguridad §9](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-implementado) (permisos, datos sensibles), [operación §11](installation-and-operations.md#11-a02--límites-y-observabilidad-implementado) (límites, observabilidad).
 
 ## 1. Conceptos y pertenencia (D-A02-01)
 
@@ -153,7 +153,7 @@ El modo `resolution` es **válido** si y solo si, entre las categorías `enabled
   "snapshot_schema_version": 1,
   "profile": { "profile_id": "…", "display_name": "…", "description": null, "language": "es" },
   "catalog_provenance": { "catalog_id": "cce-starter-sensitive-types", "catalog_version": 1,
-                          "copied_at": "2026-01-01T00:00:00Z" },   // null si el perfil empezó vacío
+                          "copied_at": "2026-01-01T00:00:00.000000Z" },   // null si el perfil empezó vacío
   "ranking": { "mode": "ranking", "eligibility_threshold": 0.0, "tie_tolerance": 0.0 },
   "capabilities": { "classification": true, "detection": true },
   "categories": [ { "category_id": "…", "name": "…", "definition": "…",
@@ -168,7 +168,7 @@ El modo `resolution` es **válido** si y solo si, entre las categorías `enabled
 - Solo incluye elementos `enabled`, ordenados por id. Conserva sus **ids** (identidad estable entre versiones) y la revisión del elemento al publicar.
 - **Autocontenida:** leer una versión no consulta definiciones editables actuales ni requiere que los elementos existan, estén activos o no hayan sido eliminados.
 - `content_hash` = SHA-256 de la serialización canónica de la **instantánea completa almacenada**, incluida su trazabilidad (`source_revision`, `origin_entry`, `catalog_provenance`): es un hash de **integridad** de lo guardado (JSON UTF-8 con claves ordenadas, sin espacios, sin escapes innecesarios; los umbrales de ranking se normalizan siempre a número de coma flotante). **No** equivale a igualdad de configuración: dos instantáneas con la misma configuración efectiva pueden tener hashes distintos (§7.3.1). Cabecera de versión: `version_id`, `version_number`, `source_draft_revision`, `content_hash` (hex), `snapshot_bytes`, `published_at`, `published_by` (etiqueta opaca del contexto).
-- Contiene definiciones del consumidor: es contenido potencialmente sensible (nunca a logs ni eventos; ver [seguridad](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-especificado-no-implementado)).
+- Contiene definiciones del consumidor: es contenido potencialmente sensible (nunca a logs ni eventos; ver [seguridad](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-implementado)).
 
 ### 7.2 Qué configuración puede publicarse (E-A02-04)
 
@@ -257,7 +257,7 @@ Datos del catálogo `cce-starter-sensitive-types` v1 (todos los ejemplos son sin
 | `password` — Contraseñas / Passwords | Contraseñas, PIN, frases de paso y respuestas secretas **usadas para autenticarse**, las haya elegido una persona o generado una máquina (una contraseña generada por un gestor sigue siendo `password`). | La distinción con `api_key_secret` se basa en **función y contexto observable** (una credencial de inicio de sesión frente a una clave o token técnico de acceso a un servicio o API), no en quién generó el secreto; no hace falta deducir su procedencia. Un mismo fragmento puede encajar en ambos. | P: «Mi contraseña es EjemploNoReal-123.» · N: «La contraseña debe tener al menos ocho caracteres.» / P: «My password is NotARealPassword-123.» · N: «The password must be at least eight characters.» |
 | `api_key_secret` — API keys y tokens / API keys and tokens | Claves de API, tokens de acceso o refresco y otros secretos técnicos de servicio o aplicación (p. ej. claves privadas, cadenas de conexión con credenciales). | Las contraseñas, PIN, frases de paso y respuestas secretas de autenticación son `password`, sin importar su origen. Una cadena de conexión que incluya una contraseña puede encajar en ambos tipos. | P: «Authorization: Bearer EJEMPLO_TOKEN_NO_REAL_0000» · N: «Use un token en el encabezado Authorization.» / P: «api_key = EXAMPLE_NOT_A_REAL_KEY_0000» · N: «Send the token in the Authorization header.» |
 
-Las definiciones completas (es/en) de cada entrada se redactan en el paquete al implementar, respetando los límites de §5, estas fronteras y la política de ejemplos sintéticos. `starter_catalog()` devuelve el catálogo sin acceso a base de datos.
+Las definiciones completas (es/en) de cada entrada están en `src/cawbase_content_engine/catalog.py` y cumplen los límites de §5, estas fronteras y la política de ejemplos sintéticos (comprobado por `tests/test_a02_profiles.py::TestStarterCatalog`). `starter_catalog()` devuelve el catálogo sin acceso a base de datos.
 
 ## 11. Fuera de este modelo
 

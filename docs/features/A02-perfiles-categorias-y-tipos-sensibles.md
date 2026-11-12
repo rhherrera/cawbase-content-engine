@@ -1,6 +1,6 @@
 # A02 — Perfiles, categorías y tipos sensibles
 
-> **Estado: en especificación. No implementada, no probada, no aceptada.** Este documento define alcance, decisiones y aceptación futura; los contratos detallados viven en los documentos permanentes enlazados y están marcados «especificado para A02; no implementado». El paquete sigue en `0.1.0` (solo A01). Ningún criterio de la matriz se ha ejecutado.
+> **Estado: implementada en `0.2.0` (rama `feature/a02-profiles-categories-sensitive-types`, commits locales, sin push); probada localmente; GitHub Actions no ejecutado sobre A02; NO aceptada por el usuario; no cerrada.** Este documento define alcance, decisiones y aceptación; los contratos detallados viven en los documentos permanentes enlazados. La trazabilidad de cada criterio a pruebas y los resultados reales por ambiente están en el [informe de implementación](../a02-implementation-report.md).
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores del usuario registradas en [A01-decisions](../decisions/A01-decisions.md) y [A02-decisions](../decisions/A02-decisions.md) (estas últimas **prevalecen** sobre el playbook donde difieren; ver su [tabla de diferencias](../decisions/A02-decisions.md#4-cambios-respecto-del-playbook-revisión-6)).
 - Repositorio: `cawbase-content-engine` · rama: `feature/a02-profiles-categories-sensitive-types`.
@@ -42,11 +42,11 @@ Las decisiones aprobadas por el usuario (D-A02-01 a D-A02-06) y su detalle está
 | Tema | Documento permanente |
 |---|---|
 | Conceptos, pertenencia, identificadores, estados, revisiones, definiciones/ejemplos/idioma, ranking y resolución, versiones e instantánea, publicabilidad (config vacía), resolución, predeterminado, **catálogo inicial** | [Perfiles y catálogo](../profiles-and-catalog.md) |
-| Firmas Python, rutas HTTP, PATCH/null/filtros, errores, concurrencia, publicación e idempotencia, eventos | [API pública §10](../public-api.md#10-a02--perfiles-categorías-y-tipos-sensibles-especificado-no-implementado) |
-| Tablas, claves, índices, restricciones, reglas de acceso, migración `0002`, compatibilidad, despliegue mixto | [Persistencia y migraciones §7](../persistence-and-migrations.md#7-a02--modelo-persistente-y-migración-especificado-no-implementado) |
-| Permisos (10 = 8 implementados + 2 especificados), matriz, datos sensibles, retención/eliminación, alcance deshabilitado | [Seguridad y aislamiento §9](../security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-especificado-no-implementado) |
-| Límites iniciales, observabilidad, importación liviana | [Instalación y operación §11](../installation-and-operations.md#11-a02--límites-y-observabilidad-especificado-no-implementado) |
-| Módulos y flujos previstos | [Arquitectura §8](../architecture.md#8-a02--perfiles-categorías-y-tipos-sensibles-especificado-no-implementado) |
+| Firmas Python, rutas HTTP, PATCH/null/filtros, errores, concurrencia, publicación e idempotencia, eventos | [API pública §10](../public-api.md#10-a02--perfiles-categorías-y-tipos-sensibles-implementado) |
+| Tablas, claves, índices, restricciones, reglas de acceso, migración `0002`, compatibilidad, despliegue mixto | [Persistencia y migraciones §7](../persistence-and-migrations.md#7-a02--modelo-persistente-y-migración-implementado) |
+| Permisos (10 = 8 de A01 + 2 de A02), matriz, datos sensibles, retención/eliminación, alcance deshabilitado | [Seguridad y aislamiento §9](../security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-implementado) |
+| Límites iniciales, observabilidad, importación liviana | [Instalación y operación §11](../installation-and-operations.md#11-a02--límites-y-observabilidad-implementado) |
+| Módulos y flujos previstos | [Arquitectura §8](../architecture.md#8-a02--perfiles-categorías-y-tipos-sensibles-implementado) |
 | Decisiones aprobadas, elecciones técnicas derivadas, diferencias con el playbook y backlog | [A02-decisions](../decisions/A02-decisions.md) |
 
 Resumen de elecciones técnicas derivadas (E-A02, no son decisiones de producto): ids provistos por quien llama; revisiones separadas (`revision`, `draft_revision`, `ranking_revision`, revisión del elemento y de la designación); estados `status`/`state` separados de las revisiones; publicación con `expected_draft_revision` estricta + comparación de la proyección de configuración efectiva (`content_hash` es solo integridad); bloqueos explícitos de las filas de alcance y perfil (`SELECT … FOR UPDATE`; SQLite con la transacción de escritura de A01); `profile_invalid` con `problems` sin contenido; catálogo de 6 tipos; límites iniciales; migración `0002` solo expandir con `min_runtime_level = 1`.
@@ -56,7 +56,7 @@ Resumen de elecciones técnicas derivadas (E-A02, no son decisiones de producto)
 - No se reabre A01 ni se modifica su código. Se reutilizan sin cambios: `ScopeContext`, `ScopedOperations`, API keys y delegación (D-27), `HostTransaction`, migraciones de una transacción y un bloqueo, envoltorio de errores, paginación, límites HTTP, control optimista estricto (D-30), política de alcance deshabilitado y reglas 404/403.
 - El catálogo de permisos pasa de 8 a 10; los grants existentes no cambian ni se reinterpretan.
 - El esquema pasa del nivel 1 al 2 (expandir; `min_runtime_level` sigue en 1). Crear un alcance no crea perfiles. La compatibilidad con A01 es **condicionada**: un runtime A01 opera sobre las tablas ampliadas solo con los datos y permisos que conoce; cargar grants nuevos puede fallar (al autenticar y en operaciones administrativas), y volver a A01 tras emitir esas claves no es un rollback transparente.
-- **Aviso de despliegue mixto:** no emitir claves con `profiles:*` hasta que todos los runtimes estén en la versión de A02 ([persistencia §7.5](../persistence-and-migrations.md#75-migración-desde-a01-plan-no-escrita)).
+- **Aviso de despliegue mixto:** no emitir claves con `profiles:*` hasta que todos los runtimes estén en la versión de A02 ([persistencia §7.5](../persistence-and-migrations.md#75-migración-desde-a01-0002_profiles)).
 
 ## 5. Riesgos y límites declarados
 
@@ -66,14 +66,14 @@ Resumen de elecciones técnicas derivadas (E-A02, no son decisiones de producto)
 - El crecimiento de versiones está acotado por límites (500 por perfil), no por retención.
 - El catálogo inicial es una plantilla acotada de 6 tipos; no es una taxonomía exhaustiva ni promete detección.
 
-## 6. Qué se entrega en la fase de especificación
+## 6. Qué se entregó
 
-Documentos nuevos y actualizados únicamente. No hay código, migraciones, pruebas, dependencias ni mock; no se cambió la versión del paquete.
+Código, migración `0002`, pruebas, ejemplo y documentación, sin dependencias nuevas, sin mock ni inferencia. Versión del paquete: `0.2.0`. No se publicó nada ni se hizo push.
 
 <a id="matriz-aceptacion-a02"></a>
-## 7. Matriz de aceptación futura
+## 7. Matriz de aceptación
 
-Verificable, **no ejecutada**. Estado de todos los criterios: **pendiente (A02 no implementada)**. «PG» = PostgreSQL real, «SQ» = SQLite real. Sin pruebas de calidad de inferencia ni del algoritmo de A03. Las pruebas de PostgreSQL usan solo bases descartables.
+Cada criterio se verifica con las pruebas indicadas en el [informe](../a02-implementation-report.md#matriz-ac-a02-trazable). Estado: implementada y probada localmente; **no aceptada**. «PG» = PostgreSQL real, «SQ» = SQLite real. Sin pruebas de calidad de inferencia ni del algoritmo de A03. Las pruebas de PostgreSQL usan solo bases descartables.
 
 ### 7.1 Recorrido, aislamiento y permisos
 
@@ -157,7 +157,7 @@ No se prueba aquí la calidad de inferencia ni el algoritmo de ranking/resoluci�
 
 ## 8. Evidencia requerida para la aceptación
 
-Al implementar: informe de A02 con niveles distinguidos (implementado / probado en macOS / probado en Linux local / probado en GitHub Actions / aceptado), resultados reales por criterio y por commit, y lo no ejecutado dicho explícitamente. Una corrida omitida no es una aprobación; una corrida local no es una ejecución de Actions; el acta es del usuario.
+El [informe de A02](../a02-implementation-report.md) distingue los niveles (implementado / probado en macOS / probado en Linux local / probado en GitHub Actions / aceptado), resultados reales por criterio y por commit, y lo no ejecutado dicho explícitamente. Una corrida omitida no es una aprobación; una corrida local no es una ejecución de Actions; el acta es del usuario.
 
 ## 9. Backlog
 
