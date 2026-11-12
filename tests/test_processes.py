@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import httpx
 import pytest
@@ -335,3 +336,137 @@ class TestStandaloneService:
                 await c.execute(sa.text("DROP OWNED BY cce_svc_rt"))
                 await c.execute(sa.text("DROP ROLE IF EXISTS cce_svc_rt"))
             await admin.dispose()
+
+
+def ps_snapshot() -> str:
+    return subprocess.run(
+        ["ps", "-A", "-ww", "-o", "pid=,ppid=,command="], capture_output=True, text=True, check=True
+    ).stdout
+
+
+def worker_pids(parent_pid: int) -> list[int]:
+    """Supervised uvicorn workers (multiprocessing "spawn" children) of ``parent_pid``."""
+    out = ps_snapshot()
+    pids = []
+    for line in out.splitlines():
+        parts = line.split(None, 2)
+        if (
+            len(parts) == 3
+            and parts[1] == str(parent_pid)
+            and "multiprocessing.spawn" in parts[2]
+            and "spawn_main" in parts[2]
+        ):
+            pids.append(int(parts[0]))
+    return sorted(pids)
+
+
+def count(text: str, needle: str) -> int:
+    return text.count(needle)
+
+
+class WrapperService(Service):
+    """The real ``serve()`` behind tests/service_wrapper.py (schema broken after preparation)."""
+
+    def __init__(self, env: dict[str, str], port: int, tmp_path, *args: str) -> None:
+        self.port = port
+        self.log = tmp_path / f"wrapper-{port}.log"
+        self._fh = open(self.log, "w")  # noqa: SIM115
+        self.proc = subprocess.Popen(
+            [sys.executable, str(Path(__file__).parent / "service_wrapper.py")],
+            env={**env, PREFIX + "PORT": str(port)},
+            stdout=self._fh,
+            stderr=subprocess.STDOUT,
+            cwd="/",
+        )
+
+
+class TestWorkerFailures:
+    """AC-101: launcher failure before listening vs. worker failure afterwards (uvicorn >= 0.50 semantics)."""
+
+    @pytest.mark.parametrize("workers", ["1", "2"])
+    async def test_worker_failing_to_initialize_ends_the_service_nonzero_without_migrating(self, db, tmp_path, workers):
+        backend, url = db
+        svc = WrapperService(env_for(url, WORKERS=workers), free_port(), tmp_path)
+        try:
+            rc = await svc.wait_exit(60)
+        finally:
+            svc.stop()
+        logs = svc.log.read_text()
+        # the launcher's preparation succeeded (it migrated exactly once)...
+        assert count(logs, '"migration_started"') == 1 and count(logs, '"migration_finished"') == 1
+        assert "startup_failed" not in logs.replace("worker_startup_failed", "").replace(
+            "service_stopped_after_worker_startup_failure", ""
+        )
+        # ...then the worker's own compatibility check failed: reported, sanitized, non-zero, nothing serving
+        assert '"worker_startup_failed"' in logs and '"error_code": "schema_incompatible"' in logs
+        assert rc == 4, (rc, logs[-1500:])
+        assert not port_open(svc.port)
+        eng = create_async_engine(url)
+        tbl = (
+            "cawbase_content_engine.engine_state" if backend == "postgresql" else "cawbase_content_engine_engine_state"
+        )
+        async with eng.connect() as c:  # workers did not "repair" or migrate anything
+            assert (await c.execute(sa.text(f"SELECT min_runtime_level FROM {tbl}"))).scalar_one() == 99
+            assert (await c.execute(sa.text(f"SELECT schema_level FROM {tbl}"))).scalar_one() == 1
+        await eng.dispose()
+        assert "cce1." not in logs
+        secret_bits = ["cce_test_pw"] if backend == "postgresql" else [url.split("///", 1)[1]]
+        assert not [b for b in secret_bits if b in logs], "worker startup traceback leaked credentials or paths"
+
+    async def test_worker_killed_after_start_is_restarted_by_the_supervisor(self, db, service_factory):
+        _, url = db
+        svc = service_factory(env_for(url), "--workers", "2")
+        await svc.wait_ready()
+        before = worker_pids(svc.proc.pid)
+        assert len(before) == 2, (before, svc.proc.pid, ps_snapshot())
+        victim = before[0]
+        os.kill(victim, 9)  # a worker dies after it started serving
+        deadline = time.monotonic() + 40
+        after = before
+        while time.monotonic() < deadline:
+            after = worker_pids(svc.proc.pid)
+            if len(after) == 2 and victim not in after:
+                break
+            # the surviving worker keeps answering while the replacement boots
+            assert httpx.get(f"http://127.0.0.1:{svc.port}/livez", timeout=2).status_code == 200
+            await asyncio.sleep(0.2)
+        assert len(after) == 2 and victim not in after, (before, after)
+        await svc.wait_ready()  # readiness: the replacement is compatible and serving
+        logs = svc.logs()
+        assert "died" in logs  # the supervisor's own message
+        assert svc.proc.poll() is None, "a single worker dying later must not end the service"
+        # the replacement worker did not migrate (still the single migration done by the launcher)
+        assert count(logs, '"migration_started"') == 1 and count(logs, '"migration_finished"') == 1
+        assert [pid for pid in after if pid in before] == [before[1]]
+
+    async def test_replacement_worker_that_cannot_initialize_stops_the_service_nonzero(self, db, service_factory):
+        backend, url = db
+        svc = service_factory(env_for(url), "--workers", "2")
+        await svc.wait_ready()
+        eng = create_async_engine(url)
+        tbl = (
+            "cawbase_content_engine.engine_state" if backend == "postgresql" else "cawbase_content_engine_engine_state"
+        )
+        async with eng.begin() as c:  # another deployment migrates beyond what this runtime supports
+            await c.execute(sa.text(f"UPDATE {tbl} SET min_runtime_level = 99"))
+        await eng.dispose()
+        os.kill(worker_pids(svc.proc.pid)[0], 9)  # force a replacement, which must fail its compatibility check
+        rc = await svc.wait_exit(60)
+        assert rc == 4 and not port_open(svc.port)
+        logs = svc.logs()
+        assert '"worker_startup_failed"' in logs and count(logs, '"migration_started"') == 1
+
+    async def test_launcher_failure_before_listening_is_a_different_event(self, db, service_factory):
+        backend, url = db
+        assert cli(env_for(url), "migrate").returncode == 0
+        tbl = (
+            "cawbase_content_engine.engine_state" if backend == "postgresql" else "cawbase_content_engine_engine_state"
+        )
+        eng = create_async_engine(url)
+        async with eng.begin() as c:
+            await c.execute(sa.text(f"UPDATE {tbl} SET min_runtime_level = 99"))
+        await eng.dispose()
+        svc = service_factory(env_for(url, MIGRATE_ON_START="false"), "--workers", "2")
+        assert await svc.wait_exit() == 4 and not port_open(svc.port)
+        logs = svc.logs()
+        assert '"startup_failed"' in logs and "worker_startup_failed" not in logs  # never reached the workers

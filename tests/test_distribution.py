@@ -197,3 +197,45 @@ def test_installed_service_starts_and_stops(artifacts, tmp_path):  # AC-02
     finally:
         proc.terminate()
         proc.wait(15)
+
+
+def test_python_example_from_installed_wheel_runs_on_sqlite_and_postgres(artifacts, tmp_path, pg_url):  # AC-07
+    """The documented host example, from the INSTALLED wheel, outside the source tree, without HTTP."""
+    cwd = tmp_path / "elsewhere"
+    cwd.mkdir()
+    env = make_env(
+        tmp_path, "example", f"cawbase-content-engine[postgres,sqlite,migrations] @ {artifacts['wheel'].as_uri()}"
+    )
+    assert not ({"fastapi", "uvicorn", "starlette"} & installed(env, cwd))  # no HTTP stack at all
+    example = cwd / "python_host.py"
+    shutil.copy(ROOT / "examples" / "python_host.py", example)
+    for target in (str(cwd / "example.db"), pg_url):
+        out = py(env, str(example), target, cwd=cwd).stdout
+        assert "migrated: ('0001',)" in out and "isolation: project-a cannot read project-b" in out
+        assert "project-c" not in out.split("after host rollback:")[1] and "cce1." not in out
+    where = py(env, "-c", "import cawbase_content_engine as c; print(c.__file__)", cwd=cwd).stdout
+    assert "site-packages" in where and str(ROOT) not in where
+    # PostgreSQL really received the engine namespace, not just the SQLite file
+    import asyncio
+
+    import sqlalchemy as sa
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    async def tables() -> list[str]:
+        eng = create_async_engine(pg_url)
+        async with eng.connect() as c:
+            rows = (
+                (
+                    await c.execute(
+                        sa.text(
+                            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'cawbase_content_engine'"
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        await eng.dispose()
+        return sorted(rows)
+
+    assert "scopes" in asyncio.run(tables())

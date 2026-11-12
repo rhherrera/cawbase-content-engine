@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sqlite3
+import subprocess
+import sys
 
 import pytest
 import sqlalchemy as sa
@@ -217,15 +220,61 @@ class TestLockAndPermissions:
                 await c.execute(sa.text("DROP ROLE IF EXISTS cce_runtime_only"))
             await admin.dispose()
 
-    async def test_sqlite_readonly_database_gets_a_permission_error(self, tmp_path):  # AC-26
+    async def test_sqlite_readonly_database_gets_exactly_the_permission_error(self, tmp_path):  # AC-26
+        """A database that is *really* read-only (``mode=ro``: also works when the tests run as root)."""
+        import hashlib
+
         path = tmp_path / "ro.db"
-        sqlite3.connect(path).close()
+        raw = sqlite3.connect(path)
+        raw.execute("CREATE TABLE app_things (id INTEGER PRIMARY KEY, v TEXT)")
+        raw.execute("INSERT INTO app_things VALUES (1, 'keep')")
+        raw.commit()
+        raw.close()
+        ro_uri = f"file:{path}?mode=ro"
+        ro_url = f"sqlite+aiosqlite:///{ro_uri}&uri=true"
+        probe = sqlite3.connect(ro_uri, uri=True)  # the fixture itself must be read-only
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            probe.execute("CREATE TABLE should_fail (x)")
+        probe.close()
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+
+        with pytest.raises(MigrationPermissionError) as err:
+            await upgrade(EngineConfig(database_url=ro_url))
+        exc = err.value
+        assert type(exc) is MigrationPermissionError and exc.code == "migration_permission_denied"
+        assert exc.message == "The migration credentials lack the required DDL permissions."
+        assert exc.retryable is False
+        public = f"{exc} {exc!r} {exc.message} {exc.code}"
+        assert str(tmp_path) not in public and "ro.db" not in public and "sqlite3" not in public
+
+        # no partial change: same bytes, foreign data intact, no engine object created
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == digest
+        check = sqlite3.connect(path)
+        assert check.execute("SELECT v FROM app_things").fetchall() == [("keep",)]
+        assert [r[0] for r in check.execute("SELECT name FROM sqlite_master")] == ["app_things"]
+        check.close()
+
+        # the same read-only database through the CLI: exit code 3 (migration), generic message on stderr
+        r = subprocess.run(
+            [sys.executable, "-m", "cawbase_content_engine", "migrate"],
+            capture_output=True,
+            text=True,
+            cwd="/",
+            env={**os.environ, "CAWBASE_CONTENT_ENGINE_DATABASE_URL": ro_url},
+        )
+        assert r.returncode == 3 and "migration_permission_denied" in r.stderr
+        assert str(tmp_path) not in r.stdout + r.stderr and "Traceback" not in r.stderr
+
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses file permissions: the mode=ro test above covers this")
+    async def test_sqlite_file_without_write_permission_gets_the_permission_error(self, tmp_path):  # AC-26
+        path = tmp_path / "noperm.db"
+        raw = sqlite3.connect(path)
+        raw.execute("CREATE TABLE app_things (id INTEGER)")
+        raw.commit()
+        raw.close()
         path.chmod(0o444)
-        url = f"sqlite+aiosqlite:///{path}"
-        with pytest.raises((MigrationPermissionError, Exception)) as e:
-            await upgrade(EngineConfig(database_url=url))
-        assert type(e.value).__name__ in ("MigrationPermissionError", "MigrationError", "DatabaseUnavailableError")
-        assert "readonly" not in str(e.value).lower() or isinstance(e.value, MigrationPermissionError)
+        with pytest.raises(MigrationPermissionError):
+            await upgrade(EngineConfig(database_url=f"sqlite+aiosqlite:///{path}"))
 
     async def test_injected_sqlite_engine_must_be_prepared_and_is_not_modified(self, tmp_path):  # D-23, AC-85
         url = f"sqlite+aiosqlite:///{tmp_path / 'h.db'}"

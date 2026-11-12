@@ -1,7 +1,8 @@
 """Embedded host example: no CAWbase, no HTTP, no model.
 
     uv run python examples/python_host.py            # temporary SQLite file
-    uv run python examples/python_host.py PATH.db    # or a file of your choice
+    uv run python examples/python_host.py PATH.db    # or a SQLite file of your choice
+    uv run python examples/python_host.py postgresql+asyncpg://user:pass@host/db   # an EMPTY, disposable PostgreSQL database
 
 Shows: explicit migration, explicit lifecycle, scopes, isolation, own and host-provided transactions.
 """
@@ -30,8 +31,9 @@ from cawbase_content_engine import (
 from cawbase_content_engine.migrations import upgrade
 
 
-async def main(db_path: Path) -> None:
-    url = f"sqlite+aiosqlite:///{db_path}"
+async def main(target: str) -> None:
+    url = target if "://" in target else f"sqlite+aiosqlite:///{target}"
+    is_sqlite = url.startswith("sqlite")
 
     # 1) Migrations are an explicit deployment step; importing/starting the engine never runs them.
     print("migrated:", (await upgrade(EngineConfig(database_url=url))).applied)
@@ -56,7 +58,8 @@ async def main(db_path: Path) -> None:
 
     # 4) Injected engine + host transaction: the host owns the engine and decides commit/rollback.
     host_engine = create_async_engine(url)
-    install_transaction_control(host_engine)  # explicit, host-invoked (SQLite needs a real BEGIN)
+    if is_sqlite:
+        install_transaction_control(host_engine)  # explicit, host-invoked (SQLite needs a real BEGIN)
     async with ContentEngine(EngineConfig(async_engine=host_engine)) as engine:
         ops = engine.admin(
             engine.trusted_admin_context([AdminPermission.ADMIN_SCOPES_WRITE, AdminPermission.ADMIN_SCOPES_READ])
@@ -77,5 +80,5 @@ async def main(db_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(tempfile.mkdtemp()) / "example.db"
+    target = sys.argv[1] if len(sys.argv) > 1 else str(Path(tempfile.mkdtemp()) / "example.db")
     asyncio.run(main(target))

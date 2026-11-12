@@ -199,3 +199,14 @@ async def test_sqlite_below_the_documented_floor_is_rejected(tmp_path, monkeypat
     eng = ContentEngine(EngineConfig(database_url=f"sqlite+aiosqlite:///{tmp_path / 'x.db'}"))
     with pytest.raises(InvalidConfigurationError, match="SQLite 3.38"):
         await eng.start()
+
+
+def test_sqlite_library_under_test_is_the_expected_one():
+    """``CCE_EXPECT_SQLITE_VERSION`` pins the sqlite3 library of THIS process (floor/negative runs)."""
+    import os
+    import sqlite3
+
+    expected = os.environ.get("CCE_EXPECT_SQLITE_VERSION")
+    if expected is None:
+        pytest.skip("CCE_EXPECT_SQLITE_VERSION not set (no specific SQLite version was requested)")
+    assert sqlite3.sqlite_version == expected

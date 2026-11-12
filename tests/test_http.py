@@ -322,7 +322,9 @@ class TestMountingAndService:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
             r = await c.get("/readyz")
             assert r.status_code == 503 and r.json()["state"] == "stopping"
-            assert (await c.get("/v1/auth/self")).status_code == 503
+            gated = await c.get("/v1/auth/self")
+            assert gated.status_code == 503 and gated.headers["x-request-id"]
+            assert gated.json()["error"]["request_id"] == gated.headers["x-request-id"]
 
     async def test_database_going_away_reports_degraded(self, migrated):  # AC-62
         backend, url = migrated
