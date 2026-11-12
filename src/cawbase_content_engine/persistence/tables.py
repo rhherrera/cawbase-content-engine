@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import lru_cache
 
 import sqlalchemy as sa
@@ -11,6 +12,12 @@ from .types import UtcDateTime, big_pk, json_type
 
 
 class Tables:
+    profiles: sa.Table
+    categories: sa.Table
+    sensitive_types: sa.Table
+    profile_versions: sa.Table
+    scope_profile_defaults: sa.Table
+
     def __init__(self, backend: Backend) -> None:
         ns = Namespace(backend)
         self.backend = backend
@@ -108,6 +115,143 @@ class Tables:
             sa.Column("detail", json_type(), nullable=False),
             sa.Index(ix("ix_admin_events_time"), "occurred_at"),
             sa.Index(ix("ix_admin_events_target"), "target_type", "target_id"),
+        )
+
+        self._a02_tables(md, ns, fk)
+
+    def _a02_tables(self, md: sa.MetaData, ns: Namespace, fk: Callable[[str], sa.ForeignKey]) -> None:
+        t, ix = ns.table, ns.index
+        profile_fk = [ns.qualified("profiles") + ".scope_id", ns.qualified("profiles") + ".profile_id"]
+        self.profiles = sa.Table(
+            t("profiles"),
+            md,
+            sa.Column("scope_id", sa.Text, fk("scopes.scope_id"), primary_key=True),
+            sa.Column("profile_id", sa.Text, primary_key=True),
+            sa.Column("display_name", sa.Text, nullable=False),
+            sa.Column("description", sa.Text),
+            sa.Column("language", sa.Text, nullable=False),
+            sa.Column("status", sa.Text, nullable=False),
+            sa.Column("deleted_at", UtcDateTime),
+            sa.Column("revision", sa.Integer, nullable=False),
+            sa.Column("draft_revision", sa.Integer, nullable=False),
+            sa.Column("ranking_mode", sa.Text, nullable=False),
+            sa.Column("eligibility_threshold", sa.Double, nullable=False),
+            sa.Column("tie_tolerance", sa.Double, nullable=False),
+            sa.Column("ranking_revision", sa.Integer, nullable=False),
+            sa.Column("current_version_number", sa.Integer),
+            sa.Column("catalog_id", sa.Text),
+            sa.Column("catalog_version", sa.Integer),
+            sa.Column("catalog_copied_at", UtcDateTime),
+            sa.Column("created_at", UtcDateTime, nullable=False),
+            sa.Column("updated_at", UtcDateTime, nullable=False),
+            sa.CheckConstraint("length(profile_id) BETWEEN 1 AND 64", name=t("profiles_id_len")),
+            sa.CheckConstraint("language IN ('es','en')", name=t("profiles_language")),
+            sa.CheckConstraint("status IN ('active','disabled','deleted')", name=t("profiles_status")),
+            sa.CheckConstraint("(status = 'deleted') = (deleted_at IS NOT NULL)", name=t("profiles_deleted_at")),
+            sa.CheckConstraint(
+                "revision >= 1 AND draft_revision >= 1 AND ranking_revision >= 1", name=t("profiles_revisions")
+            ),
+            sa.CheckConstraint("ranking_mode IN ('ranking','resolution')", name=t("profiles_ranking_mode")),
+            sa.CheckConstraint(
+                "eligibility_threshold BETWEEN 0 AND 1 AND tie_tolerance BETWEEN 0 AND 1",
+                name=t("profiles_ranking_range"),
+            ),
+            sa.CheckConstraint(
+                "current_version_number IS NULL OR current_version_number >= 1", name=t("profiles_version")
+            ),
+            sa.CheckConstraint(
+                "(catalog_id IS NULL) = (catalog_version IS NULL) "
+                "AND (catalog_id IS NULL) = (catalog_copied_at IS NULL)",
+                name=t("profiles_catalog"),
+            ),
+            sa.Index(ix("ix_profiles_status"), "scope_id", "status", "profile_id"),
+        )
+        for kind, id_col, extra in (
+            ("profile_categories", "category_id", sa.Column("priority", sa.Integer)),
+            ("profile_sensitive_types", "type_id", sa.Column("origin_entry", sa.Text)),
+        ):
+            is_cat = kind == "profile_categories"
+            constraints: list[sa.schema.SchemaItem] = [
+                sa.ForeignKeyConstraint(["scope_id", "profile_id"], profile_fk),
+                sa.CheckConstraint(f"length({id_col}) BETWEEN 1 AND 64", name=t(f"{kind}_id_len")),
+                sa.CheckConstraint("state IN ('enabled','disabled','deleted')", name=t(f"{kind}_state")),
+                sa.CheckConstraint("(state = 'deleted') = (deleted_at IS NOT NULL)", name=t(f"{kind}_deleted_at")),
+                sa.CheckConstraint("revision >= 1", name=t(f"{kind}_revision")),
+                sa.Index(
+                    ix(f"ux_{kind}_name"),
+                    "scope_id",
+                    "profile_id",
+                    "name_key",
+                    unique=True,
+                    postgresql_where=sa.text("state <> 'deleted'"),
+                    sqlite_where=sa.text("state <> 'deleted'"),
+                ),
+                sa.Index(ix(f"ix_{kind}_state"), "scope_id", "profile_id", "state", id_col),
+            ]
+            if is_cat:
+                constraints += [
+                    sa.CheckConstraint("priority IS NULL OR priority BETWEEN 1 AND 10000", name=t(f"{kind}_priority")),
+                    sa.Index(
+                        ix(f"ux_{kind}_priority"),
+                        "scope_id",
+                        "profile_id",
+                        "priority",
+                        unique=True,
+                        postgresql_where=sa.text("state = 'enabled' AND priority IS NOT NULL"),
+                        sqlite_where=sa.text("state = 'enabled' AND priority IS NOT NULL"),
+                    ),
+                ]
+            table = sa.Table(
+                t(kind),
+                md,
+                sa.Column("scope_id", sa.Text, primary_key=True),
+                sa.Column("profile_id", sa.Text, primary_key=True),
+                sa.Column(id_col, sa.Text, primary_key=True),
+                sa.Column("name", sa.Text, nullable=False),
+                sa.Column("name_key", sa.Text, nullable=False),
+                sa.Column("definition", sa.Text, nullable=False),
+                sa.Column("examples", json_type(), nullable=False),
+                sa.Column("translations", json_type()),
+                extra,
+                sa.Column("state", sa.Text, nullable=False),
+                sa.Column("deleted_at", UtcDateTime),
+                sa.Column("revision", sa.Integer, nullable=False),
+                sa.Column("created_at", UtcDateTime, nullable=False),
+                sa.Column("updated_at", UtcDateTime, nullable=False),
+                *constraints,
+            )
+            setattr(self, "categories" if is_cat else "sensitive_types", table)
+        self.profile_versions = sa.Table(
+            t("profile_versions"),
+            md,
+            sa.Column("scope_id", sa.Text, primary_key=True),
+            sa.Column("profile_id", sa.Text, primary_key=True),
+            sa.Column("version_number", sa.Integer, primary_key=True),
+            sa.Column("version_id", sa.Text, nullable=False),
+            sa.Column("source_draft_revision", sa.Integer, nullable=False),
+            sa.Column("snapshot_schema_version", sa.Integer, nullable=False),
+            sa.Column("snapshot", json_type(), nullable=False),
+            sa.Column("content_hash", sa.LargeBinary, nullable=False),
+            sa.Column("snapshot_bytes", sa.Integer, nullable=False),
+            sa.Column("capabilities", json_type(), nullable=False),
+            sa.Column("published_at", UtcDateTime, nullable=False),
+            sa.Column("published_by", sa.Text),
+            sa.ForeignKeyConstraint(["scope_id", "profile_id"], profile_fk),
+            sa.CheckConstraint("version_number >= 1", name=t("profile_versions_number")),
+            sa.UniqueConstraint("version_id", name=t("profile_versions_version_id_key")),
+            sa.UniqueConstraint(
+                "scope_id", "profile_id", "source_draft_revision", name=t("profile_versions_source_key")
+            ),
+        )
+        self.scope_profile_defaults = sa.Table(
+            t("scope_profile_defaults"),
+            md,
+            sa.Column("scope_id", sa.Text, fk("scopes.scope_id"), primary_key=True),
+            sa.Column("profile_id", sa.Text),
+            sa.Column("revision", sa.Integer, nullable=False),
+            sa.Column("updated_at", UtcDateTime, nullable=False),
+            sa.ForeignKeyConstraint(["scope_id", "profile_id"], profile_fk),
+            sa.CheckConstraint("revision >= 1", name=t("scope_profile_defaults_revision")),
         )
 
 

@@ -100,12 +100,12 @@ def test_base_install_is_light_and_separate_from_http(artifacts, tmp_path):  # A
     base = make_env(tmp_path, "base", str(artifacts["wheel"]))
     pkgs = installed(base, cwd)
     assert not ({"fastapi", "uvicorn", "starlette", "alembic", "asyncpg", "aiosqlite", "httpx"} & pkgs), pkgs
-    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.1.0"
+    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.2.0"
     for mod in ("fastapi", "alembic", "cawbase_content_engine.http"):
         assert py(base, "-c", f"import {mod}", cwd=cwd, check=False).returncode != 0, mod
     # the CLI is available and degrades with a clear message instead of a traceback
     cli = [str(base / "cawbase-content-engine")]
-    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.1.0"
+    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.2.0"
     r = run(
         [*cli, "migrate"],
         cwd=cwd,
@@ -135,7 +135,7 @@ def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # 
     assert not ({"fastapi", "uvicorn", "starlette", "asyncpg"} & pkgs), pkgs
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001"] and out["again"] is True and out["scope"] == "a"
+    assert out["applied"] == ["0001", "0002"] and out["again"] is True and out["scope"] == "a"
     assert "site-packages" in out["installed_from"] and str(ROOT) not in out["installed_from"]
 
 
@@ -160,7 +160,7 @@ def test_sdist_builds_and_installs(artifacts, tmp_path):
     env = make_env(tmp_path, "sdist", f"cawbase-content-engine[sqlite,migrations] @ {artifacts['sdist'].as_uri()}")
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001"]
+    assert out["applied"] == ["0001", "0002"]
 
 
 def test_installed_service_starts_and_stops(artifacts, tmp_path):  # AC-02
@@ -211,8 +211,13 @@ def test_python_example_from_installed_wheel_runs_on_sqlite_and_postgres(artifac
     shutil.copy(ROOT / "examples" / "python_host.py", example)
     for target in (str(cwd / "example.db"), pg_url):
         out = py(env, str(example), target, cwd=cwd).stdout
-        assert "migrated: ('0001',)" in out and "isolation: project-a cannot read project-b" in out
+        assert "migrated: ('0001', '0002')" in out and "isolation: project-a cannot read project-b" in out
         assert "project-c" not in out.split("after host rollback:")[1] and "cce1." not in out
+    # A02: the profiles example also runs from the installed wheel (SQLite file), without HTTP
+    prof_example = cwd / "profiles_host.py"
+    shutil.copy(ROOT / "examples" / "profiles_host.py", prof_example)
+    out = py(env, str(prof_example), str(cwd / "profiles.db"), cwd=cwd).stdout
+    assert "published: version 1" in out and "resolved: default -> version 1" in out and "cce1." not in out
     where = py(env, "-c", "import cawbase_content_engine as c; print(c.__file__)", cwd=cwd).stdout
     assert "site-packages" in where and str(ROOT) not in where
     # PostgreSQL really received the engine namespace, not just the SQLite file

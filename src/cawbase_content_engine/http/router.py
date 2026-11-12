@@ -33,11 +33,11 @@ def _envelope(exc: EngineError, request_id: str) -> JSONResponse:
     headers = {"X-Request-ID": request_id}
     if exc.http_status == 401:
         headers["WWW-Authenticate"] = "Bearer"
-    return JSONResponse(
-        {"error": {"code": exc.code, "message": exc.message, "request_id": request_id}},
-        status_code=exc.http_status or 500,
-        headers=headers,
-    )
+    error: dict[str, Any] = {"code": exc.code, "message": exc.message, "request_id": request_id}
+    problems = getattr(exc, "problems", None)
+    if problems:  # profile_invalid: codes and ids only, never content
+        error["problems"] = problems
+    return JSONResponse({"error": error}, status_code=exc.http_status or 500, headers=headers)
 
 
 class _EngineRoute(APIRoute):
@@ -109,8 +109,11 @@ async def _read_body(request: Request, limit: int) -> bytes:
 
 
 def _parse_object(raw: bytes) -> dict[str, Any]:
+    def _reject(_constant: str) -> Any:
+        raise ValueError("non-finite number")
+
     try:
-        data = json.loads(raw or b"{}")
+        data = json.loads(raw or b"{}", parse_constant=_reject)
     except (ValueError, UnicodeDecodeError):
         raise ValidationFailedError("The body is not valid JSON.") from None
     if not isinstance(data, dict):
@@ -135,7 +138,7 @@ def _parse_grants(raw: Any, engine: ContentEngine) -> ApiKeyGrants:
     return ak.normalize_grants(admin, scopes, engine.config.limits)
 
 
-def _expected_revision(request: Request) -> int:
+def _expected_revision(request: Request, *, low: int = 1) -> int:
     header = request.headers.get("if-match")
     if header is None:
         raise PreconditionRequiredError("The If-Match header is required.", field="If-Match")
@@ -143,7 +146,7 @@ def _expected_revision(request: Request) -> int:
     if raw.startswith("W/"):
         raw = raw[2:]
     raw = raw.strip('"')
-    if not raw.isdigit() or int(raw) < 1:
+    if not raw.isdigit() or int(raw) < low:
         raise ValidationFailedError("Invalid If-Match.", field="If-Match")
     return int(raw)
 
@@ -292,6 +295,259 @@ def create_router(engine: ContentEngine) -> APIRouter:
     @router.get("/v1/admin/diagnostics")
     async def diagnostics(request: Request) -> Response:
         return _json((await (await admin(request)).diagnostics()).model_dump(mode="json"))
+
+    # ---- A02: profiles, categories, sensitive types, versions, default and resolution ----------------
+    def etag(revision: int) -> dict[str, str]:
+        return {"ETag": f'"{revision}"'}
+
+    def dump(model: Any) -> dict[str, Any]:
+        result: dict[str, Any] = model.model_dump(mode="json")
+        return result
+
+    def page_json(page: Any) -> dict[str, Any]:
+        return {"items": [dump(i) for i in page.items], "next_cursor": page.next_cursor}
+
+    def flag(value: str | None) -> bool:
+        if value is None:
+            return False
+        if value.lower() not in ("true", "false"):
+            raise ValidationFailedError("Invalid boolean.")
+        return value.lower() == "true"
+
+    def multi(values: list[str] | None) -> list[str] | None:
+        if not values:
+            return None
+        return [part for raw in values for part in raw.split(",") if part]
+
+    def only(data: dict[str, Any], allowed: set[str]) -> None:
+        if set(data) - allowed:
+            raise ValidationFailedError("Unknown fields.")
+
+    async def ops(request: Request, scope_id: str) -> Any:
+        return engine.scoped((await principal(request)).scope_context(scope_id))
+
+    def intp(value: str, field: str) -> int:
+        if not value.isdigit():
+            raise ValidationFailedError(f"Invalid {field}.", field=field)
+        return int(value)
+
+    @router.post("/v1/scopes/{scope_id}/profiles")
+    async def create_profile(scope_id: str, request: Request) -> Response:
+        raw = await _read_body(request, max_body)
+        o = await ops(request, scope_id)
+        d = _parse_object(raw)
+        only(d, {"profile_id", "display_name", "description", "language", "initial_catalog"})
+        res = await o.create_profile(
+            scope_id,
+            d.get("profile_id"),
+            d.get("display_name"),
+            description=d.get("description"),
+            language=d.get("language", "es"),
+            initial_catalog=d.get("initial_catalog", "starter"),
+        )
+        return _json(dump(res.value), 201 if res.created else 200, etag(res.value.revision))
+
+    @router.get("/v1/scopes/{scope_id}/profiles")
+    async def list_profiles(
+        scope_id: str,
+        request: Request,
+        limit: int | None = None,
+        cursor: str | None = None,
+    ) -> Response:
+        page = await (await ops(request, scope_id)).list_profiles(
+            scope_id, status=multi(request.query_params.getlist("status")), limit=limit, cursor=cursor
+        )
+        return _json(page_json(page))
+
+    @router.get("/v1/scopes/{scope_id}/profiles/{profile_id}")
+    async def get_profile(
+        scope_id: str, profile_id: str, request: Request, include_deleted: str | None = None
+    ) -> Response:
+        p = await (await ops(request, scope_id)).get_profile(
+            scope_id, profile_id, include_deleted=flag(include_deleted)
+        )
+        return _json(dump(p), headers=etag(p.revision))
+
+    @router.patch("/v1/scopes/{scope_id}/profiles/{profile_id}")
+    async def patch_profile(scope_id: str, profile_id: str, request: Request) -> Response:
+        raw = await _read_body(request, max_body)
+        o = await ops(request, scope_id)
+        expected = _expected_revision(request)
+        d = _parse_object(raw)
+        only(d, {"display_name", "description"})
+        p = await o.update_profile(
+            scope_id,
+            profile_id,
+            expected_revision=expected,
+            display_name=d.get("display_name", UNSET),
+            description=d.get("description", UNSET),
+        )
+        return _json(dump(p), headers=etag(p.revision))
+
+    for verb, method in (("disable", "disable_profile"), ("enable", "enable_profile"), ("delete", "delete_profile")):
+
+        def _make_profile_transition(method: str = method) -> Any:
+            async def handler(scope_id: str, profile_id: str, request: Request) -> Response:
+                p = await getattr(await ops(request, scope_id), method)(scope_id, profile_id)
+                return _json(dump(p), headers=etag(p.revision))
+
+            return handler
+
+        router.post(f"/v1/scopes/{{scope_id}}/profiles/{{profile_id}}/{verb}")(_make_profile_transition())
+
+    @router.get("/v1/scopes/{scope_id}/profiles/{profile_id}/ranking")
+    async def get_ranking(scope_id: str, profile_id: str, request: Request) -> Response:
+        r = await (await ops(request, scope_id)).get_ranking_config(scope_id, profile_id)
+        return _json(dump(r), headers=etag(r.revision))
+
+    @router.patch("/v1/scopes/{scope_id}/profiles/{profile_id}/ranking")
+    async def patch_ranking(scope_id: str, profile_id: str, request: Request) -> Response:
+        raw = await _read_body(request, max_body)
+        o = await ops(request, scope_id)
+        expected = _expected_revision(request)
+        d = _parse_object(raw)
+        only(d, {"mode", "eligibility_threshold", "tie_tolerance"})
+        r = await o.update_ranking_config(
+            scope_id,
+            profile_id,
+            expected_revision=expected,
+            mode=d.get("mode", UNSET),
+            eligibility_threshold=d.get("eligibility_threshold", UNSET),
+            tie_tolerance=d.get("tie_tolerance", UNSET),
+        )
+        return _json(dump(r), headers=etag(r.revision))
+
+    # categories and sensitive types share one route shape
+    for segment, kind, id_field, extra in (
+        ("categories", "category", "category_id", {"priority"}),
+        ("sensitive-types", "sensitive_type", "type_id", set()),
+    ):
+
+        def _make_element_routes(
+            segment: str = segment, kind: str = kind, id_field: str = id_field, extra: set[str] = extra
+        ) -> None:
+            base = f"/v1/scopes/{{scope_id}}/profiles/{{profile_id}}/{segment}"
+            fields = {"name", "definition", "examples", "translations"} | extra
+
+            async def create(scope_id: str, profile_id: str, request: Request) -> Response:
+                raw = await _read_body(request, max_body)
+                o = await ops(request, scope_id)
+                d = _parse_object(raw)
+                only(d, fields | {id_field})
+                kwargs = {k: d.get(k) for k in ("examples", "translations") + tuple(extra)}
+                res = await getattr(o, f"create_{kind}")(
+                    scope_id, profile_id, d.get(id_field), d.get("name"), d.get("definition"), **kwargs
+                )
+                return _json(dump(res.value), 201 if res.created else 200, etag(res.value.revision))
+
+            async def list_(
+                scope_id: str,
+                profile_id: str,
+                request: Request,
+                limit: int | None = None,
+                cursor: str | None = None,
+            ) -> Response:
+                page = await getattr(
+                    await ops(request, scope_id), f"list_{kind}s" if kind == "sensitive_type" else "list_categories"
+                )(scope_id, profile_id, state=multi(request.query_params.getlist("state")), limit=limit, cursor=cursor)
+                return _json(page_json(page))
+
+            async def get_(
+                scope_id: str, profile_id: str, element_id: str, request: Request, include_deleted: str | None = None
+            ) -> Response:
+                e = await getattr(await ops(request, scope_id), f"get_{kind}")(
+                    scope_id, profile_id, element_id, include_deleted=flag(include_deleted)
+                )
+                return _json(dump(e), headers=etag(e.revision))
+
+            async def patch(scope_id: str, profile_id: str, element_id: str, request: Request) -> Response:
+                raw = await _read_body(request, max_body)
+                o = await ops(request, scope_id)
+                expected = _expected_revision(request)
+                d = _parse_object(raw)
+                only(d, fields)
+                changes = {k: d.get(k, UNSET) for k in fields}
+                e = await getattr(o, f"update_{kind}")(
+                    scope_id, profile_id, element_id, expected_revision=expected, **changes
+                )
+                return _json(dump(e), headers=etag(e.revision))
+
+            router.post(base)(create)
+            router.get(base)(list_)
+            router.get(base + "/{element_id}")(get_)
+            router.patch(base + "/{element_id}")(patch)
+            for verb in ("disable", "enable", "delete"):
+
+                def _transition(verb: str = verb) -> Any:
+                    async def handler(scope_id: str, profile_id: str, element_id: str, request: Request) -> Response:
+                        e = await getattr(await ops(request, scope_id), f"{verb}_{kind}")(
+                            scope_id, profile_id, element_id
+                        )
+                        return _json(dump(e), headers=etag(e.revision))
+
+                    return handler
+
+                router.post(base + "/{element_id}/" + verb)(_transition())
+
+        _make_element_routes()
+
+    @router.post("/v1/scopes/{scope_id}/profiles/{profile_id}/publish")
+    async def publish(scope_id: str, profile_id: str, request: Request) -> Response:
+        raw = await _read_body(request, max_body)
+        o = await ops(request, scope_id)
+        d = _parse_object(raw)
+        only(d, {"expected_draft_revision"})
+        res = await o.publish_profile(scope_id, profile_id, expected_draft_revision=d.get("expected_draft_revision"))
+        replay = None if res.created else {"Idempotent-Replay": "true"}
+        return _json({"version": dump(res.value), "created": res.created}, 201 if res.created else 200, replay)
+
+    @router.get("/v1/scopes/{scope_id}/profiles/{profile_id}/versions")
+    async def list_versions(
+        scope_id: str, profile_id: str, request: Request, limit: int | None = None, cursor: str | None = None
+    ) -> Response:
+        page = await (await ops(request, scope_id)).list_profile_versions(
+            scope_id, profile_id, limit=limit, cursor=cursor
+        )
+        return _json(page_json(page))
+
+    @router.get("/v1/scopes/{scope_id}/profiles/{profile_id}/versions/{version_number}")
+    async def get_version(scope_id: str, profile_id: str, version_number: str, request: Request) -> Response:
+        ver = await (await ops(request, scope_id)).get_profile_version(
+            scope_id, profile_id, intp(version_number, "version_number")
+        )
+        return _json(dump(ver))
+
+    @router.get("/v1/scopes/{scope_id}/default-profile")
+    async def get_default(scope_id: str, request: Request) -> Response:
+        d = await (await ops(request, scope_id)).get_default_profile(scope_id)
+        return _json(dump(d), headers=etag(d.revision))
+
+    @router.put("/v1/scopes/{scope_id}/default-profile")
+    async def put_default(scope_id: str, request: Request) -> Response:
+        raw = await _read_body(request, max_body)
+        o = await ops(request, scope_id)
+        expected = _expected_revision(request, low=0)
+        d = _parse_object(raw)
+        only(d, {"profile_id"})
+        res = await o.set_default_profile(scope_id, d.get("profile_id"), expected_revision=expected)
+        return _json(dump(res), headers=etag(res.revision))
+
+    @router.delete("/v1/scopes/{scope_id}/default-profile")
+    async def delete_default(scope_id: str, request: Request) -> Response:
+        o = await ops(request, scope_id)
+        res = await o.clear_default_profile(scope_id, expected_revision=_expected_revision(request, low=0))
+        return _json(dump(res), headers=etag(res.revision))
+
+    @router.get("/v1/scopes/{scope_id}/resolved-profile")
+    async def resolved(
+        scope_id: str, request: Request, profile_id: str | None = None, version: str | None = None
+    ) -> Response:
+        res = await (await ops(request, scope_id)).resolve_profile(
+            scope_id,
+            profile_id=profile_id,
+            version_number=None if version is None else intp(version, "version"),
+        )
+        return _json({"selection": res.selection, "version": dump(res.version)})
 
     return router
 

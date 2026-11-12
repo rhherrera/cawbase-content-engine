@@ -63,16 +63,19 @@ FAIL = 'op.execute("SELECT * FROM table_that_does_not_exist")'
 
 
 class TestProductChainUpgrades:
-    async def test_update_preserves_data_and_foreign_objects(self, db, tmp_path):  # AC-21
+    async def test_update_preserves_data_and_foreign_objects(self, db, tmp_path, monkeypatch):  # AC-21
         backend, url = db
         cfg = EngineConfig(database_url=url)
         eng = create_async_engine(url)
         async with eng.begin() as c:
             await c.execute(sa.text("CREATE TABLE app_things (id INTEGER PRIMARY KEY, v TEXT)"))
             await c.execute(sa.text("INSERT INTO app_things VALUES (1, 'keep')"))
-        await upgrade(cfg)
+        # baseline = the A01 chain (0001 only); the test-only "0002" below stands for "a later revision"
+        await upgrade(cfg, script_location=extended_chain(tmp_path / "base"))
+        monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 1)  # an A01-level runtime on a level-1 schema
         async with ContentEngine(cfg) as e:
             await make_scope(e, "keep-me")
+        monkeypatch.undo()
         chain = extended_chain(
             tmp_path, ("0002", "0001", ADD_TABLE.format(n=2) + "\n                " + BUMP.format(n=2))
         )
@@ -235,6 +238,16 @@ class TestDiagnosticsLimitsErrors:
             "schema_missing": 503,
             "schema_incompatible": 503,
             "internal_error": 500,
+            # A02
+            "profile_disabled": 409,
+            "profile_not_selectable": 409,
+            "profile_not_published": 409,
+            "profile_is_default": 409,
+            "default_profile_not_set": 404,
+            "invalid_state_transition": 409,
+            "name_conflict": 409,
+            "priority_conflict": 409,
+            "profile_invalid": 422,
         }
         no_http = {
             "configuration_invalid",

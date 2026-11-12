@@ -1,32 +1,36 @@
 # cawbase-content-engine
 
-> ## Estado: A01 implementado, probado en macOS y Linux local, no ejecutado en GitHub Actions, no aceptado
+> ## Estado: A01 cerrada y aceptada · A02 implementada (`0.2.0`), sin aceptar
 >
-> | Nivel | Estado |
+> | Feature | Estado |
 > |---|---|
-> | Implementado | Sí (`0.1.0`) |
-> | Probado en macOS | Sí: PostgreSQL 15–18 + SQLite |
-> | Probado en Linux local (Docker) | Sí: PostgreSQL 15–18 + SQLite, incluido SQLite 3.38.5 (piso declarado) |
-> | Probado en GitHub Actions | **No** (workflow preparado; no se hizo push) |
-> | Aceptado por el usuario | **No** |
+> | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
+> | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | **Implementada** en la rama `feature/a02-profiles-categories-sensitive-types` (commits locales, **sin push**). Probada localmente (macOS) y en Linux local (Docker); **GitHub Actions no ejecutado sobre A02**; **no aceptada por el usuario** (la aceptación es suya). Evidencia y límites en el [informe de A02](docs/a02-implementation-report.md) |
 >
-> Detalle y evidencia en el [informe de implementación](docs/a01-implementation-report.md). El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Quedan fuera A02 en adelante.
+> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de alcance: A03 en adelante (inferencia, clasificación efectiva, mock).
 
 Motor independiente de clasificación, detección y transformación de contenido, preparado para distribuirse como paquete Python y, más adelante, abrirse como código abierto. CAWbase será un consumidor del paquete; el motor no depende de CAWbase.
 
 - Distribución: `cawbase-content-engine` · Import Python: `cawbase_content_engine` · Python 3.13 · PostgreSQL y SQLite.
 - API pública asíncrona; núcleo liviano con extras opcionales; adaptador HTTP opcional con API keys.
 
-## Qué se está especificando (A01 — Base del producto e instalación independiente)
+## A01 — Base del producto e instalación independiente (cerrada)
 
 La primera feature define la base instalable: empaquetado, configuración e inicialización explícitas, persistencia y migraciones propias, contexto autorizado y aislamiento por alcance, adaptador HTTP con API keys, diagnóstico y readiness, errores, observabilidad y límites. Excluye clasificación, inferencia, documentos y todo lo propio de CAWbase.
 
-Estado de A01: **implementado; probado en macOS y Linux local; GitHub Actions sin ejecutar; no aceptado; no cerrado.**
+Estado de A01: **implementada, cerrada y aceptada** (commit `1b5ffab`).
+
+## A02 — Perfiles, categorías y tipos sensibles (implementada, sin aceptar)
+
+> **Implementada en `0.2.0`; no aceptada.** Sin inferencia, sin clasificación efectiva y sin mock: solo configura, versiona y resuelve la configuración de análisis. Ejemplo ejecutable: `uv run python examples/profiles_host.py`.
+
+Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles propios; configuración editable separada de **versiones publicadas inmutables**; perfil predeterminado opcional por scope; catálogo inicial versionado de tipos sensibles copiado al crear el perfil; configuración de ranking/resolución; permisos `profiles:read|write` (2 nuevos sobre los 8 de A01). Entrada: [especificación de A02](docs/features/A02-perfiles-categorias-y-tipos-sensibles.md).
 
 ## Probar rápidamente
 
 ```bash
 uv sync --group dev
+uv run python examples/profiles_host.py        # A02: perfil, categorías, publicación, predeterminado y resolución (SQLite)
 uv run python examples/python_host.py          # host Python: migra, crea alcances, aislamiento, transacción del host (SQLite)
 bash examples/standalone_service.sh            # servicio HTTP real: migra, bootstrap, escucha (SQLite)
 uv run pytest -q                               # SQLite; con CCE_TEST_POSTGRES_URL también PostgreSQL (ver docs/development.md)
@@ -46,10 +50,14 @@ bash scripts/linux_docker_validate.sh /tmp/ev  # validación en Linux (Docker): 
 | [Desarrollo](docs/development.md) | Proceso, entorno y verificaciones planificadas |
 | [Decisiones de A01](docs/decisions/A01-decisions.md) | Decisiones aprobadas, propuestas pendientes y diferencias con el playbook |
 | [Informe de implementación](docs/a01-implementation-report.md) | Qué se implementó, checks ejecutados, matriz AC trazable, mediciones y límites |
+| [Especificación de A02](docs/features/A02-perfiles-categorias-y-tipos-sensibles.md) | Alcance, decisiones y matriz de aceptación de A02 |
+| [Perfiles y catálogo](docs/profiles-and-catalog.md) | Modelo, estados, revisiones, versiones, ranking/resolución y catálogo inicial |
+| [Decisiones de A02](docs/decisions/A02-decisions.md) | Decisiones aprobadas, elecciones técnicas derivadas, diferencias con el playbook y backlog |
+| [Informe de implementación de A02](docs/a02-implementation-report.md) | Qué se implementó, correspondencia con la matriz, comandos y resultados reales, límites y restricción de despliegue de permisos |
 | [Reglas para agentes](CLAUDE.md) | Instrucciones de trabajo del repositorio |
 
 `docs/STAGE_3_PLAYBOOK.md` puede existir en el árbol de trabajo como **copia local de referencia** del playbook (revisión 6, 11 de noviembre de 2026), pero está en `.gitignore`: **no forma parte del repositorio**, un checkout limpio no la contiene y nada (tests, enlaces, wheel, sdist) la necesita. La fuente canónica está fuera de este repositorio.
 
 ## Convención de estado
 
-Los comandos de este README existen y se ejecutaron. Los ejemplos en los documentos permanentes son ilustrativos; la versión ejecutable y verificada está en `examples/` y `tests/`. «Implementado» no significa aceptado.
+Los comandos de este README existen y se ejecutaron (A01). Los ejemplos en los documentos permanentes son ilustrativos; la versión ejecutable y verificada está en `examples/` y `tests/`. «Implementado» no significa aceptado.

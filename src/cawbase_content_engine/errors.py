@@ -188,6 +188,59 @@ class SecretDeliveryError(EngineError):
         self.key_id = key_id
 
 
+class ProfileDisabledError(ConflictError):
+    code = "profile_disabled"
+    default_message = "The profile is disabled."
+
+
+class ProfileNotSelectableError(ConflictError):
+    code = "profile_not_selectable"
+    default_message = "The profile cannot be selected for new analysis."
+
+
+class ProfileNotPublishedError(ConflictError):
+    code = "profile_not_published"
+    default_message = "The profile has no published version."
+
+
+class ProfileIsDefaultError(ConflictError):
+    code = "profile_is_default"
+    default_message = "The profile is the scope default; replace or clear the default first."
+
+
+class DefaultProfileNotSetError(EngineError):
+    code = "default_profile_not_set"
+    http_status = 404
+    default_message = "The scope has no default profile."
+
+
+class InvalidStateTransitionError(ConflictError):
+    code = "invalid_state_transition"
+    default_message = "The resource is deleted and cannot change state."
+
+
+class NameConflictError(ConflictError):
+    code = "name_conflict"
+    default_message = "The name is already used by another element of the profile."
+
+
+class PriorityConflictError(ConflictError):
+    code = "priority_conflict"
+    default_message = "The priority is already used by another enabled category of the profile."
+
+
+class ProfileInvalidError(EngineError):
+    """Publishing / resolution mode refused. ``problems`` carry codes and ids only, never content."""
+
+    code = "profile_invalid"
+    http_status = 422
+    default_message = "Profile configuration is not valid."
+
+    def __init__(self, problems: list[dict[str, str]] | None = None, message: str | None = None) -> None:
+        super().__init__(message)
+        self.problems = problems or []
+
+
 class InternalError(EngineError):
     code = "internal_error"
     http_status = 500

@@ -1,6 +1,6 @@
 # Desarrollo
 
-> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Los comandos de este documento existen y fueron ejecutados; el resultado real está en el [informe de implementación](a01-implementation-report.md).
 
 Relacionado: [feature A01](features/A01-base-del-producto-instalacion-independiente.md) · [instalación y operación](installation-and-operations.md) · [CLAUDE.md](../CLAUDE.md).
 
@@ -15,7 +15,7 @@ Distinguir siempre: **especificado** (documentado) ≠ **implementado** (hay có
 
 ## 2. Entorno (D-02, D-03)
 
-- Desarrollo local: macOS. Aceptación automatizada: Linux (workflow escrito, **aún no ejecutado**). Python 3.13, gestionado con `uv`.
+- Desarrollo local: macOS. Aceptación automatizada: Linux (GitHub Actions; aprobado sobre `1b5ffab` según confirmación del usuario). Python 3.13, gestionado con `uv`.
 - Backends reales en las pruebas: PostgreSQL (15, 17 y 18 ejecutados localmente) y SQLite. Ningún test de persistencia usa dobles.
 
 ```bash
@@ -71,7 +71,7 @@ Cotas declaradas en `pyproject.toml`: `sqlalchemy>=2.0.36,<2.2`, `pydantic>=2.9,
 
 ## 7. CI y validación Linux
 
-**GitHub Actions: preparado, no ejecutado.** [.github/workflows/ci.yml](../.github/workflows/ci.yml) define `static`, `tests` (PostgreSQL 15, 16, 17 y 18 + SQLite, `CCE_REQUIRE_POSTGRES=1`), `tests-lowest-bounds`, `distribution` (construye y audita wheel/sdist, los prueba fuera del árbol y mide la importación) y sube resultados como artefactos (`junit-*`, `distribution`) incluso si un job falla. No se hizo push: no existe ninguna ejecución remota. `tests/test_ci_contract.py` verifica que las acciones estén fijadas por SHA, que cada job de PostgreSQL exija el servicio (`CCE_REQUIRE_POSTGRES=1`) y que un PostgreSQL ausente o inalcanzable **falle** la suite.
+**GitHub Actions: aprobado en `main` y `feature/a01-product-foundation` sobre `1b5ffab`, según confirmación explícita del usuario (D-34).** [.github/workflows/ci.yml](../.github/workflows/ci.yml) define `static`, `tests` (PostgreSQL 15, 16, 17 y 18 + SQLite, `CCE_REQUIRE_POSTGRES=1`), `tests-lowest-bounds`, `distribution` (construye y audita wheel/sdist, los prueba fuera del árbol y mide la importación) y sube resultados como artefactos (`junit-*`, `distribution`) incluso si un job falla. Este repositorio no conserva URL, ID ni fecha de esa ejecución. **Sobre A02 (`0.2.0`) no se ha ejecutado Actions** (no se hizo push; lo hace el usuario): la evidencia de A02 es macOS y Linux local ([informe de A02](a02-implementation-report.md)). `tests/test_ci_contract.py` verifica que las acciones estén fijadas por SHA, que cada job de PostgreSQL exija el servicio (`CCE_REQUIRE_POSTGRES=1`) y que un PostgreSQL ausente o inalcanzable **falle** la suite.
 
 Versiones de las acciones comprobadas el 2026-11-11 contra la última *release* de cada repositorio y el README de `setup-uv` (que recomienda fijar por SHA): `actions/checkout` v7.0.1, `astral-sh/setup-uv` v10.3.3, `actions/upload-artifact` v7.0.2.
 
@@ -95,4 +95,11 @@ Auditoría de artefactos: `uv run python scripts/audit_artifacts.py dist/*` (arc
 
 ## 9. Commits y ramas
 
-Rama de implementación: `feature/a01-product-foundation`. Los commits son locales; **no se ha hecho push** y no se publica nada. `.DS_Store` y `docs/STAGE_3_PLAYBOOK.md` están en `.gitignore` (commit `d091b49`, del usuario) y no se agregan a Git; la segunda es una copia local de referencia que **ningún test, enlace ni artefacto necesita**. Un checkout limpio no la contiene y construye wheel y sdist idénticos.
+Rama de implementación de A01: `feature/a01-product-foundation` (cerrada). Rama de especificación de A02: `feature/a02-profiles-categories-sensitive-types` (commits locales; crear commits locales **no** autoriza push ni publicar). `.DS_Store` y `docs/STAGE_3_PLAYBOOK.md` están en `.gitignore` (commit `d091b49`, del usuario) y no se agregan a Git; la segunda es una copia local de referencia que **ningún test, enlace ni artefacto necesita**. Un checkout limpio no la contiene y construye wheel y sdist idénticos.
+
+## 10. A02 — Proceso previsto (implementado)
+
+- A02 está **implementada** (`0.2.0`) en la rama `feature/a02-profiles-categories-sensitive-types`, sin mock ni inferencia. Los criterios `AC-A02-nn` de la [matriz](features/A02-perfiles-categorias-y-tipos-sensibles.md#7-matriz-de-aceptación) se trazan a pruebas en el [informe de A02](a02-implementation-report.md). Suites nuevas: `tests/test_a02_profiles.py`, `test_a02_concurrency.py` (PostgreSQL y SQLite reales; incluye interbloqueos reales), `test_a02_http.py`, `test_a02_migration.py`; ejemplo ejecutable: `examples/profiles_host.py`.
+- Cada feature usa **sus propios** documentos de decisiones, especificación e informe: A02 → `docs/decisions/A02-decisions.md`, `docs/features/A02-…md` y, al implementarse, un informe `docs/a02-implementation-report.md`.
+- Los checks de §4 se mantienen; las pruebas de PostgreSQL siguen usando solo bases descartables `cce_t_*`; las pruebas de concurrencia de A02 se escriben por backend; se verifica el esquema 1→2 con objetos ajenos; se cuida que ningún fixture contenga secretos ni datos personales reales (usar dominios `example.test` y valores evidentemente falsos).
+- La importación liviana y el gate D-33 deben seguir cumpliéndose (el catálogo se importa de forma perezosa).

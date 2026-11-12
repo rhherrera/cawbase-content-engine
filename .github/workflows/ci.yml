@@ -1,6 +1,8 @@
-# NOT YET EXECUTED ON GITHUB: nothing has been pushed, so no run exists. Equivalent commands were run
-# locally on macOS and in a Linux container (docs/a01-implementation-report.md). Do not read this file as
-# evidence that CI passes.
+# A01 (0.1.0) ran on GitHub Actions and passed on main and feature/a01-product-foundation at commit 1b5ffab
+# (explicit confirmation by the user; see docs/a01-implementation-report.md).
+# A02 (0.2.0): NOT YET EXECUTED ON GITHUB. Nothing from the A02 branch has been pushed, so no run exists for
+# it; equivalent commands were run locally on macOS and in a Linux container (docs/a02-implementation-report.md).
+# Do not read this file as evidence that CI passes for A02.
 #
 # Actions are pinned to full commit SHAs (tag in the comment), as recommended by the setup-uv README.
 # Versions checked on 2026-11-11 against each action's latest GitHub release:

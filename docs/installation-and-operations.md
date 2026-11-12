@@ -1,6 +1,6 @@
 # Instalación y operación
 
-> **Estado: implementado en la versión 0.1.0; probado en macOS y en Linux local (Docker, PostgreSQL 15–18 + SQLite); NO ejecutado en GitHub Actions; no aceptado por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [desarrollo](development.md).
 
@@ -229,3 +229,41 @@ Detalle en [persistencia y migraciones](persistence-and-migrations.md#6-diferenc
 ## 10. Mediciones registradas (macOS, no Linux)
 
 Metodología, versiones y plataforma de cada medición están en el [informe de implementación](a01-implementation-report.md#mediciones). Resumen: `scripts/measure_distribution.py` instala el wheel en un venv limpio y mide importación en frío/en caliente, tamaño de `site-packages` y módulos de terceros cargados. Criterio decidido (D-33): **mediana en caliente ≤ 300 ms** y **≤ 40 MiB** instalados; la importación en frío (≈ 0,9 s) se informa sin umbral. Medido en Linux (Docker) y macOS: caliente ≈ 0,2 s, tamaño 17,5–27,5 MiB. No hay mediciones en GitHub Actions ni x86_64.
+
+## 11. A02 — Límites y observabilidad (implementado)
+
+> **Implementado en `0.2.0` (A02); no aceptado.** Valores iniciales (E-A02-07), configurables mediante `Limits` (nombres de campo en [API pública §10.9](public-api.md#109-notas-de-implementación-020)); no se relajó ningún umbral de A01. Los límites de A01 (§7.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB: los cuerpos de A02 (un elemento por solicitud) caben en él.
+
+### 11.1 Límites
+
+| Límite | Valor inicial |
+|---|---|
+| `profile_id`, `category_id`, `type_id` | 1–64 caracteres `^[a-z0-9][a-z0-9_-]*$` |
+| `display_name` / `description` de perfil | 200 / 1000 (como alcances) |
+| `name` / `definition` de elemento | 100 / 1500 caracteres |
+| Ejemplo | 1–300 caracteres; hasta 5 positivos y 5 negativos por elemento |
+| `translations` | como máximo 1 idioma (el no primario), con `name` y `definition` bajo los mismos límites |
+| Texto total por elemento (nombre, definición, ejemplos, traducción) | ≤ 8 KiB en UTF-8 |
+| `priority` | entero 1–10000 |
+| `eligibility_threshold`, `tie_tolerance` | número finito en [0, 1] |
+| Perfiles por alcance | ≤ 50 no eliminados; ≤ 500 filas en total (incluidos eliminados) |
+| Categorías / tipos por perfil | ≤ 50 / ≤ 50 no eliminados; ≤ 250 filas de cada clase en total |
+| Versiones por perfil | ≤ 500 (sin purga: al alcanzarlo, publicar falla con `limit_exceeded`) |
+| Instantánea | ≤ 1 MiB canónico (100 elementos de hasta 8 KiB caben con margen; un contenido con muchos caracteres que se escapan en JSON puede exceder el límite al publicar ⇒ `limit_exceeded`, sin efecto parcial) |
+| Página de listados | por defecto 50, máximo 200 (como A01) |
+
+Superar un límite ⇒ `limit_exceeded` (o `validation_failed` para forma/rango), sin efecto parcial. Los contadores se comprueban dentro de la transacción de escritura.
+
+### 11.2 Observabilidad
+
+Se aplican los principios de [§6](#observabilidad). Además:
+
+- Campos permitidos nuevos por evento: `profile_id`, `category_id`, `type_id`, `version_number`, `version_id`, `draft_revision`, `revision`. **Prohibidos**: `display_name`, `description`, nombres, definiciones, ejemplos, traducciones, instantáneas, cuerpos de solicitud y valores de campos modificados.
+- Los registros y los eventos de `admin_events` de A02 llevan ids, acción y revisiones, no contenido ([API pública §10.8](public-api.md#108-eventos-de-trazabilidad)). Los errores de validación nombran el campo y el límite, nunca el valor.
+- Las respuestas de error `profile_invalid` incluyen solo códigos e ids de categoría.
+- El diagnóstico autenticado (`GET /v1/admin/diagnostics`) **no** incorpora conteos de perfiles por alcance (se mantiene la regla de §5).
+- Readiness y comprobación de esquema: el runtime de A02 exige `schema_level ≥ 2` ([persistencia §7.5](persistence-and-migrations.md#75-migración-desde-a01-0002_profiles)); con un esquema 1 el servicio no escucha (migra al arrancar) o el motor embebido falla con `schema_incompatible`.
+
+### 11.3 Efectos al importar y dependencias
+
+A02 no agrega extras ni dependencias, no carga modelos y no cambia los criterios de importación liviana de §7.2: el catálogo se importa de forma perezosa (`tests/test_a02_migration.py::TestLightImport`); las operaciones de perfiles forman parte del núcleo liviano (solo SQLAlchemy y Pydantic). Los umbrales D-33 (mediana en caliente ≤ 300 ms, ≤ 40 MiB) siguen siendo el gate. Medido con A02 (Linux, wheel instalado en venv limpio): mediana en caliente 207,4 ms, importación en frío 870,4 ms (sin umbral), tamaño instalado 27,6 MiB ([evidencia](evidence/a02-measure-import-linux.json)); el gate `-m dist` pasa.
