@@ -129,7 +129,7 @@ Ante fallo de migración, esquema incompatible, bloqueo vencido o runtime sin ac
   | Un worker **muere después de empezar a servir** (p. ej. `SIGKILL`) | El supervisor lo **reinicia** (`Child process [pid] died`); el otro worker sigue sirviendo; el reemplazo comprueba compatibilidad antes de atender y **no migra**; `/readyz` vuelve a 200 cuando está listo | el servicio sigue vivo |
   | El reemplazo **no logra inicializar** | Igual que la primera fila: detiene el servicio | `4` |
 
-  La aclaración contractual mínima propuesta (no una política nueva) está en [A01-decisions, Q-06](decisions/A01-decisions.md#5-preguntas-abiertas): hoy no hay límite ni *backoff* de reinicios tras una muerte posterior al arranque.
+  **Política decidida (D-32):** es exactamente lo observado arriba. No hay límite ni *backoff* de reinicios tras una muerte posterior al arranque; limitarlos corresponde al orquestador y queda fuera de A01.
 - Uvicorn anterior a 0.50 **reinicia indefinidamente** los workers que fallan al iniciar (release notes de Uvicorn 0.50.0: «Stop the multiprocess supervisor when a worker exits with code 3 instead of restarting it forever»). Por eso la cota declarada pasó de `uvicorn>=0.32` a `uvicorn>=0.50`.
 - Los registros de Uvicorn (`uvicorn`, `uvicorn.error`) pasan por el mismo manejador JSON del servicio; el formateador imprime solo el mensaje (nunca `exc_info`), de modo que un fallo de arranque de un worker no vuelca trazas en el log del servicio.
 - La fábrica de aplicación para ejecutarse con un servidor externo (p. ej. `uvicorn módulo:app --workers N`) **no migra**: exige migración externa o previa y solo verifica compatibilidad al arrancar cada worker.
@@ -203,12 +203,12 @@ Superar un límite ⇒ `limit_exceeded` o `validation_failed`, sin efecto parcia
 |---|---|---|
 | `import cawbase_content_engine` no importa módulos prohibidos | subproceso que compara `sys.modules`; lista prohibida: `fastapi`, `starlette`, `uvicorn`, `alembic`, `asyncpg`, `aiosqlite`, `torch`, `numpy`, `transformers`, y librerías de PDF/DOCX | cero coincidencias |
 | Sin efectos externos al importar | subproceso con sockets/archivos/hilos vigilados | cero conexiones, cero archivos creados, hilos adicionales = 0, loggers sin handlers añadidos |
-| Tiempo de importación | `python -X importtime` en CI de referencia | mediana ≤ valor fijado tras la primera medición (referencia provisional: 300 ms) |
-| Tamaño del entorno base | tamaño instalado (base sin extras) | fijar tras medir; referencia provisional ≤ 40 MiB |
+| Tiempo de importación | `scripts/measure_import.py` desde un wheel instalado en venv limpio; gate `test_installed_import_cost_meets_the_decided_references` | **mediana en caliente ≤ 300 ms** (D-33); el frío se informa sin umbral |
+| Tamaño del entorno base | tamaño instalado (base sin extras, sin `__pycache__`) | **≤ 40 MiB** (D-33) |
 | Dependencias transitivas de la base | `pip list` en entorno limpio | solo las declaradas en P-01/P-03 |
 | Aislamiento de extras | instalar base sola, base+`http`, base+`postgres`, base+`sqlite` en entornos separados | cada combinación importa y ejecuta su camino sin los otros extras |
 
-Los umbrales marcados «referencia provisional» se confirman con datos antes de aceptar A01; no se eligieron para eliminar un pendiente sino como punto de partida a medir.
+Los umbrales quedaron fijados por D-33 (ya no son provisionales). Si un entorno de CI no los cumple se informa el resultado; no se relajan por cuenta propia.
 
 ## 8. Diferencias PostgreSQL / SQLite y recomendaciones operativas
 
@@ -228,4 +228,4 @@ Detalle en [persistencia y migraciones](persistence-and-migrations.md#6-diferenc
 
 ## 10. Mediciones registradas (macOS, no Linux)
 
-Metodología, versiones y plataforma de cada medición están en el [informe de implementación](a01-implementation-report.md#mediciones). Resumen: `scripts/measure_distribution.py` instala el wheel en un venv limpio y mide importación en frío/en caliente, tamaño de `site-packages` y módulos de terceros cargados. Las "referencias provisionales" (300 ms, 40 MiB) **no se han relajado**. Se midió en Linux (Docker) y macOS separando la importación **en frío** (sin bytecode) de la **en caliente**; el frío (≈ 0,9 s) supera 300 ms y el caliente (≈ 0,2 s) no; cuál debe cumplir la referencia es la pregunta abierta Q-07. No hay mediciones en GitHub Actions ni x86_64.
+Metodología, versiones y plataforma de cada medición están en el [informe de implementación](a01-implementation-report.md#mediciones). Resumen: `scripts/measure_distribution.py` instala el wheel en un venv limpio y mide importación en frío/en caliente, tamaño de `site-packages` y módulos de terceros cargados. Criterio decidido (D-33): **mediana en caliente ≤ 300 ms** y **≤ 40 MiB** instalados; la importación en frío (≈ 0,9 s) se informa sin umbral. Medido en Linux (Docker) y macOS: caliente ≈ 0,2 s, tamaño 17,5–27,5 MiB. No hay mediciones en GitHub Actions ni x86_64.

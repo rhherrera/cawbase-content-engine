@@ -12,7 +12,7 @@ Relacionado: [especificación](features/A01-base-del-producto-instalacion-indepe
 | 2 | **Probado en macOS** | Sí (macOS 27.0.1 arm64, Python 3.13.16): PostgreSQL 15, 16, 17 y 18 + SQLite, cotas inferiores, distribución |
 | 3 | **Probado en Linux local** | Sí (Docker: Debian 12 aarch64, Python 3.13.18), **sobre el estado commiteado `7ffbe2a`** (`git archive HEAD`): PostgreSQL 15, 16, 17 y 18 + SQLite, cotas inferiores, distribución, auditoría de artefactos, mediciones, y la suite completa con SQLite 3.38.5 |
 | 4 | **Probado en GitHub Actions** | **No.** El workflow está preparado; no se hizo push y no existe ninguna ejecución remota |
-| 5 | **Aceptación del usuario** | **Pendiente.** Además quedan pendientes técnicos (§7): la ejecución remota del workflow y las decisiones Q-06/Q-07 |
+| 5 | **Aceptación del usuario** | **Pendiente.** Además queda pendiente técnico (§7): la ejecución remota del workflow |
 
 Una corrida Linux local en Docker **no equivale** a una ejecución de GitHub Actions.
 
@@ -107,7 +107,7 @@ macOS 27.0.1 arm64, Python 3.13.16, PostgreSQL 15.19/16.15/17.11/18.6 en contene
 
 El piso de SQLite se probó con la **misma ruta de driver del producto** (`aiosqlite` → `sqlite3` del intérprete): se compiló SQLite desde la amalgamación oficial de sqlite.org y se enlazó con `LD_LIBRARY_PATH` al módulo `sqlite3` de Python; el propio proceso de pruebas confirma `sqlite3.sqlite_version == 3.38.5` (`CCE_EXPECT_SQLITE_VERSION`, no un binario `sqlite3` externo). No se cambió el mínimo declarado.
 
-## <a id="mediciones"></a>5. Mediciones de importación (registradas; las referencias provisionales no se tocaron)
+## <a id="mediciones"></a>5. Mediciones de importación (umbrales fijados por D-33)
 
 Metodología: `scripts/measure_distribution.py` construye el wheel, lo instala en un **venv limpio** (sin extras) y ejecuta `scripts/measure_import.py` con ese intérprete: **frío** = se borran todos los `__pycache__` de `site-packages` antes de cada muestra (el producto y sus dependencias se compilan en esa primera importación); **caliente** = procesos nuevos con bytecode disponible. No se mezclan.
 
@@ -119,7 +119,7 @@ Metodología: `scripts/measure_distribution.py` construye el wheel, lo instala e
 | Dependencias instaladas | SQLAlchemy 2.1.8, greenlet 3.5.6, pydantic 2.14.3, pydantic_core 2.50.4, annotated-types 0.8.0, typing-inspection 0.4.5, typing_extensions 4.16.0 | igual |
 | Módulos de terceros cargados | annotated_types, greenlet, pydantic, pydantic_core, sqlalchemy, typing_extensions, typing_inspection (ningún FastAPI/Alembic/driver/inferencia/documentos) | igual |
 
-Lectura honesta: **los ~200–230 ms son el costo en caliente, no un costo universal de arranque frío**. La primera importación tras instalar cuesta ~0,8–0,9 s (mediana) y en macOS apareció una muestra de 3262.9 ms (el outlier de ~2,9 s ya visto en la medición anterior, que no estaba dentro de una mediana de procesos en caliente). Frente a las referencias provisionales (**300 ms** y **40 MiB**, sin cambiar): el tamaño pasa en ambas plataformas; el caliente pasa (mediana) en ambas, pero el máximo caliente en macOS (324.1 ms) lo supera; el frío **supera** 300 ms. La referencia original no distinguía frío/caliente: **qué caso debe cumplirla es una definición pendiente (Q-07)**, no se resolvió relajando umbrales.
+Lectura honesta: **los ~200–230 ms son el costo en caliente, no un costo universal de arranque frío**. La primera importación tras instalar cuesta ~0,8–0,9 s (mediana) y en macOS apareció una muestra de 3263 ms (el outlier ya visto antes). **Criterio decidido (D-33, Q-07 cerrada):** la referencia de **300 ms aplica a la mediana en caliente** y el tamaño instalado debe ser **≤ 40 MiB**; el frío se informa **sin umbral** y el máximo no es gate. Resultado: caliente 197,8 ms (Linux) y 231,3 ms (macOS) ⇒ cumple; tamaño 27,5 MiB (Linux) y 17,5 MiB (macOS) ⇒ cumple. (El máximo caliente en macOS, 324,1 ms, supera 300 ms pero no es gate.) El gate está automatizado en `tests/test_distribution.py::test_installed_import_cost_meets_the_decided_references` y pasó en macOS y en un contenedor Linux aparte tras su incorporación; **no se ejecutó en GitHub Actions**.
 
 ## <a id="matriz-ac-trazable"></a>6. Matriz AC trazable
 
@@ -199,21 +199,21 @@ IDs sin cambios (no se renumeró ni se eliminó nada). «macOS» = ejecución lo
 | AC-98 | `test_orphaned_key_procedure_after_lost_output`, `test_delivery_failure_after_commit_*` | PG, SQ | Pasa | Pasa | No ejecutado | procedimiento recuperar → identificar → revocar |
 | AC-99 | `TestKeyFormat::*`, `test_revocation_applies_to_subsequent_authentications_only` | — / PG, SQ | Pasa | Pasa | No ejecutado | vectores de codificación canónica y hash de bytes crudos |
 | AC-100 | `test_migration_timeout_exits_nonzero_and_never_listens`, `test_external_migration_mode_requires_a_compatible_schema`, `test_incompatible_schema_exits_4` | proceso real, PG, SQ | Pasa | Pasa | No ejecutado | — |
-| AC-101 | `TestWorkerFailures::*` (10 casos con proceso real: `service_wrapper.py`, `SIGKILL`), `test_two_workers_migrate_once_and_workers_never_migrate`, `test_launcher_failure_before_listening_is_a_different_event` | PG, SQ | Pasa | Pasa | No ejecutado | **Cierra el parcial anterior.** Fallo de inicialización de un worker ⇒ el servicio termina con 4 (antes devolvía 0 con varios workers: defecto corregido); muerte posterior ⇒ el supervisor lo reinicia sin migrar; reemplazo que no inicializa ⇒ el servicio termina con 4. Semántica del supervisor: Uvicorn ≥ 0.50 (cota elevada). Política más allá de lo observado: Q-06 |
+| AC-101 | `TestWorkerFailures::*` (10 casos con proceso real: `service_wrapper.py`, `SIGKILL`), `test_two_workers_migrate_once_and_workers_never_migrate`, `test_launcher_failure_before_listening_is_a_different_event` | PG, SQ | Pasa | Pasa | No ejecutado | **Cierra el parcial anterior.** Fallo de inicialización de un worker ⇒ el servicio termina con 4 (antes devolvía 0 con varios workers: defecto corregido); muerte posterior ⇒ el supervisor lo reinicia sin migrar; reemplazo que no inicializa ⇒ el servicio termina con 4. Semántica del supervisor: Uvicorn ≥ 0.50 (cota elevada). Política decidida: D-32 (lo observado; sin límite ni backoff de reinicios, a cargo del orquestador) |
 | AC-102 | `test_separate_ddl_credentials_for_the_launcher_postgres`, `test_postgres_role_without_ddl_permission_*` | PG | Pasa | Pasa | No ejecutado | no se afirma borrado de credenciales de la memoria del proceso (documentado) |
 
 ## 7. Pendientes y limitaciones
 
-**Pendientes técnicos (impiden declarar que «solo falta aceptación»):**
+**Pendiente técnico (impide declarar que «solo falta aceptación»):**
 1. **Ejecución del workflow en GitHub Actions** (Linux): no hay ninguna ejecución remota; requiere autorización de push.
-2. **Q-06** (política ante fallo posterior de un worker) y **Q-07** (qué importación debe cumplir los 300 ms): definiciones pendientes del usuario; el comportamiento observado está documentado.
+2. ~~Q-06 y Q-07~~ **Resueltas por el usuario** (D-32: política de workers = lo observado con Uvicorn ≥ 0.50; D-33: gate = mediana en caliente ≤ 300 ms y ≤ 40 MiB). Ya no son pendientes.
 
 **Pendientes de aceptación:** acta del usuario (este informe no la sustituye).
 
 **Límites declarados, no bloqueantes:**
 - Python 3.14+ sin probar (rango abierto); versiones intermedias de dependencias y de SQLite (3.38.0–3.38.4, 3.39) sin probar.
 - Mediciones solo en aarch64 (macOS y Linux sobre Docker/VM); sin x86_64.
-- Uvicorn < 0.50 queda excluido por su política de reinicio; la política de reinicios tras una muerte posterior (sin límite ni *backoff*) es la de Uvicorn.
+- Uvicorn < 0.50 queda excluido por su política de reinicio; la política de reinicios tras una muerte posterior (sin límite ni *backoff*) es la de Uvicorn y fue **aceptada por el usuario** (D-32).
 - Métricas no implementadas; limitación de tasa delegada al despliegue; sin caché de autenticación ni `last_used_at`.
 - Cerrar la conexión DDL no elimina credenciales de la memoria/entorno del proceso; para separación estricta, migración externa.
 - El contexto Python (`trusted_*`) no es infalsificable.

@@ -47,7 +47,7 @@ uv run ruff format --check src tests examples scripts
 uv run mypy
 uv run pytest -q -rs                 # SQLite siempre; PostgreSQL si CCE_TEST_POSTGRES_URL está definida
 uv run pytest -m dist -q             # construye wheel+sdist y los instala en entornos limpios fuera del árbol (necesita índice de paquetes)
-uv run python scripts/measure_import.py --runs 15      # importación y módulos cargados (registra, no es un gate)
+uv run python scripts/measure_import.py --runs 15      # importación en frío/caliente y módulos cargados (registra; el gate D-33 lo aplica el test de `-m dist`)
 uv run --isolated --resolution lowest-direct --group dev pytest -q   # cotas inferiores declaradas
 bash examples/standalone_service.sh  # servicio real con SQLite
 uv run python examples/python_host.py
