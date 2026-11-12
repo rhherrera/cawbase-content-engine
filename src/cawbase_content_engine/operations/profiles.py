@@ -11,7 +11,6 @@ from .. import validation as v
 from ..config import Limits
 from ..errors import (
     ConflictError,
-    DefaultProfileNotSetError,
     InvalidStateTransitionError,
     LimitExceededError,
     ProfileDisabledError,
@@ -21,8 +20,6 @@ from ..errors import (
     ProfileNotSelectableError,
     ResourceNotFoundError,
     RevisionConflictError,
-    ScopeDisabledError,
-    ValidationFailedError,
 )
 from ..models import DefaultProfile, Page, Profile, RankingConfig, ResolvedProfile, UpsertResult
 from ..persistence.tables import Tables
@@ -41,8 +38,8 @@ from .profile_common import (
     resolution_problems,
     visible_profile_row,
 )
-from .scopes import UNSET  # one "omitted field" sentinel for the whole package
-from .versions import get_version_row, version_from_row
+from .scopes import UNSET
+from .selection import select_published_version  # one "omitted field" sentinel for the whole package
 
 
 async def _is_default(conn: AsyncConnection, t: Tables, scope_id: str, profile_id: str) -> bool:
@@ -447,35 +444,9 @@ async def resolve_profile(
     conn: AsyncConnection, t: Tables, *, scope_id: str, profile_id: str | None, version_number: int | None
 ) -> ResolvedProfile:
     """Pure read: returns the concrete published version a new execution should pin. Runs no analysis."""
-    status = (
-        await conn.execute(sa.select(t.scopes.c.status).where(t.scopes.c.scope_id == scope_id))
-    ).scalar_one_or_none()
-    if status is None:
-        raise ResourceNotFoundError()
-    if status != "active":
-        raise ScopeDisabledError()
-    if profile_id is None:
-        if version_number is not None:
-            raise ValidationFailedError("version_number needs a profile_id.", field="version_number")
-        profile_id = await default_profile_id(conn, t, scope_id)
-        if profile_id is None:
-            raise DefaultProfileNotSetError()
-        selection = "default"
-    else:
-        selection = "explicit"
-    row = await read_profile_row(conn, t, scope_id, profile_id)
-    if row is None:
-        raise ResourceNotFoundError()
-    m = row._mapping
-    if m["status"] != "active":  # disabled / deleted: not selectable, not even with an explicit version
-        raise ProfileNotSelectableError()
-    number = version_number if version_number is not None else m["current_version_number"]
-    if number is None:
-        raise ProfileNotPublishedError()
-    vrow = await get_version_row(conn, t, scope_id, profile_id, number)
-    if vrow is None:
-        raise ResourceNotFoundError()
-    return ResolvedProfile(selection=selection, version=version_from_row(vrow))
+    return await select_published_version(
+        conn, t, scope_id=scope_id, profile_id=profile_id, version_number=version_number
+    )
 
 
 __all__ = ["ProfileDisabledError", "UNSET"]

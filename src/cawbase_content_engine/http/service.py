@@ -90,6 +90,9 @@ class ServiceSettings:
     enable_openapi: bool = False
     log_level: str = "INFO"
     log_format: str = "json"
+    inference_adapter: str = "none"  # "none" | "mock" (development/testing only; real adapters arrive with A09)
+    inference_mock_fixtures: str | None = None
+    inference_timeout_s: float = 30.0
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None, **overrides: Any) -> ServiceSettings:
@@ -109,6 +112,14 @@ class ServiceSettings:
             log_level=env.get(ENV_PREFIX + "LOG_LEVEL", "INFO").upper(),
             log_format=env.get(ENV_PREFIX + "LOG_FORMAT", "json"),
         )
+        try:
+            values.update(
+                inference_adapter=env.get(ENV_PREFIX + "INFERENCE_ADAPTER", "none").lower(),
+                inference_mock_fixtures=env.get(ENV_PREFIX + "INFERENCE_MOCK_FIXTURES"),
+                inference_timeout_s=float(env.get(ENV_PREFIX + "INFERENCE_TIMEOUT_S", "30")),
+            )
+        except ValueError:
+            raise InvalidConfigurationError("INFERENCE_TIMEOUT_S must be a number.") from None
         values.update({k: v for k, v in overrides.items() if v is not None})
         config = EngineConfig.from_env(env, migration_mode="on_start" if migrate else "external")
         s = cls(config=config, migrate_on_start=migrate, migration_url=SecretStr(murl) if murl else None, **values)
@@ -122,12 +133,18 @@ class ServiceSettings:
             raise InvalidConfigurationError("Invalid log level or format.")
         if self.config.async_engine is not None:
             raise InvalidConfigurationError("The standalone service builds its own engine from a URL.")
+        if self.inference_adapter not in ("none", "mock"):
+            raise InvalidConfigurationError("INFERENCE_ADAPTER must be 'none' or 'mock'.")
+        if (self.inference_adapter == "mock") != (self.inference_mock_fixtures is not None):
+            raise InvalidConfigurationError("INFERENCE_MOCK_FIXTURES applies to, and is required by, the mock adapter.")
+        if not (0 < self.inference_timeout_s <= 600):
+            raise InvalidConfigurationError("INFERENCE_TIMEOUT_S is out of range.")
         if self.migration_url is not None and not self.migrate_on_start:
             raise InvalidConfigurationError("A migration URL has no effect with migrate_on_start=false.")
 
 
 class _JsonFormatter(logging.Formatter):
-    _EXTRA = ("request_id", "error_class", "error_code", "event", "exit_code")
+    _EXTRA = ("request_id", "error_class", "error_code", "event", "exit_code", "status", "adapter_kind", "duration_ms")
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {"level": record.levelname, "logger": record.name, "event": record.getMessage()}
@@ -152,11 +169,24 @@ def configure_logging(settings: ServiceSettings) -> None:
         target.propagate = False
 
 
+def build_inference_setup(settings: ServiceSettings) -> Any:
+    """Operator-chosen adapter (never a request parameter). ``None`` when inference is not configured."""
+    if settings.inference_adapter != "mock":
+        return None
+    from ..inference import InferenceSetup, MockInferenceAdapter
+
+    assert settings.inference_mock_fixtures is not None
+    adapter = MockInferenceAdapter.from_file(settings.inference_mock_fixtures, acknowledge_simulated=True)
+    return InferenceSetup(adapter, timeout_s=settings.inference_timeout_s)
+
+
 async def prepare(settings: ServiceSettings) -> None:
     """Steps 1-3. Raises a typed EngineError; never starts listening."""
     from ..migrations import upgrade  # extra 'migrations'
 
     settings.validate()
+    if build_inference_setup(settings) is not None:  # a bad fixtures file fails before listening
+        log.warning("inference_mock_enabled", extra={"event": "inference_mock_enabled", "adapter_kind": "mock"})
     if settings.migrate_on_start:
         log.info("migration_started", extra={"event": "migration_started"})
         report = await upgrade(settings.config, migration_url=settings.migration_url)
@@ -242,7 +272,10 @@ def app_factory() -> FastAPI:
     """Uvicorn ``--factory`` entry point for workers: reads the environment; does NOT migrate."""
     settings = ServiceSettings.from_env()
     configure_logging(settings)
-    return create_service_app(ContentEngine(settings.config), enable_openapi=settings.enable_openapi)
+    return create_service_app(
+        ContentEngine(settings.config, inference=build_inference_setup(settings)),
+        enable_openapi=settings.enable_openapi,
+    )
 
 
 def serve(settings: ServiceSettings) -> int:

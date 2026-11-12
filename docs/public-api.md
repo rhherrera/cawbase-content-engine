@@ -1,6 +1,6 @@
 # API pública (Python y HTTP)
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los nombres y firmas siguen el código (`src/cawbase_content_engine/`); los bloques de código son ejemplos ilustrativos. Las decisiones aprobadas están en [A01-decisions](decisions/A01-decisions.md) (D-nn). Las propuestas P-05, P-06, P-07, P-08, P-09, P-13 y P-14 fueron **resueltas** en la revisión 2 (D-23 a D-29) y P-20 fue adoptada como D-30.
 
 Relacionado: [perfiles y catálogo (A02)](profiles-and-catalog.md) · [arquitectura](architecture.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md).
 
@@ -408,7 +408,7 @@ Los valores del ejemplo son ficticios. Los datos de `metadata` no deben contener
 
 ## 10. A02 — Perfiles, categorías y tipos sensibles (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** Los nombres, firmas y rutas de esta sección siguen el código (`src/cawbase_content_engine/operations/profile_facade.py`, `http/router.py`); los bloques de código son ilustrativos. Modelo y semántica: [perfiles y catálogo](profiles-and-catalog.md). Decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de A01 (§1–§9) sigue vigente y no cambia; esta sección **solo agrega**.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** Los nombres, firmas y rutas de esta sección siguen el código (`src/cawbase_content_engine/operations/profile_facade.py`, `http/router.py`); los bloques de código son ilustrativos. Modelo y semántica: [perfiles y catálogo](profiles-and-catalog.md). Decisiones: [A02-decisions](decisions/A02-decisions.md). Todo lo de A01 (§1–§9) sigue vigente y no cambia; esta sección **solo agrega**.
 
 ### 10.1 Convenciones heredadas de A01
 
@@ -659,3 +659,50 @@ Se reutiliza `admin_events` ([persistencia §2.6](persistence-and-migrations.md#
 - El análisis JSON del adaptador HTTP rechaza `NaN` e `Infinity` en **todas** las rutas (también las de A01): 422 `validation_failed`.
 - Los filtros `status`/`state` aceptan el parámetro repetido o una lista separada por comas; `include_deleted` solo existe en los `GET` individuales.
 - Los límites de la [operación §11](installation-and-operations.md#111-límites) son campos de `Limits` (`max_profiles_per_scope`, `max_profile_rows_per_scope`, `max_elements_per_profile`, `max_element_rows_per_profile`, `max_versions_per_profile`, `max_snapshot_bytes`, `max_element_name`, `max_element_definition`, `max_example`, `max_examples_per_list`, `max_element_text_bytes`, `max_priority`).
+
+## 11. A03 — Análisis de texto (implementado)
+
+> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Los nombres, firmas, rutas, permisos y códigos de esta sección siguen el código (`src/cawbase_content_engine/operations/analysis.py`, `inference/`, `http/router.py`); evidencia en el [informe de A03](a03-implementation-report.md). Todo lo de A01 (§1–§9) y A02 (§10) sigue vigente y **no cambia**; esta sección solo agrega. Contrato completo y ejemplos: [inferencia y análisis](inference-and-analysis.md). Decisiones: [A03-decisions](decisions/A03-decisions.md).
+
+### 11.1 Firma Python (`ScopedOperations`)
+
+```python
+# Ejemplo ilustrativo — implementado en 0.3.0 (versión ejecutable: examples/analysis_host.py)
+result = await engine.scoped(ctx).analyze_text(
+    "acme-team",
+    text="Contactar a Ana Ejemplo (ana.ejemplo@example.test).",
+    profile_id=None,            # None ⇒ perfil predeterminado del scope (A02 §8)
+    version_number=None,        # None ⇒ versión publicada vigente; sin profile_id ⇒ 422
+    capabilities=("classification", "detection"),   # predeterminado: ambas
+    context=None,               # contexto auxiliar: dato no confiable, no cubierto
+    request_id=None,            # correlación opcional (HTTP pasa el X-Request-ID); no deduplica
+)   # -> AnalysisResult
+# El motor se compone con el adaptador (propiedad del host):  ContentEngine(config, inference=InferenceSetup(adapter))
+```
+
+Requiere `ScopeContext` con `analysis:execute`. Con `HostTransaction` ⇒ `transaction_incompatible` antes de invocar al adaptador. Sin `InferenceSetup` ⇒ `inference_not_configured`. `ContentEngine.inference_status()` informa de la capacidad de inferencia; `readiness()` no cambia.
+
+### 11.2 Ruta HTTP
+
+| Método y ruta | Permiso | Cuerpo | Respuesta |
+|---|---|---|---|
+| `POST /v1/scopes/{scope_id}/analyze-text` | grant `analysis:execute` en `{scope_id}` | `{text, profile_id?, version_number?, capabilities?, context?}` (≤ 64 KiB; campos desconocidos ⇒ 422) | `200` con el `AnalysisResult` (también si es `inconclusive`); `Cache-Control: no-store`; sin 202, sin `GET` de resultados, sin idempotencia duradera |
+
+`request_id` (= `X-Request-ID`) sirve para correlación, no para deduplicación; repetir la solicitud la ejecuta de nuevo.
+
+### 11.3 Tipos de resultado
+
+`AnalysisResult`: `analysis_contract_version`, `request_id`, `status` (`completed`|`inconclusive`, derivado), `profile` (`scope_id`, `profile_id`, `version_id`, `version_number`, `content_hash`, `selection`; **sin** snapshot), `input` (`text_length`, `context_provided`), `provenance`, `classification`, `detection`. Cada capacidad tiene `status ∈ {not_requested, not_configured, completed, inconclusive}`; solo las ejecutadas llevan `coverage`, `ranking`/`resolution` o `findings`. Esquema y ejemplos: [contrato §6](inference-and-analysis.md#6-construcción-del-resultado-público).
+
+### 11.4 Códigos de error nuevos
+
+| Código | HTTP | Retryable | Cuándo |
+|---|---|---|---|
+| `inference_not_configured` | 503 | no | el motor no tiene adaptador de inferencia |
+| `capabilities_not_configured` | 409 | no | ninguna capacidad pedida está configurada en la versión fijada |
+| `inference_unavailable` | 503 | sí | adaptador apagado, cargando, inalcanzable o con fallo recuperable (`reason`) |
+| `inference_timeout` | 504 | sí | el adaptador no respondió dentro del timeout del operador |
+| `inference_output_invalid` | 502 | no | la salida del adaptador no pasó la validación (`problems` solo con códigos) |
+| `inference_fixture_not_found` | 501 | no | el mock no tiene fixture para la entrada |
+
+Se reutilizan `permission_denied`, `resource_not_accessible`, `validation_failed`, `limit_exceeded` (también HTTP 413 por cuerpo > 64 KiB), `scope_disabled`, `default_profile_not_set`, `resource_not_found`, `profile_not_selectable`, `profile_not_published`, `transaction_incompatible` y `internal_error`. Tabla completa (con excepción Python y si se invocó al adaptador): [contrato §8.1](inference-and-analysis.md#81-tabla-de-errores-se-reutilizan-jerarquía-engineerror-y-envoltorio). Estados HTTP añadidos al catálogo de §9.4 solo para esta ruta: `501`, `502`, `504`.

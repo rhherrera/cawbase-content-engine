@@ -1,6 +1,6 @@
 # Seguridad y aislamiento
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los contratos descritos están implementados y cubiertos por pruebas (`tests/test_credentials.py`, `test_bootstrap_and_recovery.py`, `test_scopes_and_isolation.py`, `test_http.py`).
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [instalación y operación](installation-and-operations.md).
 
@@ -214,7 +214,7 @@ Alcanza únicamente los datos que A01 introduce.
 
 ## 9. A02 — Permisos y datos de perfiles (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** El catálogo pasa de **8** permisos (A01) a **10**: A02 agrega 2 y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** El catálogo pasa de **8** permisos (A01) a **10**: A02 agrega 2 y ningún otro cambio de modelo de seguridad. Decisión: D-A02-06 en [A02-decisions](decisions/A02-decisions.md). Todo lo de §1–§8 sigue vigente.
 
 ### 9.1 Catálogo ampliado
 
@@ -282,3 +282,39 @@ El motor **no escanea** el contenido de las definiciones en busca de datos reale
 - Un `profiles:read` expone todas las definiciones del alcance (sin granularidad por perfil: no hay credenciales por perfil).
 - Un host con acceso directo a la base (§2.1) puede leer y alterar las instantáneas; la inmutabilidad la garantiza el código del motor, no el motor de base de datos.
 - Las definiciones eliminadas lógicamente siguen en la base y en las versiones hasta que exista purga.
+
+## 10. A03 — Permiso y datos del análisis (implementado)
+
+> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Todo lo de §1–§9 sigue vigente. Contrato completo: [inferencia y análisis](inference-and-analysis.md). Decisión: D-A03-02 en [A03-decisions](decisions/A03-decisions.md).
+
+### 10.1 Catálogo ampliado
+
+El catálogo pasa de **10** permisos (8 de A01 + 2 de A02) a **11**: A03 agrega uno de alcance.
+
+| Permiso | Nivel | Habilita |
+|---|---|---|
+| `analysis:execute` | alcance | Ejecutar análisis de texto (`analyze_text`) con un perfil publicado del propio scope. **No** concede lectura de perfiles, definiciones, ejemplos, snapshots ni versiones |
+
+Sin jerarquías ni comodines: `profiles:read`, `profiles:write`, `scope:read|write` y `admin:*` **no** conceden análisis, y `analysis:execute` no concede ninguno de ellos. `AdminContext` no ejecuta análisis. Se reutilizan `ScopeContext`, grants inmutables, API keys y delegación (D-27: subconjunto del emisor; `admin:grants:write` para scopes sin acceso directo). Las claves emitidas antes no ganan el permiso ni se reinterpretan.
+
+### 10.2 Matriz Python y HTTP
+
+| Operación | Python | HTTP | Clave HTTP |
+|---|---|---|---|
+| Analizar texto | `ScopeContext` + `analysis:execute` | `POST /v1/scopes/{id}/analyze-text` | grant `analysis:execute` en `{id}` |
+| Resolver perfil/versión (A02) | `ScopeContext` + `profiles:read` | `GET …/resolved-profile` | grant `profiles:read` (sin cambios) |
+
+Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistinguible; con grants pero sin el permiso ⇒ 403. El resultado devuelve solo la **identidad** de la versión fijada (`version_id`, `version_number`, `content_hash`), nunca las definiciones.
+
+### 10.3 Compatibilidad y despliegue del permiso nuevo
+
+- Un runtime anterior (A01 o A02) **puede fallar al cargar grants con permisos desconocidos**, al autenticar y en operaciones administrativas que los carguen, **también los de claves revocadas** (revocar no elimina los grants almacenados; I-A02-02).
+- **Antes de emitir claves con `analysis:execute`, actualizar todos los runtimes que acceden a esos grants** (servicios independientes, hosts embebidos, workers, Lambda). Volver a una versión anterior tras emitirlas **no** es un rollback transparente; cambiar el código de A03 no corrige binarios anteriores ya desplegados. No se exige como requisito el endurecimiento opcional pendiente (B-A02-12 / B-A03-10).
+- No hay migración ni cambio de niveles por A03: la restricción es operacional, no de esquema.
+
+### 10.4 Datos sensibles del análisis
+
+- El texto, el contexto auxiliar, los fragmentos, las salidas crudas del adaptador y las ubicaciones de hallazgos son **contenido potencialmente sensible**. No se persisten, no se escriben en `admin_events` y no aparecen en logs, errores ni diagnósticos. La respuesta HTTP lleva `Cache-Control: no-store`.
+- El contexto auxiliar es **dato no confiable**: no modifica contrato, configuración ni políticas; el adaptador lo recibe rotulado como tal.
+- El adaptador recibe solo lo necesario (texto, contexto, definiciones de las capacidades ejecutables, límites): no scope, perfil, versión, prioridades, permisos, credenciales ni conexión.
+- Un adaptador remoto futuro ampliará la superficie (confidencialidad en tránsito, autenticación del servidor): se trata en A09/A10, no en A03.

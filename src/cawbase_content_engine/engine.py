@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Collection, Mapping
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -40,6 +40,7 @@ from .models import (
 from .operations import api_keys as ak
 from .operations import clients as cl
 from .operations import scopes as sc
+from .operations.analysis import AnalysisOperations
 from .operations.common import page_size
 from .operations.profile_facade import ProfileOperations
 from .permissions import AdminPermission, ScopePermission
@@ -49,6 +50,9 @@ from .persistence.sqlite_support import driver_in_transaction
 from .persistence.tables import Tables, tables_for
 from .schema import read_schema_status
 from .transactions import HostTransaction, run_in_host, run_own, translate
+
+if TYPE_CHECKING:
+    from .inference.adapter import InferenceSetup, InferenceStatus
 
 T = TypeVar("T")
 
@@ -60,7 +64,13 @@ MIN_SQLITE_VERSION = (3, 38, 0)
 class ContentEngine:
     """Construct (no I/O) -> ``await start()`` -> operations -> ``await aclose()``."""
 
-    def __init__(self, config: EngineConfig) -> None:
+    def __init__(self, config: EngineConfig, *, inference: InferenceSetup | None = None) -> None:
+        if inference is not None:
+            from .inference.adapter import InferenceSetup as _Setup
+
+            if not isinstance(inference, _Setup):
+                raise InvalidConfigurationError("'inference' must be an InferenceSetup.")
+        self._inference = inference  # the adapter belongs to the host: never started or closed here
         self._config = config
         self._backend = config.backend
         self._tables: Tables = tables_for(self._backend)
@@ -77,6 +87,30 @@ class ContentEngine:
     @property
     def backend(self) -> Backend:
         return self._backend
+
+    @property
+    def inference(self) -> InferenceSetup | None:
+        return self._inference
+
+    async def inference_status(self) -> InferenceStatus:
+        """Capability status of the inference adapter (distinct from ``readiness()``, which is engine+database).
+
+        Read-only: never starts anything and never waits for readiness.
+        """
+        import asyncio
+
+        from .inference.adapter import AdapterState, InferenceStatus
+
+        setup = self._inference
+        if setup is None:
+            return InferenceStatus(configured=False, state="not_configured")
+        try:
+            async with asyncio.timeout(min(setup.timeout_s, 5.0)):
+                state = await setup.adapter.probe()
+            name = AdapterState(state).value
+        except Exception:  # timeout, transport failure or a value outside the closed set
+            name = "unknown"
+        return InferenceStatus(configured=True, state=name, descriptor=setup.descriptor)
 
     @property
     def tables(self) -> Tables:
@@ -233,7 +267,7 @@ class ContentEngine:
         return await self._run(lambda c: ak.authenticate(c, self._tables, text, self._token), write=False, tx=None)
 
 
-class ScopedOperations(ProfileOperations):
+class ScopedOperations(ProfileOperations, AnalysisOperations):
     """Operations on one scope. Every query is constrained by ``ctx.scope_id``."""
 
     def __init__(self, engine: ContentEngine, ctx: ScopeContext, tx: HostTransaction | None) -> None:

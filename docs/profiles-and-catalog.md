@@ -1,6 +1,6 @@
 # Perfiles, categorías, tipos sensibles y versiones (modelo de A02)
 
-> **Estado: implementado en `0.2.0` (A02); no aceptado por el usuario.** Describe el código real; evidencia en el [informe de A02](a02-implementation-report.md). Las decisiones de producto son de [A02-decisions](decisions/A02-decisions.md) (`D-A02-nn`, aprobadas por el usuario); las elecciones técnicas derivadas son `E-A02-nn` (adoptadas por criterio, revisables). Alcance y aceptación: [feature A02](features/A02-perfiles-categorias-y-tipos-sensibles.md).
+> **Estado: implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según confirmación del usuario).** Describe el código real; evidencia en el [informe de A02](a02-implementation-report.md). Las decisiones de producto son de [A02-decisions](decisions/A02-decisions.md) (`D-A02-nn`, aprobadas por el usuario); las elecciones técnicas derivadas son `E-A02-nn` (adoptadas por criterio, revisables). Alcance y aceptación: [feature A02](features/A02-perfiles-categorias-y-tipos-sensibles.md).
 
 Este documento fija la **semántica** del modelo (qué es cada cosa, estados, revisiones, versiones, catálogo inicial, ranking/resolución). Los demás contratos viven en: [API pública §10](public-api.md#10-a02--perfiles-categorías-y-tipos-sensibles-implementado) (firmas, rutas, errores), [persistencia §7](persistence-and-migrations.md#7-a02--modelo-persistente-y-migración-implementado) (tablas, índices, migración), [seguridad §9](security-and-isolation.md#9-a02--permisos-y-datos-de-perfiles-implementado) (permisos, datos sensibles), [operación §11](installation-and-operations.md#11-a02--límites-y-observabilidad-implementado) (límites, observabilidad).
 
@@ -133,7 +133,7 @@ La configuración vive **en el perfil** (y por tanto en cada versión publicada)
 - **Resolución (`resolution`):** entre las categorías elegibles, sea `m` la puntuación máxima; el conjunto de candidatas son las elegibles con `m − puntuación ≤ tie_tolerance` (distancia **respecto del máximo**, **sin empates transitivos encadenados**); se selecciona la de **mayor prioridad** (menor número). Las prioridades únicas hacen la elección inequívoca.
 - Sin categorías elegibles, o con clasificación inconclusa: **no se fuerza una ganadora**.
 - El consumidor puede obtener **todas** las categorías evaluadas: sin exclusiones silenciosas ni top-k obligatorio.
-- Los valores iniciales no acreditan calidad. El algoritmo y el contrato de resultados son de **A03**; la validación con inferencia real, de **A09**. A02 solo almacena y valida la configuración.
+- Los valores iniciales no acreditan calidad. El algoritmo y el contrato de resultados son de **A03** (implementados en `0.3.0`, no aceptados: [inferencia y análisis §6.3](inference-and-analysis.md#63-clasificación)); la validación con inferencia real, de **A09**. A02 solo almacena y valida la configuración.
 
 ### 6.2 Validación de la resolución
 
@@ -261,4 +261,4 @@ Las definiciones completas (es/en) de cada entrada están en `src/cawbase_conten
 
 ## 11. Fuera de este modelo
 
-Clasificación/inferencia y mock (A03), documentos, protección/restauración, trabajos (A05), políticas/destinos/bloqueo, herencia, organizaciones, proyectos y membresías, credenciales por perfil, overrides por ejecución, purga y restauración. Ver [backlog](decisions/A02-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).
+Clasificación/inferencia y mock (A03, [implementada en 0.3.0](inference-and-analysis.md), no aceptada), documentos, protección/restauración, trabajos (A05), políticas/destinos/bloqueo, herencia, organizaciones, proyectos y membresías, credenciales por perfil, overrides por ejecución, purga y restauración. Ver [backlog](decisions/A02-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).

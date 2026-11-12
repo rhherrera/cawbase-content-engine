@@ -43,6 +43,15 @@ class Limits:
     max_examples_per_list: int = 5
     max_element_text_bytes: int = 8192
     max_priority: int = 10000
+    # A03 (text analysis); see docs/inference-and-analysis.md section 2.6
+    max_analysis_text_chars: int = 8192
+    max_analysis_text_bytes: int = 24576
+    max_analysis_context_chars: int = 2048
+    max_analysis_context_bytes: int = 6144
+    max_analysis_findings: int = 500
+    max_finding_chars: int = 2048
+    max_analysis_regions: int = 256
+    max_inference_output_bytes: int = 1024 * 1024
 
     def __post_init__(self) -> None:
         for name, value in vars(self).items():

@@ -241,6 +241,56 @@ class ProfileInvalidError(EngineError):
         self.problems = problems or []
 
 
+class CapabilitiesNotConfiguredError(ConflictError):
+    code = "capabilities_not_configured"
+    default_message = "None of the requested capabilities is configured in the selected profile version."
+
+
+class InferenceNotConfiguredError(EngineError):
+    code = "inference_not_configured"
+    http_status = 503
+    default_message = "Inference is not configured for this engine."
+
+
+class InferenceUnavailableError(EngineError):
+    """The adapter cannot answer now. ``reason`` is a closed code, never free text."""
+
+    code = "inference_unavailable"
+    http_status = 503
+    retryable = True
+    default_message = "Inference is unavailable."
+    REASONS = ("loading", "stopped", "unreachable", "transient_failure")
+
+    def __init__(self, reason: str = "unreachable", message: str | None = None) -> None:
+        super().__init__(message)
+        self.reason = reason if reason in self.REASONS else "unreachable"
+
+
+class InferenceTimeoutError(EngineError):
+    code = "inference_timeout"
+    http_status = 504
+    retryable = True
+    default_message = "The inference adapter did not answer in time."
+
+
+class InferenceOutputInvalidError(EngineError):
+    """The adapter output was rejected. ``problems`` carry codes and positions only, never content."""
+
+    code = "inference_output_invalid"
+    http_status = 502
+    default_message = "The inference output is not valid."
+
+    def __init__(self, problems: list[dict[str, str]] | None = None, message: str | None = None) -> None:
+        super().__init__(message)
+        self.problems = (problems or [])[:20]
+
+
+class InferenceFixtureNotFoundError(EngineError):
+    code = "inference_fixture_not_found"
+    http_status = 501
+    default_message = "The mock adapter has no fixture for this input."
+
+
 class InternalError(EngineError):
     code = "internal_error"
     http_status = 500

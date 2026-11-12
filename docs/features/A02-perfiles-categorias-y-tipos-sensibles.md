@@ -1,10 +1,10 @@
 # A02 — Perfiles, categorías y tipos sensibles
 
-> **Estado: implementada en `0.2.0` (rama `feature/a02-profiles-categories-sensitive-types`, commits locales, sin push); probada localmente; GitHub Actions no ejecutado sobre A02; NO aceptada por el usuario; no cerrada.** Este documento define alcance, decisiones y aceptación; los contratos detallados viven en los documentos permanentes enlazados. La trazabilidad de cada criterio a pruebas y los resultados reales por ambiente están en el [informe de implementación](../a02-implementation-report.md).
+> **Estado vigente: A02 cerrada y aceptada por el usuario en `0.2.0` (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según la confirmación explícita del usuario; el merge `e149146` del PR #1 en `main` es posterior y no es el commit aceptado).** *Histórico al redactar:* implementada en la rama `feature/a02-profiles-categories-sensitive-types` con commits locales sin push, probada localmente, GitHub Actions no ejecutado y sin aceptación. Este documento define alcance, decisiones y aceptación; los contratos detallados viven en los documentos permanentes enlazados. La trazabilidad de cada criterio a pruebas y los resultados reales por ambiente están en el [informe de implementación](../a02-implementation-report.md).
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (11 de noviembre de 2026), más las decisiones posteriores del usuario registradas en [A01-decisions](../decisions/A01-decisions.md) y [A02-decisions](../decisions/A02-decisions.md) (estas últimas **prevalecen** sobre el playbook donde difieren; ver su [tabla de diferencias](../decisions/A02-decisions.md#4-cambios-respecto-del-playbook-revisión-6)).
 - Repositorio: `cawbase-content-engine` · rama: `feature/a02-profiles-categories-sensitive-types`.
-- Dependencias: A01 (**cerrada y aceptada**, commit `1b5ffab`). Habilita A03 (contrato de inferencia y mock).
+- Dependencias: A01 (**cerrada y aceptada**, commit `1b5ffab`). Habilita A03 (contrato de inferencia y mock; [especificada](A03-contrato-de-inferencia-y-analisis-con-mock.md), no implementada).
 
 ## 1. Objetivo, casos de uso, exclusiones y dependencias
 
@@ -73,7 +73,7 @@ Código, migración `0002`, pruebas, ejemplo y documentación, sin dependencias 
 <a id="matriz-aceptacion-a02"></a>
 ## 7. Matriz de aceptación
 
-Cada criterio se verifica con las pruebas indicadas en el [informe](../a02-implementation-report.md#matriz-ac-a02-trazable). Estado: implementada y probada localmente; **no aceptada**. «PG» = PostgreSQL real, «SQ» = SQLite real. Sin pruebas de calidad de inferencia ni del algoritmo de A03. Las pruebas de PostgreSQL usan solo bases descartables.
+Cada criterio se verifica con las pruebas indicadas en el [informe](../a02-implementation-report.md#matriz-ac-a02-trazable). Estado: implementada y probada localmente (ambientes y commits históricos en el informe); **cerrada y aceptada por el usuario** (`f4ad3e7`). «PG» = PostgreSQL real, «SQ» = SQLite real. Sin pruebas de calidad de inferencia ni del algoritmo de A03. Las pruebas de PostgreSQL usan solo bases descartables.
 
 ### 7.1 Recorrido, aislamiento y permisos
 

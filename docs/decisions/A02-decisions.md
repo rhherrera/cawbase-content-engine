@@ -1,6 +1,6 @@
 # A02 — Registro de decisiones
 
-> **Estado: A02 implementada en `0.2.0` (commits locales, sin push); probada localmente; GitHub Actions no ejecutado sobre A02; NO aceptada por el usuario.** Las decisiones de producto `D-A02-nn` fueron **aprobadas por el usuario**; las elecciones técnicas `E-A02-nn` se derivaron por criterio al redactar el contrato (no son decisiones de producto y pueden revisarse); las decisiones de implementación `I-A02-nn` (§3.1) se tomaron al implementar. Evidencia: [informe de A02](../a02-implementation-report.md).
+> **Estado vigente: A02 cerrada y aceptada por el usuario en `0.2.0` (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según la confirmación explícita del usuario; el merge `e149146` del PR #1 en `main` es posterior y no es el commit aceptado).** *Histórico al redactar este registro:* implementada en `0.2.0` en commits locales sin push, probada localmente, GitHub Actions no ejecutado y sin aceptación. Las decisiones de producto `D-A02-nn` fueron **aprobadas por el usuario**; las elecciones técnicas `E-A02-nn` se derivaron por criterio al redactar el contrato (no son decisiones de producto y pueden revisarse); las decisiones de implementación `I-A02-nn` (§3.1) se tomaron al implementar. Evidencia: [informe de A02](../a02-implementation-report.md).
 
 Este registro separa cuatro categorías. No mezclarlas.
 
@@ -19,6 +19,7 @@ Contratos que usan estas decisiones: [feature A02](../features/A02-perfiles-cate
 | 1 | Primera redacción del contrato de A02: decisiones D-A02-01 a D-A02-06 (aprobadas), elecciones E-A02-01 a E-A02-20, diferencias con el playbook y backlog. Solo documentación. |
 | 2 | Corrección técnica del contrato (sin cambiar ninguna `D-A02-nn`): bloqueos con `SELECT … FOR UPDATE` y no `UPDATE` ficticio, límites y predeterminado bajo bloqueos comunes (E-A02-08, E-A02-12, E-A02-07); `content_hash` de integridad separado de la comparación de configuración efectiva (E-A02-05); frontera `password`/`api_key_secret` por función y no por origen (E-A02-06); compatibilidad con A01 condicionada (E-A02-16). Son elecciones técnicas, no decisiones históricas del usuario. |
 | 3 | Implementación de A02 (`0.2.0`). Dos precisiones obligatorias del encargo de implementación incorporadas (I-A02-01 interbloqueos y `HostTransaction`; I-A02-02 revocación y compatibilidad con A01) y decisiones de implementación I-A02-03 a I-A02-09 (§3.1). Corregido el texto de E-A02-08 que afirmaba que el savepoint no recupera una transacción abortada. Ninguna `D-A02-nn` cambia. |
+| 4 | Cierre de A02: acta del usuario («A02 queda cerrada y aceptada en 0.2.0, commit f4ad3e7. GitHub Actions pasó sobre ese commit.»). Solo se actualizan los estados vigentes; ninguna `D-A02-nn`, `E-A02-nn` ni `I-A02-nn` cambia. El repositorio no contiene URL ni logs de esa ejecución de Actions. |
 
 ## 1. Fuente, precedencia y herencia de A01
 

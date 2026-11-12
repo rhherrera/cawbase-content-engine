@@ -1,6 +1,6 @@
 # Instalación y operación
 
-> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); GitHub Actions no ejecutado sobre A02; A02 no aceptada por el usuario.** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
+> **Estado: A01 implementada en `0.1.0`, cerrada y aceptada por el usuario (commit aceptado `1b5ffab`; GitHub Actions aprobado en `main` y en `feature/a01-product-foundation`, según confirmación explícita del usuario). A02 implementada en `0.2.0`: evidencia y niveles en el [informe de A02](a02-implementation-report.md); A02 cerrada y aceptada por el usuario (commit aceptado `f4ad3e7`; GitHub Actions pasó sobre ese commit, según su confirmación explícita).** Evidencia y alcance real de las pruebas: [informe de implementación](a01-implementation-report.md). Los comandos y variables de este documento existen y se ejercitan en `tests/test_processes.py`, `tests/test_distribution.py` y `examples/`. **El paquete no está publicado** (D-05): se instala desde wheel/sdist locales.
 
 Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [desarrollo](development.md).
 
@@ -232,7 +232,7 @@ Metodología, versiones y plataforma de cada medición están en el [informe de 
 
 ## 11. A02 — Límites y observabilidad (implementado)
 
-> **Implementado en `0.2.0` (A02); no aceptado.** Valores iniciales (E-A02-07), configurables mediante `Limits` (nombres de campo en [API pública §10.9](public-api.md#109-notas-de-implementación-020)); no se relajó ningún umbral de A01. Los límites de A01 (§7.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB: los cuerpos de A02 (un elemento por solicitud) caben en él.
+> **Implementado en `0.2.0` (A02); cerrado y aceptado por el usuario (commit `f4ad3e7`).** Valores iniciales (E-A02-07), configurables mediante `Limits` (nombres de campo en [API pública §10.9](public-api.md#109-notas-de-implementación-020)); no se relajó ningún umbral de A01. Los límites de A01 (§7.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB: los cuerpos de A02 (un elemento por solicitud) caben en él.
 
 ### 11.1 Límites
 
@@ -267,3 +267,29 @@ Se aplican los principios de [§6](#observabilidad). Además:
 ### 11.3 Efectos al importar y dependencias
 
 A02 no agrega extras ni dependencias, no carga modelos y no cambia los criterios de importación liviana de §7.2: el catálogo se importa de forma perezosa (`tests/test_a02_migration.py::TestLightImport`); las operaciones de perfiles forman parte del núcleo liviano (solo SQLAlchemy y Pydantic). Los umbrales D-33 (mediana en caliente ≤ 300 ms, ≤ 40 MiB) siguen siendo el gate. Medido con A02 (Linux, wheel instalado en venv limpio): mediana en caliente 207,4 ms, importación en frío 870,4 ms (sin umbral), tamaño instalado 27,6 MiB ([evidencia](evidence/a02-measure-import-linux.json)); el gate `-m dist` pasa.
+
+## 12. A03 — Límites, observabilidad y ciclo de vida (implementado)
+
+> **Implementado en `0.3.0` (A03); NO aceptado por el usuario.** Valores iniciales (E-A03-06), configurables mediante `Limits` y las variables del servicio. Los límites de A01 (§7.1) y A02 (§11.1) **no cambian**, en particular el cuerpo HTTP de 64 KiB.
+
+### 12.1 Límites (campos nuevos de `Limits`)
+
+`max_analysis_text_chars = 8192`, `max_analysis_text_bytes = 24576`, `max_analysis_context_chars = 2048`, `max_analysis_context_bytes = 6144`, `max_analysis_findings = 500`, `max_finding_chars = 2048`, `max_analysis_regions = 256`, `max_inference_output_bytes = 1048576`. Se distinguen puntos de código, bytes UTF-8 y (futuro) tokens. Exceder un límite de entrada ⇒ `limit_exceeded` (sin truncar); exceder uno de salida del adaptador ⇒ `inference_output_invalid`. No son capacidad medida de un modelo. Detalle: [contrato §2.6](inference-and-analysis.md#26-límites-iniciales-e-a03-06).
+
+### 12.2 Configuración del adaptador y timeout
+
+- Python: `ContentEngine(config, inference=InferenceSetup(adapter, timeout_s=30.0))` (0 < `timeout_s` ≤ 600). Sin `inference`, el motor funciona para A01/A02 y el análisis responde `inference_not_configured`.
+- Servicio independiente: `CAWBASE_CONTENT_ENGINE_INFERENCE_ADAPTER` ∈ {`none` (predeterminado), `mock`} y, con `mock`, `CAWBASE_CONTENT_ENGINE_INFERENCE_MOCK_FIXTURES` (ruta a un JSON de fixtures sintéticos); más `CAWBASE_CONTENT_ENGINE_INFERENCE_TIMEOUT_S`. El mock es solo para desarrollo/pruebas, nunca un fallback; el arranque falla (configuración, salida ≠ 0) si el archivo de fixtures no es válido y emite el aviso `inference_mock_enabled` sin contenido. Los adaptadores reales llegan con A09. Las tres variables solo existen en el servicio independiente; un host Python compone el adaptador en código.
+- El adaptador es del host/operador: el motor no lo inicia ni lo cierra, no enciende infraestructura, no reintenta y no espera readiness indefinidamente.
+
+### 12.3 Readiness frente a capacidad de inferencia
+
+`readiness()`/`/readyz` **no cambian**: «listo» significa motor y base de datos. Un motor con base disponible pero sin inferencia **no está listo para inferencia**; `ContentEngine.inference_status()` (`not_configured`, `ready`, `loading`, `stopped`, `unavailable`, `unknown`) lo distingue. Exposición HTTP: backlog (B-A03-01).
+
+### 12.4 Observabilidad
+
+Sin texto, contexto, fragmentos, definiciones, salidas crudas ni secretos en logs, errores, diagnósticos ni `admin_events`. Se registran `request_id`, código, estados, conteos, longitudes, duración y `adapter_kind`. Los registradores de terceros en `DEBUG` quedan fuera del control del motor. La respuesta lleva `Cache-Control: no-store`.
+
+### 12.5 Importación liviana y dependencias
+
+Sin efectos al importar; el módulo de inferencia, el validador y el mock se importan de forma perezosa (D-33 se mantiene). Sin dependencias pesadas ni extras vacíos por anticipación.

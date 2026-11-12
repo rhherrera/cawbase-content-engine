@@ -1,4 +1,4 @@
-"""Permission catalog (10 permissions: 8 from A01, 2 from A02) and the delegation rules (D-27)."""
+"""Permission catalog (11 permissions: 8 from A01, 2 from A02, 1 from A03) and the delegation rules (D-27)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ class ScopePermission(StrEnum):
     SCOPE_WRITE = "scope:write"
     PROFILES_READ = "profiles:read"
     PROFILES_WRITE = "profiles:write"
+    ANALYSIS_EXECUTE = "analysis:execute"
 
 
 class AdminPermission(StrEnum):
