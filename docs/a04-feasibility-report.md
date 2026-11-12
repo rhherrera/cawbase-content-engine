@@ -99,7 +99,7 @@ Entradas: 10 DOCX y 11 PDF sintéticos con manifiesto independiente (oráculo ge
 
 ## 3. Criterios de aceptación (AC-A04)
 
-Resultados completos en la [matriz de la especificación](features/A04-viabilidad-y-contrato-de-documentos.md#7-matriz-de-aceptación): AC-A04-01 a 18 y 21 a 24 **cumplidos en el subconjunto probado** (con las salvedades de su columna: verificador DOCX comparte el XML, DOCX renderizado solo con LibreOffice, Actions no ejecutado); AC-A04-19 cumplido; **AC-A04-20 pendiente de decisión del usuario**.
+Resultados completos en la [matriz de la especificación](features/A04-viabilidad-y-contrato-de-documentos.md#7-matriz-de-aceptación): AC-A04-01 a 18 y 21 a 24 **cumplidos en el subconjunto probado** (con las salvedades de su columna: verificador DOCX comparte el XML, DOCX renderizado solo con LibreOffice, Actions no ejecutado); AC-A04-19 cumplido; AC-A04-20 cumplido por la decisión posterior del usuario (§10: aceptó el cierre sin habilitar A07/A08 antes de A05/A06 y adoptó D-A04-04). *Histórico:* al redactar este informe (`0342cb4`) AC-A04-20 figuraba como «pendiente de decisión del usuario»; esta actualización solo registra esa decisión y no atribuye pruebas nuevas ni altera resultados experimentales.
 
 ## 4. Controles negativos (CN-01 a CN-07)
 
@@ -153,6 +153,8 @@ La vía `pikepdf`/QPDF, sin intérprete PDF general y sin dependencia comercial,
 - **Backlog:** [B-A04-01 a 19](decisions/A04-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).
 
 ## 10. Cierre y decisión posterior (registrado tras la revisión del usuario)
+
+**Integración en `main` (registro posterior):** A04 quedó mergeada en `main` mediante el merge `58001e0` del PR #3 (verificado en el historial; el merge es posterior y distinto de los commits de código experimental `b7608e7`, del informe `0342cb4` y del cierre `ec4d951`). GitHub Actions: los experimentos no se ejecutaron en GitHub Actions (histórico); el estado de cualquier ejecución de Actions sobre el merge no se verificó con la evidencia disponible y no se infiere del merge.
 
 El usuario declaró A04 **cerrada y aceptada como investigación de viabilidad acotada**, con las restricciones y limitaciones de este informe. La aceptación comprende la evidencia sobre el código experimental `b7608e7` y este informe (`0342cb4`); **no** implica soporte documental productivo en el motor, calidad de detección, soporte universal ni aprobación de GitHub Actions (no ejecutado). Se conservan todas las limitaciones, incluidos el formato interno de runs DOCX no restituido, el kerning PDF no restituido, los renders DOCX pendientes en macOS y la ausencia de ejecución en Actions.
 

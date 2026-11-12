@@ -18,6 +18,7 @@ Este registro separa categorías; no mezclarlas.
 | 2 | Precisiones previas a los experimentos (sin cambiar `D-A04-nn`): alcance temporal, nuevas disposiciones (`P` estructural inspeccionado) y condiciones de cobertura, Unicode, unidad PDF = página, campos DOCX. E-A04-23 a 27. |
 | 3 | Ejecución de los experimentos (rev. 3): E-A04-28 a 33 (derivadas de lo observado) y B-A04-11 a 19. Ninguna `D-A04-nn` cambia. |
 | 4 | Cierre y aceptación de A04 por el usuario; D-A04-04 (comprobación representativa de PDF al inicio de A08). Sin cambios en D-A04-01 a 03 ni en el código. |
+| 5 | Registro posterior (rama de A05): A04 mergeada en `main` mediante el merge `58001e0` del PR #3 (verificado en el historial; el merge es posterior y distinto de los commits de código experimental `b7608e7`, del informe `0342cb4` y del cierre `ec4d951`); corrección del estado de AC-A04-20 en el informe (pendiente → cumplido por la decisión del usuario ya registrada en la rev. 4). GitHub Actions: los experimentos no se ejecutaron en GitHub Actions (histórico); el estado de cualquier ejecución de Actions sobre el merge no se verificó con la evidencia disponible y no se infiere del merge. Sin cambios en decisiones, resultados ni código. |
 
 ## 1. Fuente, precedencia y herencia
 
