@@ -42,7 +42,7 @@ Commits locales de esta revisión (sobre `d091b49`; sin push):
 | `5ddf814` | `fix(service):` código de salida de un worker que falla al iniciar, logs de Uvicorn, `X-Request-ID` en el 503 de la compuerta |
 | `a0894a4` | `test:` AC-26 real, AC-101 con procesos reales, AC-07 en PostgreSQL desde el wheel, contrato de CI, portabilidad Linux |
 | `ba025f9`, `7ffbe2a` | `ci:` workflow con acciones fijadas por SHA y PostgreSQL 16, artefactos, auditoría, scripts de validación Linux / piso de SQLite |
-| (commit de documentación de esta revisión) | informe, evidencia, README, CLAUDE.md, decisiones, especificación |
+| `a834026`, `9aca5d7`, y el commit que actualiza esta tabla | informe y evidencia cruda; README, CLAUDE.md, decisiones, especificación y contratos |
 
 | # | Defecto | Dónde | Corrección |
 |---|---|---|---|
