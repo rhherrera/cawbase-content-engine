@@ -91,6 +91,7 @@ class ContentEngine:
                 if value is not None and not isinstance(value, kind):
                     raise InvalidConfigurationError(f"'{name}' must be a {kind.__name__}.")
         self._storage, self._documents, self._jobs = storage, documents, jobs
+        self._isolation_approved: tuple[Any, ...] | None = None  # owned by THIS instance; see jobs.execute
         self._inference = inference  # the adapter belongs to the host: never started or closed here
         self._config = config
         self._backend = config.backend

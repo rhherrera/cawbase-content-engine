@@ -48,10 +48,18 @@ def main() -> None:
     header = raw.readline()
     params = json.loads(header)
     data = raw.read()
-    if params.get("canary"):
+    if params.get("canary_memory"):
+        from .canary import probe_memory
+
+        try:
+            probe_memory(int(params["canary_memory"]))
+        except MemoryError:
+            sys.exit(3)
+        out: dict[str, Any] = {"allocated": True}
+    elif params.get("canary"):
         from .canary import run_canary
 
-        out: dict[str, Any] = run_canary()
+        out = run_canary(params)
     else:
         try:
             out = process(data, params)

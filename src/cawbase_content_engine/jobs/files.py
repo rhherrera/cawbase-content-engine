@@ -236,10 +236,11 @@ async def finalize_file(
 ) -> bool:
     """Step 4: only the current owner (same generation, still ``reserved``, deadline not passed) may register."""
     t = ctx.t
-    now = await jdb.db_now(conn, ctx.backend)
+    t0 = await jdb.db_now(conn, ctx.backend)  # bookkeeping only
     await active_scope(conn, t, scope_id)
-    await jdb.lock_usage(conn, t, scope_id, now)
+    await jdb.lock_usage(conn, t, scope_id, t0)
     row = await get_file_row(conn, t, scope_id, file_id, lock=True)
+    now = await jdb.db_now(conn, ctx.backend)  # decision time (upload deadline): after every lock wait
     if row is None or row.state != "reserved" or row.upload_generation != generation:
         return False
     if row.upload_deadline_at is not None and row.upload_deadline_at <= now:
@@ -483,6 +484,7 @@ async def _plan_upload(
         if fingerprint is not None and rec.request_fingerprint is not None and rec.request_fingerprint != fingerprint:
             raise IdempotencyConflictError()
         row = await get_file_row(conn, t, scope_id, rec.file_id, lock=True)
+        now = await jdb.db_now(conn, ctx.backend)  # decision time (upload deadline): after every lock wait
         if row is None:  # purged metadata with a surviving record: start again under the same key
             generation = rec.upload_generation + 1
         elif row.state == "stored":

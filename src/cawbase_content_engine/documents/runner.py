@@ -25,6 +25,14 @@ _BOOT = (
 )
 
 
+class ChildExit(RuntimeError):
+    """The isolated child ended with a non-zero status (the code is evidence: 137 = killed by the OOM killer)."""
+
+    def __init__(self, code: int) -> None:
+        super().__init__("extraction process failed")
+        self.code = code
+
+
 def _header(params: dict[str, Any]) -> bytes:
     return json.dumps(params).encode() + b"\n"
 
@@ -65,7 +73,7 @@ async def _communicate(
 
         raise JobFailure("limit_exceeded")
     if code != 0:
-        raise RuntimeError("extraction process failed")
+        raise ChildExit(code)
     return bytes(out)
 
 
@@ -192,12 +200,32 @@ class LinuxContainerRunner:
         return json.loads(await self._exec(_header(params) + data, params, limits, timeout_s))  # type: ignore[no-any-return]
 
     async def verify(self, limits: Any | None = None) -> bool:
+        """Canary INSIDE the container, with the limits the job will really use (docs 10.5, AC-A05-20):
+
+        1. network, writes outside the tmpfs, sensitive environment and the process limit are probed in the child;
+           the child also reports the memory limit it actually sees (cgroup) and the process limit is probed with
+           ``extraction_max_pids + 16`` threads;
+        2. memory: a second run tries to allocate (and touch) more than ``extraction_memory_bytes``; the control is
+           applied only if that run does NOT complete (killed by the OOM killer, exit 137, or ``MemoryError``).
+        Any failure to run the probes is ``IsolationUnavailableError``; there is no fallback."""
         from ..jobs.setup import JobsLimits
 
         lim = limits or JobsLimits()
+        mem, pids = int(lim.extraction_memory_bytes), int(lim.extraction_max_pids)
         try:
-            raw = await self._exec(_header({"canary": True}), {"canary": True}, lim, 60.0)
+            raw = await self._exec(_header({"canary": True, "expected_pids": pids}), {"canary": True}, lim, 60.0)
             out = json.loads(raw)
         except Exception:
             raise IsolationUnavailableError() from None
-        return bool(out.get("all_blocked"))
+        if not out.get("all_blocked"):
+            return False
+        seen = out.get("memory_limit_bytes")
+        if seen is not None and int(seen) > mem:
+            return False  # the effective limit inside the container is looser than the configured one
+        try:
+            await self._exec(_header({"canary_memory": mem + 64 * 1024 * 1024}), {"canary": True}, lim, 120.0)
+        except ChildExit as exc:
+            return exc.code in (137, 3, -9)  # the allocation was denied: the memory control is applied
+        except Exception:
+            raise IsolationUnavailableError() from None
+        return False  # the child allocated beyond the limit: NOT confined

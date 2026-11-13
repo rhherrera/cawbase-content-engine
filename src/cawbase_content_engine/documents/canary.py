@@ -8,7 +8,7 @@ import threading
 from typing import Any
 
 
-def run_canary() -> dict[str, Any]:
+def run_canary(params: dict[str, Any] | None = None) -> dict[str, Any]:
     blocked: dict[str, bool] = {}
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -38,11 +38,37 @@ def run_canary() -> dict[str, Any]:
     started = 0
     ev = threading.Event()
     try:
-        for _ in range(512):
+        for _ in range(int((params or {}).get("expected_pids", 496)) + 16):
             threading.Thread(target=ev.wait, daemon=True).start()
             started += 1
         blocked["processes"] = False
     except RuntimeError:
         blocked["processes"] = True
     ev.set()
-    return {"canary": blocked, "all_blocked": all(blocked.values())}
+    return {
+        "canary": blocked,
+        "all_blocked": all(blocked.values()),
+        "memory_limit_bytes": _cgroup_memory_limit(),
+    }
+
+
+def _cgroup_memory_limit() -> int | None:
+    """The memory limit the container really has (cgroup v2, then v1); ``None`` when not visible."""
+    for path in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            with open(path) as fh:
+                raw = fh.read().strip()
+        except OSError:
+            continue
+        if raw.isdigit() and int(raw) < 1 << 60:
+            return int(raw)
+        if raw == "max":
+            return 1 << 62  # unlimited
+    return None
+
+
+def probe_memory(nbytes: int) -> None:
+    """Allocates and touches ``nbytes``. Inside a correctly limited container this never returns (OOM kill)."""
+    buf = bytearray(nbytes)
+    for i in range(0, nbytes, 4096):
+        buf[i] = 1

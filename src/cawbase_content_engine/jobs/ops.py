@@ -214,8 +214,8 @@ async def submit(
 
 async def reconcile_scope(conn: AsyncConnection, ctx: fl.Ctx, scope_id: str) -> None:
     """I6: a transaction of its own (never from inside a host transaction)."""
-    now = await jdb.db_now(conn, ctx.backend)
     await jdb.lock_scope(conn, ctx.t, scope_id, exclusive=True)
+    now = await jdb.db_now(conn, ctx.backend)  # decision time: after the lock wait
     await jdb.reconcile_locked(conn, ctx.t, scope_id, now, ctx.ret, create=True)
 
 
@@ -246,7 +246,7 @@ async def _accept(
     t, lim, ret = ctx.t, ctx.lim, ctx.ret
     engine = ctx.e
     operation = spec["operation"]
-    now = await jdb.db_now(conn, ctx.backend)
+    now = await jdb.db_now(conn, ctx.backend)  # bookkeeping until the inputs are locked; re-read below for decisions
     scope = await jdb.lock_scope(conn, t, scope_id, exclusive=host)  # I7: the host path takes it exclusively up front
     if scope.status != "active":
         raise ScopeDisabledError()
@@ -282,16 +282,22 @@ async def _accept(
         return replay
     if s.active_jobs + 1 > lim.max_active_jobs_per_scope or e.active_jobs + 1 > lim.max_active_jobs_total:
         raise QuotaExceededError("Active jobs quota exceeded.")
-    deadline = jdb.plus(now, lim.max_job_duration_s)
 
-    async def need(file_id: str, *, document: bool) -> Any:
-        row = await fl.get_file_row(conn, t, scope_id, file_id)
-        if row is not None:
+    async def lock_input(file_id: str) -> Any:  # level 6: lock, THEN read what decides
+        return (
             await conn.execute(
-                sa.select(t.stored_files.c.file_id)
+                sa.select(t.stored_files)
                 .where(t.stored_files.c.scope_id == scope_id, t.stored_files.c.file_id == file_id)
                 .with_for_update(read=True)
             )
+        ).first()
+
+    locked_input = await lock_input(spec["input_id"])
+    locked_ctx = await lock_input(spec["ctx_id"]) if spec["ctx_id"] else None
+    now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
+    deadline = jdb.plus(now, lim.max_job_duration_s)
+
+    async def need(row: Any, *, document: bool) -> Any:
         if row is None or row.state != "stored" or (document and row.origin == "text_input"):
             raise FileNotUsableError()
         if row.expires_at is None or row.expires_at <= now:
@@ -300,8 +306,8 @@ async def _accept(
             raise FileExpiringError()
         return row
 
-    input_row = await need(spec["input_id"], document=operation == "document_analysis")
-    ctx_row = await need(spec["ctx_id"], document=False) if spec["ctx_id"] else None
+    input_row = await need(locked_input, document=operation == "document_analysis")
+    ctx_row = await need(locked_ctx, document=False) if spec["ctx_id"] else None
     identity: str | None = None
     if operation == "document_analysis":
         identity = validation_identity(bytes(input_row.sha256).hex(), lim)
@@ -466,10 +472,11 @@ async def cancel_job(engine: ContentEngine, scope_id: str, job_id: str, *, tx: A
 
     async def fn(conn: AsyncConnection) -> JobInfo:
         t = ctx.t
-        now = await jdb.db_now(conn, ctx.backend)
+        t0 = await jdb.db_now(conn, ctx.backend)  # bookkeeping only
         await jdb.lock_scope(conn, t, scope_id, exclusive=False)
-        await jdb.lock_usage(conn, t, scope_id, now)
+        await jdb.lock_usage(conn, t, scope_id, t0)
         row = await _job_row(conn, t, scope_id, job_id, lock=True)
+        now = await jdb.db_now(conn, ctx.backend)  # decision time (stale lease?): after every lock wait
         if row is None:
             raise ResourceNotFoundError()
         if row.state in jdb.TERMINAL:
@@ -576,9 +583,9 @@ async def open_job_artifact(engine: ContentEngine, scope_id: str, job_id: str, k
 async def _mark_artifact_lost(ctx: fl.Ctx, scope_id: str, job_id: str, artifact_id: str) -> None:
     async def fn(conn: AsyncConnection) -> None:
         t = ctx.t
-        now = await jdb.db_now(conn, ctx.backend)
+        t0 = await jdb.db_now(conn, ctx.backend)
         await jdb.lock_scope(conn, t, scope_id, exclusive=False)
-        await jdb.lock_usage(conn, t, scope_id, now)
+        await jdb.lock_usage(conn, t, scope_id, t0)
         row = await _job_row(conn, t, scope_id, job_id, lock=True)
         ar = t.job_artifacts
         art = (
@@ -586,6 +593,7 @@ async def _mark_artifact_lost(ctx: fl.Ctx, scope_id: str, job_id: str, artifact_
                 sa.select(ar).where(ar.c.scope_id == scope_id, ar.c.artifact_id == artifact_id).with_for_update()
             )
         ).first()
+        now = await jdb.db_now(conn, ctx.backend)
         if row is not None and art is not None and art.state == "published":
             await jdb.retire_object(conn, t, now, ctx.ret, ar, art, "lost", delay_s=ctx.lim.purge_grace_s)
             await conn.execute(
@@ -610,10 +618,11 @@ async def delete_job_data(engine: ContentEngine, scope_id: str, job_id: str, *, 
 
     async def fn(conn: AsyncConnection) -> JobInfo:
         t = ctx.t
-        now = await jdb.db_now(conn, ctx.backend)
+        t0 = await jdb.db_now(conn, ctx.backend)
         await jdb.lock_scope(conn, t, scope_id, exclusive=False)
-        await jdb.lock_usage(conn, t, scope_id, now)
+        await jdb.lock_usage(conn, t, scope_id, t0)
         row = await _job_row(conn, t, scope_id, job_id, lock=True)
+        now = await jdb.db_now(conn, ctx.backend)
         if row is None:
             raise ResourceNotFoundError()
         if row.state not in jdb.TERMINAL:

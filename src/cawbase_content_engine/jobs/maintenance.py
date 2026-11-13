@@ -68,9 +68,9 @@ async def recover_expired_leases(engine: ContentEngine, *, limit: int = 100) -> 
     for scope_id, job_id in await ctx.run(cands, write=False):
 
         async def one(conn: AsyncConnection, scope_id: str = scope_id, job_id: str = job_id) -> bool:
-            now = await jdb.db_now(conn, ctx.backend)
+            t0 = await jdb.db_now(conn, ctx.backend)  # bookkeeping only
             await jdb.lock_scope(conn, t, scope_id, exclusive=False)
-            await jdb.lock_usage(conn, t, scope_id, now)
+            await jdb.lock_usage(conn, t, scope_id, t0)
             row = (
                 await conn.execute(
                     sa.select(j)
@@ -78,6 +78,7 @@ async def recover_expired_leases(engine: ContentEngine, *, limit: int = 100) -> 
                     .with_for_update(skip_locked=True)
                 )
             ).first()
+            now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
             if row is None or not (
                 (row.lease_expires_at is not None and row.lease_expires_at <= now)
                 or (row.attempt_deadline_at is not None and row.attempt_deadline_at <= now)
@@ -124,9 +125,17 @@ async def expire_deadlines(engine: ContentEngine, *, limit: int = 100) -> int:
     for scope_id, job_id in await ctx.run(cands, write=False):
 
         async def one(conn: AsyncConnection, scope_id: str = scope_id, job_id: str = job_id) -> bool:
-            now = await jdb.db_now(conn, ctx.backend)
+            t0 = await jdb.db_now(conn, ctx.backend)  # bookkeeping only
             await jdb.lock_scope(conn, t, scope_id, exclusive=False)
-            await jdb.lock_usage(conn, t, scope_id, now)
+            await jdb.lock_usage(conn, t, scope_id, t0)
+            peek = (
+                await conn.execute(
+                    sa.select(j.c.state, j.c.execution_snapshot).where(j.c.scope_id == scope_id, j.c.job_id == job_id)
+                )
+            ).first()
+            if peek is None or peek.state not in ("queued", "retry_wait"):
+                return False
+            locked = await worker._lock_inputs(conn, scope_id, peek)  # level 6 BEFORE the job row (8)
             row = (
                 await conn.execute(
                     sa.select(j)
@@ -134,13 +143,14 @@ async def expire_deadlines(engine: ContentEngine, *, limit: int = 100) -> int:
                     .with_for_update(skip_locked=True)
                 )
             ).first()
+            now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
             if row is None:
                 return False
             if row.deadline_at <= now:
                 code = "executor_unavailable" if row.attempt_no == 0 else "deadline_exceeded"
                 await jdb.terminate_job(conn, t, now, ctx.ret, row, state="failed", outcome="failed", failure_code=code)
                 return True
-            if not await worker._inputs_ok(conn, scope_id, row, now):
+            if not worker._inputs_valid(locked, now):
                 await jdb.terminate_job(
                     conn, t, now, ctx.ret, row, state="failed", outcome="failed", failure_code="input_unavailable"
                 )
@@ -188,10 +198,10 @@ async def _each(ctx: fl.Ctx, rows: list[tuple[str, str]], fn: Any, touched: set[
     for scope_id, key in rows:
 
         async def tx(conn: AsyncConnection, scope_id: str = scope_id, key: str = key) -> bool:
-            now = await jdb.db_now(conn, ctx.backend)
+            t0 = await jdb.db_now(conn, ctx.backend)  # bookkeeping only; `fn` reads its own decision time
             await jdb.lock_scope(conn, ctx.t, scope_id, exclusive=False)
-            await jdb.lock_usage(conn, ctx.t, scope_id, now)
-            return bool(await fn(conn, now, scope_id, key))
+            await jdb.lock_usage(conn, ctx.t, scope_id, t0)
+            return bool(await fn(conn, scope_id, key))
 
         if await ctx.run(tx):
             done += 1
@@ -222,8 +232,9 @@ async def _mark_abandoned(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
         ).all()
         return [(r.scope_id, r.file_id) for r in rows]
 
-    async def fn(conn: AsyncConnection, now: datetime, scope_id: str, file_id: str) -> bool:
+    async def fn(conn: AsyncConnection, scope_id: str, file_id: str) -> bool:
         row = await fl.get_file_row(conn, t, scope_id, file_id, lock=True)
+        now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
         if row is None:
             return False
         due = (row.state == "reserved" and row.upload_deadline_at is not None and row.upload_deadline_at <= now) or (
@@ -256,8 +267,9 @@ async def _mark_expired(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
         ).all()
         return [(r.scope_id, r.file_id) for r in rows]
 
-    async def fn(conn: AsyncConnection, now: datetime, scope_id: str, file_id: str) -> bool:
+    async def fn(conn: AsyncConnection, scope_id: str, file_id: str) -> bool:
         row = await fl.get_file_row(conn, t, scope_id, file_id, lock=True)
+        now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
         if row is None or row.state != "stored" or row.expires_at is None or row.expires_at > now:
             return False
         await jdb.retire_object(conn, t, now, ctx.ret, f, row, "expired", delay_s=ctx.lim.purge_grace_s)
@@ -277,10 +289,11 @@ async def _mark_expired(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
         ).all()
         return [(r.scope_id, r.job_id) for r in rows]
 
-    async def jfn(conn: AsyncConnection, now: datetime, scope_id: str, job_id: str) -> bool:
+    async def jfn(conn: AsyncConnection, scope_id: str, job_id: str) -> bool:
         row = (
             await conn.execute(sa.select(j).where(j.c.scope_id == scope_id, j.c.job_id == job_id).with_for_update())
         ).first()
+        now = await jdb.db_now(conn, ctx.backend)  # decision time: after the row lock
         if row is None or row.data_state != "available" or row.result_expires_at is None or row.result_expires_at > now:
             return False
         ar = t.job_artifacts
@@ -409,9 +422,9 @@ async def _purge_one(
         return
 
     async def reg(conn: AsyncConnection) -> bool:
-        now = await jdb.db_now(conn, ctx.backend)
+        t0 = await jdb.db_now(conn, ctx.backend)  # bookkeeping only
         await jdb.lock_scope(conn, t, row.scope_id, exclusive=False)
-        await jdb.lock_usage(conn, t, row.scope_id, now)
+        await jdb.lock_usage(conn, t, row.scope_id, t0)
         cur = (
             await conn.execute(
                 sa.select(table.c.purge_token, table.c.purge_claim_expires_at, table.c.seal_confirmed_at)
@@ -419,6 +432,7 @@ async def _purge_one(
                 .with_for_update()
             )
         ).first()
+        now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
         if (
             cur is None
             or cur.purge_token != token
@@ -499,7 +513,6 @@ async def _purge_metadata(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
     for scope_id, job_id in await ctx.run(jcands, write=False):
 
         async def fn(conn: AsyncConnection, scope_id: str = scope_id, job_id: str = job_id) -> bool:
-            now = await jdb.db_now(conn, ctx.backend)
             await jdb.lock_scope(conn, t, scope_id, exclusive=False)
             await conn.execute(
                 sa.delete(t.idempotency_records).where(
@@ -509,6 +522,7 @@ async def _purge_metadata(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
             row = (
                 await conn.execute(sa.select(j).where(j.c.scope_id == scope_id, j.c.job_id == job_id).with_for_update())
             ).first()
+            now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
             if (
                 row is None
                 or row.metadata_expires_at is None
@@ -554,7 +568,6 @@ async def _purge_metadata(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
     for scope_id, file_id in await ctx.run(fcands, write=False):
 
         async def ffn(conn: AsyncConnection, scope_id: str = scope_id, file_id: str = file_id) -> bool:
-            now = await jdb.db_now(conn, ctx.backend)
             await jdb.lock_scope(conn, t, scope_id, exclusive=False)
             await conn.execute(
                 sa.delete(t.idempotency_records).where(
@@ -562,6 +575,7 @@ async def _purge_metadata(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
                 )
             )
             row = await fl.get_file_row(conn, t, scope_id, file_id, lock=True)
+            now = await jdb.db_now(conn, ctx.backend)  # decision time: after every lock wait
             if row is None or row.file_metadata_expires_at is None or row.file_metadata_expires_at > now:
                 return False
             if row.storage_key is not None and row.physically_deleted_at is None:

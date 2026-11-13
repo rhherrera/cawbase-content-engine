@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -22,8 +23,6 @@ from .worker import JobFailure, LeaseLost
 
 if TYPE_CHECKING:
     from .worker import JobWorker
-
-_ISOLATION_VERIFIED: dict[int, bool] = {}
 
 
 def _dump(obj: Any) -> bytes:
@@ -162,20 +161,46 @@ async def _reconcile(w: JobWorker, c: ClaimedJob, ids: dict[str, str]) -> str:
     return "other"
 
 
+def _isolation_key(docs: Any, lim: Any) -> tuple[Any, ...]:
+    """What an approval is bound to: the runner instance, its profile and EVERY limit the job will use."""
+    return (
+        id(docs.runner),
+        docs.runner.profile,
+        bool(docs.untrusted_input),
+        int(lim.extraction_memory_bytes),
+        int(lim.extraction_max_pids),
+        int(lim.extraction_cpu_s),
+        float(lim.extraction_timeout_s),
+    )
+
+
 async def _verify_isolation(w: JobWorker) -> None:
+    """Approval lives on the engine instance (never in a module-level cache) and only for the configuration it was
+    obtained with; any failure is `configuration_unavailable` and nothing is extracted (no fallback)."""
     docs = w.e.documents
     assert docs is not None
-    key = id(w.e)
-    if key not in _ISOLATION_VERIFIED:
-        ok = False
-        verify = getattr(docs.runner, "verify", None)
+    lim = w.ctx.lim
+    key = _isolation_key(docs, lim)
+    if w.e._isolation_approved == key:
+        return
+    ok = False
+    try:
         if docs.runner.profile == "unconfined_development" and not docs.untrusted_input:
-            ok = True
-        elif verify is not None:
-            ok = bool(await verify())
-        if not ok:
-            raise IsolationUnavailableError()
-        _ISOLATION_VERIFIED[key] = True
+            ok = True  # explicit development opt-in: there are no controls to verify
+        else:
+            verify = getattr(docs.runner, "verify", None)
+            if verify is not None:
+                try:
+                    takes_limits = len(inspect.signature(verify).parameters) >= 1
+                except (TypeError, ValueError):
+                    takes_limits = False
+                ok = bool(await (verify(lim) if takes_limits else verify()))
+    except Exception:
+        ok = False
+    if not ok:
+        w.e._isolation_approved = None
+        raise IsolationUnavailableError()
+    w.e._isolation_approved = key
 
 
 async def _document(
