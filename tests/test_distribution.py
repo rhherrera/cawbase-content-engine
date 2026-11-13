@@ -85,7 +85,12 @@ def test_wheel_and_sdist_contents(artifacts):
         names = set(z.namelist())
     assert "cawbase_content_engine/migrations/versions/0001_initial.py" in names  # migration resources shipped
     assert "cawbase_content_engine/py.typed" in names
-    for shipped in ("migrations/versions/0003_jobs_files.py", "jobs/storage.py", "documents/child.py", "http/jobs_routes.py"):
+    for shipped in (
+        "migrations/versions/0003_jobs_files.py",
+        "jobs/storage.py",
+        "documents/child.py",
+        "http/jobs_routes.py",
+    ):
         assert f"cawbase_content_engine/{shipped}" in names, shipped  # A05 modules ship in the wheel
     assert not [n for n in names if "experiments" in n]  # the A04 experiments never do
     assert not [n for n in names if n.startswith("tests/")]
