@@ -1,6 +1,6 @@
 # A05 — Trabajos, archivos y ciclo de vida
 
-> **Estado: ESPECIFICADA / NO IMPLEMENTADA, pendiente de revisión del usuario (revisión 3 de la especificación: correcciones previas a la implementación, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)).** Entrega solo documental: sin código, migraciones, tests, scripts, dependencias, configuración ejecutable ni cambio de versión (`0.3.0`). Ninguna operación, ruta, permiso, tabla ni comando de A05 está disponible. No está cerrada ni aceptada.
+> **Estado: IMPLEMENTADA en `0.4.0`, pendiente de revisión y aceptación del usuario** (especificación rev. 3 en `d7ab051`; implementación y pruebas en `c057b27`; documentación e informe en el commit siguiente, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)). La trazabilidad de cada criterio AC-A05 a sus pruebas, las versiones y ambientes realmente ejecutados y los criterios **sin evidencia** o con evidencia parcial están en el [informe de implementación](../a05-implementation-report.md). **No está cerrada ni aceptada** (acta del usuario) y no se ejecutó GitHub Actions.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A05), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md), [A05](../decisions/A05-decisions.md)), que prevalecen.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a05-jobs-files-lifecycle`, creada desde `main` en `58001e0` (merge del PR #3 de A04).
@@ -35,13 +35,13 @@ Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios admi
 | Matriz de soporte, resultados, coverage | [§11](../jobs-files-and-lifecycle.md#11-extracción-mapeo-y-análisis-en-a05) |
 | Límites y cuotas | [§12](../jobs-files-and-lifecycle.md#12-límites-operativos-e-a05-17) |
 | Retención, limpieza, `admin_events` | [§13](../jobs-files-and-lifecycle.md#13-retención-expiración-y-purga-d-a05-01) |
-| API Python / HTTP / permisos / errores | [§14](../jobs-files-and-lifecycle.md#14-api-python-propuesta--no-disponible)–[§17](../jobs-files-and-lifecycle.md#17-errores-nuevos-propuestos) |
-| Persistencia, `0003`, compatibilidad | [§18](../jobs-files-and-lifecycle.md#18-persistencia-y-migración-0003-propuesta) |
+| API Python / HTTP / permisos / errores | [§14](../jobs-files-and-lifecycle.md#14-api-python)–[§17](../jobs-files-and-lifecycle.md#17-errores-nuevos) |
+| Persistencia, `0003`, compatibilidad | [§18](../jobs-files-and-lifecycle.md#18-persistencia-y-migración-0003) |
 | `HostTransaction` por operación | [§19](../jobs-files-and-lifecycle.md#19-transacciones-por-operación-hosttransaction) |
 
-## 4. Reglas para la implementación posterior
+## 4. Reglas de implementación
 
-1. Un prompt de implementación separado, autocontenido; esta entrega no implementa.
+1. La implementación se hizo con un encargo separado (esta especificación no implementaba).
 2. El código documental vive en el extra `documents` con importación perezosa; **no** importa `experiments/a04`. Las pruebas de A05 son propias (se pueden reutilizar fixtures y criterios de A04 copiándolos a `tests/` con su manifiesto).
 3. El mock sustituye **solo** la inferencia: base, storage, extracción, aislamiento, cuotas y permisos se prueban reales.
 4. PostgreSQL y SQLite reales (bases descartables `cce_t_*`), incluido el piso de SQLite según la política vigente (`scripts/sqlite_floor_validate.sh`) y PostgreSQL 15–18 según A01.
@@ -50,7 +50,7 @@ Aprobadas: **D-A05-01** (retención predeterminada) y **D-A05-02** (cambios admi
 
 ## 5. Matriz de aceptación (para la implementación posterior)
 
-Criterios trazables al contrato (AC-A05-01 a 52). Estado de todos: **especificado / no implementado / no probado**.
+Criterios trazables al contrato (AC-A05-01 a 52). La columna «Evidencia exigida» es lo que se **exigía**; el estado real de cada criterio (verificado, parcial o sin evidencia) y las pruebas que lo respaldan figuran en el [informe](../a05-implementation-report.md#3-matriz-de-aceptación-trazada-a-pruebas).
 
 | AC | Criterio verificable | Contrato | Evidencia exigida |
 |---|---|---|---|

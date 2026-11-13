@@ -263,9 +263,9 @@ Las definiciones completas (es/en) de cada entrada están en `src/cawbase_conten
 
 Clasificación/inferencia y mock (A03, [implementada en 0.3.0](inference-and-analysis.md), cerrada y aceptada), documentos, protección/restauración, trabajos (A05), políticas/destinos/bloqueo, herencia, organizaciones, proyectos y membresías, credenciales por perfil, overrides por ejecución, purga y restauración. Ver [backlog](decisions/A02-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación).
 
-## 12. A05 — Trabajos aceptados y versiones fijadas (especificado; no implementado)
+## 12. A05 — Trabajos aceptados y versiones fijadas (implementado en 0.4.0; pendiente de aceptación)
 
-> **ESPECIFICADO / NO IMPLEMENTADO (A05, pendiente de revisión).** Nada de esta sección existe en `0.3.0` (propuesto / no disponible); la versión no cambia.
+> **IMPLEMENTADO en `0.4.0` (A05), pendiente de revisión y aceptación del usuario.** Evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md); **no aceptada**. La viabilidad documental se limita al subconjunto conservador de [§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización).
 
 - Un trabajo durable de A05 fija al aceptarse la versión publicada concreta (`version_id`, `version_number`, `content_hash`) con la selección de §8. Después de aceptado, **desactivar o eliminar el perfil, publicar otra versión o cambiar el predeterminado no lo afecta** (D-A05-02): el trabajo lee la fila inmutable de la versión fijada y no vuelve a resolver.
 - §8 no cambia: resolver o seleccionar para un análisis **nuevo** sigue rechazando perfiles `disabled`/`deleted` y scopes deshabilitados. Deshabilitar el scope sí cancela trabajos no terminales ([contrato §9](jobs-files-and-lifecycle.md#9-cambios-administrativos-después-de-aceptar-d-a05-02)).

@@ -1,6 +1,6 @@
 # Trabajos, archivos y ciclo de vida — contrato de A05
 
-> **Estado: ESPECIFICADO / NO IMPLEMENTADO (A05, revisión 3 de la especificación, pendiente de revisión).** Ninguna operación, ruta, permiso, tabla, migración, extra, variable ni comando de este documento existe en `0.3.0`: todo es **propuesto / no disponible** hasta que haya código y pruebas. La versión del paquete no cambia. Las decisiones de producto son `D-A05-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A05-nn` y **no** son decisiones de producto ([A05-decisions](decisions/A05-decisions.md)). Alcance y aceptación: [especificación de A05](features/A05-trabajos-archivos-y-ciclo-de-vida.md).
+> **Estado: IMPLEMENTADO en `0.4.0` (A05, revisión 3 de la especificación), pendiente de revisión y aceptación del usuario.** Describe el código real (`src/cawbase_content_engine/jobs/`, `documents/`, `http/jobs_routes.py`, migración `0003_jobs_files`); evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md). Las decisiones de producto son `D-A05-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A05-nn` y las precisiones de implementación `I-A05-nn` ([A05-decisions](decisions/A05-decisions.md)); **ninguna de estas últimas es una decisión de producto**. Alcance y aceptación: [especificación de A05](features/A05-trabajos-archivos-y-ciclo-de-vida.md). Los bloques de código son ilustrativos de las firmas reales; §22 enumera las precisiones y límites comprobados al implementar.
 
 Relacionado: [arquitectura](architecture.md) · [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md) · [perfiles (A02)](profiles-and-catalog.md) · [inferencia y análisis (A03)](inference-and-analysis.md) · [procesamiento de documentos (A04)](document-processing.md).
 
@@ -65,7 +65,7 @@ El motor **nunca** borra, mueve ni modifica un original externo del host, ni pro
 ### 3.3 Protocolo mínimo de storage administrado (`ManagedStorage`)
 
 ```python
-# Propuesto / no disponible
+# Implementado en 0.4.0
 class ManagedStorage(Protocol):
     @property
     def descriptor(self) -> StorageDescriptor: ...
@@ -92,7 +92,7 @@ class ManagedStorage(Protocol):
 
 ### 3.4 Implementación de referencia: sistema de archivos privado
 
-`FilesystemStorage(root)` (propuesta; E-A05-06):
+`FilesystemStorage(root)` (E-A05-06):
 
 - Raíz exclusiva del motor `0700`, archivos `0600`; no se sirve como estático. Claves `cce/<2 hex>/<32 hex>` (sin datos del cliente). Validación estricta de la forma de la clave; resolución relativa al descriptor de la raíz con `O_NOFOLLOW`/`openat` (o equivalente verificado en macOS): sin traversal ni symlinks.
 - **Escritura**: (1) abrir o crear `tmp/<clave>.lock` con `O_CLOEXEC` y tomar `flock(LOCK_EX)` sobre él, retenido durante toda la escritura; (2) abrir el temporal **determinista por clave** `tmp/<clave>.part` con `O_CREAT|O_EXCL|O_CLOEXEC` (falla si existe o si hay un sello); (3) escribir con contador (`max_bytes`) y aborto cooperativo pasado `abort_after`; `fsync`; (4) `link(tmp, final)` **por ruta** (falla con `EEXIST` si el nombre final existe o está sellado; nunca `rename` sobre el final ni `linkat` por descriptor, que eludirían el sello); `unlink(tmp)`; `fsync` del directorio; (5) cerrar el descriptor del temporal y, **al final**, liberar el `flock` y cerrar el bloqueo. Ningún descriptor se hereda a procesos hijos.
@@ -104,7 +104,7 @@ class ManagedStorage(Protocol):
 ### 3.5 Referencias externas (`ExternalSourceResolver`, solo Python)
 
 ```python
-# Propuesto / no disponible
+# Implementado en 0.4.0
 class ExternalSourceResolver(Protocol):
     @property
     def descriptor(self) -> ResolverDescriptor: ...    # resolver_id, stable_versions: bool
@@ -464,7 +464,7 @@ Durante los 30 días de metadatos de un trabajo, repetir su clave devuelve el tr
 
 **Contraejemplo cubierto**: (1) trabajo aceptado con G y revisión R; (2) un runtime anterior deshabilita y rehabilita ⇒ R+2, G sin cambio; (3) un runtime A05 edita metadatos ⇒ por I2, antes de su escritura ve `R+2 ≠ R`, hace `G+1` y cancela el trabajo, y solo entonces escribe R+3 y `O = R+3`; (4) la publicación ve `fence_generation = G ≠ G+1` ⇒ no publica (I1). Sin la edición del paso 3, la publicación ve `R+2 ≠ O` ⇒ I6 reconcilia y cancela. Dentro de `HostTransaction`, el envío hace lo mismo en su propio savepoint (I7).
 
-**Coste** (elección técnica propuesta, no decisión del usuario): mientras convivan runtimes anteriores, cualquier cambio efectivo que hagan sobre un scope —incluida una edición de metadatos— se trata como posible deshabilitación y cancela los trabajos no terminales del scope. No se usa `admin_events` para reconstruir deshabilitaciones.
+**Coste** (elección técnica, no decisión del usuario): mientras convivan runtimes anteriores, cualquier cambio efectivo que hagan sobre un scope —incluida una edición de metadatos— se trata como posible deshabilitación y cancela los trabajos no terminales del scope. No se usa `admin_events` para reconstruir deshabilitaciones.
 
 Límite: SQL arbitrario que modifique el scope sin incrementar `revision` queda fuera de la garantía (A01 §2.1).
 
@@ -563,7 +563,7 @@ Por unidad no vacía, el worker usa las **mismas** funciones internas de A03 (pr
 ### 11.4 Resultado documental
 
 ```jsonc
-// Propuesto / no disponible — ejemplo ilustrativo: DOCX con 2 comentarios, solo detección pedida
+// Esquema ilustrativo: DOCX con 2 comentarios, solo detección pedida
 {
   "result_contract_version": 1,
   "job_id": "job_…", "operation": "document_analysis",
@@ -615,7 +615,7 @@ A04 autoriza eliminar comentarios y metadatos descriptivos **durante una transfo
 
 ## 12. Límites operativos (E-A05-17)
 
-Elecciones técnicas iniciales, configurables (`Limits`/`JobsSetup`, nombres propuestos), **no mediciones**; a verificar con pruebas de frontera. Exceder un límite ⇒ rechazo explícito, nunca truncamiento.
+Elecciones técnicas iniciales, configurables (`Limits`/`JobsSetup`, nombres reales), **no mediciones**; a verificar con pruebas de frontera. Exceder un límite ⇒ rechazo explícito, nunca truncamiento.
 
 ### 12.1 Entrada y estructura
 
@@ -736,7 +736,7 @@ Al vencer `expires_at`/`result_expires_at` el acceso se deniega de inmediato (co
 
 ### 13.5 Limpieza explícita (`run_cleanup`)
 
-Explícita, repetible, por lotes, recuperable; nunca automática al importar o iniciar. La invocan el host, el ejecutor de referencia (`cleanup_interval_s`) o la CLI propuesta `cawbase-content-engine cleanup`. Por lote, en transacciones cortas con el orden de §6.2:
+Explícita, repetible, por lotes, recuperable; nunca automática al importar o iniciar. La invocan el host, el ejecutor de referencia (`cleanup_interval_s`) o la CLI `cawbase-content-engine cleanup`. Por lote, en transacciones cortas con el orden de §6.2:
 
 1. recuperar leases vencidos y trabajos con `deadline_at` vencido;
 2. marcar reservas y objetos `text_input` no vinculados vencidos como `abandoned`, y artefactos de intentos terminados como `discarded`;
@@ -750,7 +750,7 @@ Devuelve un resumen sin contenido. Nunca elimina originales externos ni filas de
 ### 13.6 `admin_events`: retención y purga (resuelve Q-04 de A01)
 
 - Política: 90 días desde `occurred_at`, aplicada a **todos** los eventos, incluidos los anteriores a A05. No hay columna de vencimiento por fila: la purga es explícita con corte; la primera ejecución puede eliminar eventos históricos de más de 90 días (previsualizar primero).
-- Operación local de operador / Python privilegiado (`engine.maintenance().purge_admin_events(older_than=…, batch_size=…, dry_run=True)`; CLI propuesta `cawbase-content-engine purge-admin-events --older-than-days N --batch-size M [--execute]`). **Sin endpoint HTTP.**
+- Operación local de operador / Python privilegiado (`engine.maintenance().purge_admin_events(older_than=…, batch_size=…, dry_run=True)`; CLI `cawbase-content-engine purge-admin-events --older-than-days N --batch-size M [--execute]`). **Sin endpoint HTTP.**
 - Corte y lote explícitos; corte `≤ ahora − admin_events_retention` (90 días configurables); previsualización por defecto; lotes con transacciones cortas, repetible y reanudable; resumen sin contenido (cantidad, rangos de `occurred_at` y `event_id`).
 - La migración no purga. `admin_events` sigue append-only para operaciones ordinarias; esta purga es la única excepción. No se eliminan scopes, clientes, claves, perfiles ni versiones. Sin promesa de archivo histórico ni de cumplimiento normativo.
 - El fence (§9.2) no depende de `admin_events`.
@@ -759,10 +759,10 @@ Devuelve un resumen sin contenido. Nunca elimina originales externos ni filas de
 
 Tendrán autorización, retención y eliminación propias (A06). A05 no crea tablas, APIs, criptografía ni semántica de restauración. El `SourceMap` no es una tabla reversible de valores sensibles.
 
-## 14. API Python (propuesta / no disponible)
+## 14. API Python
 
 ```python
-# Propuesto / no disponible — ejemplo ilustrativo
+# Ejemplo ilustrativo (implementado en 0.4.0)
 engine = ContentEngine(
     config,
     inference=InferenceSetup(adapter),
@@ -799,14 +799,14 @@ engine = ContentEngine(
 Código confiable del host/operador con acceso a la base (límite de A01 §2.1). `AdminContext` no da acceso a ellas ni a contenido.
 
 ```python
-# Propuesto / no disponible
+# Implementado en 0.4.0
 worker = engine.job_worker(worker_id="w-1")
 claimed = await worker.claim(limit=1)
 outcome = await worker.run_job(job_id)          # reclama ESE trabajo si es elegible y lo ejecuta completo
 await worker.run_claimed(claimed[0])
 
 executor = ReferenceExecutor(engine, concurrency=4, poll_interval_s=5, cleanup_interval_s=300)
-await executor.start(); ...; await executor.aclose()      # CLI propuesta: `cawbase-content-engine worker`
+await executor.start(); ...; await executor.aclose()      # CLI: `cawbase-content-engine worker`
 
 maint = engine.maintenance()
 await maint.list_runnable_jobs(limit=100, older_than_s=60)
@@ -832,7 +832,7 @@ class JobInfo:     scope_id; job_id; operation; state; phase; attempt_count; max
 class ClaimedJob:  job_id; scope_id; attempt_no; lease_token; lease_expires_at; attempt_deadline_at; phase
 ```
 
-## 15. HTTP (propuesto / no disponible)
+## 15. HTTP
 
 Mismas operaciones del núcleo (D-07), orden de A01 (límite → autenticación → contexto 404 → validación → operación), bajo `/v1/scopes/{scope_id}`. Rutas JSON: 64 KiB.
 
@@ -853,7 +853,7 @@ Sin rutas de referencias externas, reclamación, heartbeat, publicación, limpie
 
 ## 16. Permisos (elección técnica E-A05-12)
 
-El catálogo pasaría de **11** a **17** (6 nuevos de scope). Sin jerarquías ni comodines; `AdminContext`/`admin:*` no acceden a archivos, trabajos ni resultados.
+El catálogo pasa de **11** a **17** (6 nuevos de scope). Sin jerarquías ni comodines; `AdminContext`/`admin:*` no acceden a archivos, trabajos ni resultados.
 
 | Permiso | Habilita |
 |---|---|
@@ -867,7 +867,7 @@ El catálogo pasaría de **11** a **17** (6 nuevos de scope). Sin jerarquías ni
 
 El scope es la unidad de aislamiento (granularidad por archivo: B-A05-05). **Restricción de despliegue** heredada: no emitir claves con permisos nuevos hasta actualizar todos los runtimes; revocar no corrige un runtime anterior.
 
-## 17. Errores nuevos (propuestos)
+## 17. Errores nuevos
 
 | Código | HTTP | Reintentable | Cuándo |
 |---|---|---|---|
@@ -890,7 +890,7 @@ El scope es la unidad de aislamiento (granularidad por archivo: B-A05-05). **Res
 
 Los `failure_code` de trabajos (§7.1, §10.4) se informan en `JobInfo`. Se reutilizan `permission_denied`, `resource_not_accessible`, `resource_not_found`, `validation_failed`, `limit_exceeded`, `scope_disabled`, `default_profile_not_set`, `profile_not_selectable`, `profile_not_published`, `capabilities_not_configured`, `inference_not_configured`, `database_unavailable`, `internal_error`.
 
-## 18. Persistencia y migración `0003` (propuesta)
+## 18. Persistencia y migración `0003`
 
 Namespace fijo; `scope_id` en toda PK y FK; ninguna garantía depende solo de FK/`CHECK`.
 
@@ -925,10 +925,30 @@ Compartir engine no implica compartir transacción. Las filas bloqueadas permane
 
 ## 20. Observabilidad
 
-- Registradores propuestos: `cawbase_content_engine.jobs`, `.files`, `.storage`, `.maintenance`. Permitidos: ids (`job_id`, `file_id`, `artifact_id`, `scope_id`), operación, estado, fase, `attempt_no`, `worker_id`, códigos, conteos, tamaños, duraciones, `request_id`. Prohibidos: contenido, hashes de contenido, claves de storage, referencias externas, `lease_token`, `purge_token`, claves de idempotencia.
+- Registradores: `cawbase_content_engine.jobs`, `.files`, `.storage`, `.maintenance`. Permitidos: ids (`job_id`, `file_id`, `artifact_id`, `scope_id`), operación, estado, fase, `attempt_no`, `worker_id`, códigos, conteos, tamaños, duraciones, `request_id`. Prohibidos: contenido, hashes de contenido, claves de storage, referencias externas, `lease_token`, `purge_token`, claves de idempotencia.
 - `admin_events`: sin eventos por trabajo o archivo; solo `maintenance.admin_events_purged` (conteos), `scope.job_fence_reconciled` (sin contenido) y `file.validation_divergence`.
 - Readiness no cambia.
 
 ## 21. Fuera de alcance
 
 Protección, redacción, seudonimización, correspondencias, criptografía y restauración (A06–A08); transformación; OCR; modelo real, calidad, segmentación (A09); integración con CAWbase; AWS; URLs firmadas; cargas *multipart*/reanudables; ampliación de la reserva durante una carga; colas obligatorias; exactamente una vez; archivo histórico de eventos.
+
+## 22. Precisiones de implementación y límites comprobados (0.4.0)
+
+Registradas al implementar (`I-A05-nn` en [A05-decisions](decisions/A05-decisions.md)); ninguna cambia una decisión de producto.
+
+1. **Migración `0003` y definición compartida.** Las tablas se definen una vez (`persistence/a05_schema.py`) y la migración las crea con esa misma definición, **congelada en esta revisión**: cualquier cambio posterior exige una revisión nueva. No inserta filas (los contadores y los *fences* se crean de forma perezosa).
+2. **`customXml/` se rechaza (DX-17).** Los DOCX producidos con la plantilla predeterminada de `python-docx` y muchos documentos de Word con fuentes bibliográficas incluyen partes `customXml/`: se rechazan con `unsupported_structure` por la matriz conservadora (las fixtures de las pruebas las eliminan). Es una **limitación de cobertura real**, no un defecto: ampliarlo es backlog (B-A05-08).
+3. **PDF: codificaciones.** Una fuente sin `/ToUnicode` solo se acepta con `/Encoding` estándar (`WinAnsiEncoding`, `MacRomanEncoding`, `StandardEncoding`) **sin `/Differences`** o, para Type1 sin `/Encoding`, con una fuente estándar-14. `StandardEncoding` se decodifica con la tabla `cp1252` (aproximación aceptada en el subconjunto latino). El resto es `font_mapping_insufficient`.
+4. **PDF: comprobaciones previas por bytes.** Antes de abrir con `pikepdf` se hace un conteo acotado de objetos (`" obj"`), y búsquedas de bytes de `/ObjStm`, `/Prev`, `%%EOF` repetido, `/ByteRange`, acciones ejecutables (`/JavaScript`, `/JS`, `/Launch`, `/OpenAction`…), `/EmbeddedFiles` y `/FileAttachment`. Son **conservadoras**: un PDF legítimo cuyo texto contenga esos tokens se rechaza (falso positivo aceptado). Los flujos se decodifican solo con `FlateDecode` (único filtro) y con un tope de bytes **producidos** (`inflate_limited`); cualquier otro filtro es `unsupported_structure`. `pikepdf` no admite fijar límites de memoria al abrir: el proceso aislado aporta el límite duro (`rlimit`/contenedor).
+5. **`rlimit` por plataforma.** `unconfined_development` aplica `RLIMIT_CPU`, `RLIMIT_FSIZE` y `RLIMIT_CORE` en todas las plataformas y `RLIMIT_AS`/`RLIMIT_NPROC` **solo en Linux** (en macOS no son fiables). Es desarrollo, no *sandbox*.
+6. **Imagen del contenedor de referencia.** El hijo se arranca con el código del motor montado de solo lectura; la imagen debe contener el entorno de ejecución del paquete: `sqlalchemy[asyncio]` y `pydantic` (los importa el paquete), más `lxml` y `pikepdf`. El motor **no** construye ni distribuye la imagen (infraestructura fuera de A05).
+7. **Aislamiento verificado una vez por motor.** `verify()` (canario) se ejecuta la primera vez que un trabajo documental lo necesita y se recuerda por instancia; si falla, el trabajo termina con `configuration_unavailable` y no se procesa nada.
+8. **Tolerancia del corte de `admin_events`.** El guard del corte admite 60 s de diferencia entre el reloj del operador y el de la base (`older_than ≤ ahora_db − retención + 60 s`).
+9. **Spool por motor.** Un `Spool` por instancia de `ContentEngine`, creado de forma perezosa en `<spool_dir | raíz del storage>/spool/<instancia>/`; el barrido de residuos corre al crearlo y en cada `run_cleanup`.
+10. **`detected_format`.** La columna existe pero no se rellena: la extensión de la descarga y el tipo de contenido se deducen de la firma del archivo al servirlo (`pdf`, `docx` o `bin`).
+11. **`external_ref`.** Se guarda en `stored_files.external_ref` hasta que vence `file_metadata_expires_at` (30 días tras el fin de vida) y nunca se devuelve por HTTP, logs ni errores.
+12. **CLI.** `worker`, `cleanup` y `purge-admin-events` (sin HTTP). El worker toma la inferencia de la misma configuración que el servicio (`INFERENCE_ADAPTER=mock` en A05; los adaptadores reales son de A09). El servicio independiente añade `STORAGE_DIR`, `DOCUMENTS_ISOLATION` (`none` \| `linux_container` + `DOCUMENTS_IMAGE` \| `unconfined_development` + `DOCUMENTS_UNTRUSTED_INPUT=false`).
+13. **SQLite.** No hay bloqueo de fila: el orden de §6.2 se aplica como orden de lectura/escritura bajo el único escritor; los reclamadores se serializan.
+14. **Errores internos.** `NeedReconcile` (código `fence_reconcile_required`) y `LeaseLost` (`lease_lost`) son `EngineError` solo para atravesar la frontera transaccional sin traducirse a `internal_error`; nunca llegan a quien llama a la API pública.
+15. **Importación liviana.** Ni `jobs/` ni `documents/` se importan al importar el paquete (probado); `operations/jobs_facade.py` pertenece al núcleo liviano y solo importa lo pesado dentro de cada método.

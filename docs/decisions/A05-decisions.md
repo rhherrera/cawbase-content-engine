@@ -1,6 +1,6 @@
 # A05 — Registro de decisiones
 
-> **Estado: A05 ESPECIFICADA / NO IMPLEMENTADA, pendiente de revisión del usuario (revisión 3 de la especificación).** No hay código, migración, permisos ni versión nuevos (`0.3.0` sin cambios). Las decisiones `D-A05-nn` fueron **aprobadas por el usuario** con el encargo de A05; las elecciones técnicas `E-A05-nn` se derivaron por criterio al redactar el contrato y **no** son decisiones de producto (revisables sin abrir otra ronda por detalles rutinarios).
+> **Estado: A05 IMPLEMENTADA en `0.4.0`, pendiente de revisión y aceptación del usuario (revisión 4 del registro).** La especificación (rev. 3, `d7ab051`) se implementó en `c057b27`; evidencia y límites en el [informe](../a05-implementation-report.md). Las decisiones `D-A05-nn` fueron **aprobadas por el usuario** con el encargo de A05; las elecciones técnicas `E-A05-nn` se derivaron por criterio al redactar el contrato y **no** son decisiones de producto (revisables sin abrir otra ronda por detalles rutinarios).
 
 Contratos que usan estas decisiones: [especificación de A05](../features/A05-trabajos-archivos-y-ciclo-de-vida.md) · [trabajos, archivos y ciclo de vida](../jobs-files-and-lifecycle.md) (contrato completo). Decisiones heredadas: [A01](A01-decisions.md), [A02](A02-decisions.md), [A03](A03-decisions.md), [A04](A04-decisions.md).
 
@@ -13,6 +13,8 @@ Categorías (no mezclarlas): **decisiones aprobadas** (§2) · **elecciones téc
 | 1 | Primera redacción (solo documental, commit `7fb22cd`): D-A05-01 y D-A05-02 aprobadas; E-A05-01 a E-A05-24; diferencias con el playbook; backlog. Resolución de Q-04 de A01 por referencia. |
 | 2 | Corrección documental previa a la implementación, sin cambiar D-A05-01/02 ni los plazos: fence con invariantes de reconciliación previa (E-A05-10 revisada, contraejemplo incluido); orden común de bloqueos y precondiciones temporales completas (E-A05-26); cuotas con bytes reservados/almacenados/inciertos hasta la eliminación confirmada (E-A05-22 revisada); huella con contexto, envío/carga/registro idempotentes completos y retención de metadatos de archivos (E-A05-13 revisada, E-A05-25); escritores tardíos con `not_after`, sellos y tombstones, y fencing de la limpieza (E-A05-05/08 revisadas); validaciones por identidad (E-A05-27); descarga verificada con spool (E-A05-28); `delete_job_data` solo terminal (E-A05-29); cobertura por capacidad y `E` sin afectar el subconjunto `S` (E-A05-18 revisada); hipervínculos externos (E-A05-30); matriz A05 conservadora sin criterios abiertos (E-A05-31). Se corrige la atribución del coste del fence: es una elección propuesta, no un coste aceptado por el usuario. Niveles de migración reevaluados (E-A05-11). |
 | 3 | Tres correcciones documentales, sin cambiar decisiones ni plazos: garantías de storage separadas (no publicar / no rematerializar / bytes liberados), evidencia de liberación de escritores con `flock`, `abort_after` como plazo cooperativo (se elimina la equivalencia entre plazo y no visibilidad y el margen de reloj), capacidad finita de sellos y orden real e idempotencia del sellado (E-A05-04/05/06/08 revisadas, E-A05-33); limpieza de spool de procesos muertos (E-A05-32); reconciliación del fence dentro de `HostTransaction` en la misma conexión (E-A05-34); bloqueo de contadores antes de los trabajos en reclamación, recuperación y transiciones terminales (E-A05-22/26 revisadas). Matriz de aceptación ampliada (AC-A05-43 a 52). |
+
+| 4 | Implementación (`0.4.0`): precisiones `I-A05-01` a `I-A05-12` (§3.1) surgidas al implementar y probar. Ninguna `D-A05-nn` ni elección `E-A05-nn` de producto cambia; las que corrigen el texto de la especificación se indican. |
 
 ## 1. Fuente, precedencia y herencia
 
@@ -84,6 +86,25 @@ Categorías (no mezclarlas): **decisiones aprobadas** (§2) · **elecciones téc
 | E-A05-33 | Capacidad finita de sellos: cada reserva administrada consume un sello potencial; `sealed_keys + pending_seals + open_reservations` acotado por scope (10 000) e instalación (1 000 000); al alcanzarlo, `quota_exceeded` (`seal_capacity`) con diagnóstico, sin retirar sellos | Los sellos permanentes no pueden crecer sin límite aunque no ocupen contenido |
 | E-A05-34 | Fence dentro de `HostTransaction`: el envío adquiere el scope `FOR NO KEY UPDATE` desde el comienzo del savepoint y crea o reconcilia el fence en la misma conexión; la reversión del host revierte reconciliación y aceptación juntas sin debilitar I1; las lecturas no reconcilian | Una reconciliación en otra conexión esperaría a la transacción del propio llamador |
 
+### 3.1 Precisiones y decisiones de implementación (`I-A05-nn`)
+
+No son decisiones de producto. Cada una está respaldada por código y pruebas (informe).
+
+| ID | Precisión | Motivo / evidencia |
+|---|---|---|
+| I-A05-01 | La definición de las tablas es única (`persistence/a05_schema.py`) y la migración `0003` la usa, congelada en esa revisión; la migración no inserta filas | Evitar dos copias divergentes; contadores y *fences* se crean de forma perezosa |
+| I-A05-02 | `customXml/` se rechaza (DX-17), también los de la plantilla de `python-docx` y de muchos documentos de Word | Matriz conservadora; las fixtures los eliminan. Limitación real (B-A05-08) |
+| I-A05-03 | PDF: fuentes sin `/ToUnicode` solo con `/Encoding` estándar sin `/Differences` (o Type1 estándar-14 sin `/Encoding`); `StandardEncoding` se decodifica con `cp1252` | Sin dependencias nuevas (AGL); `/Differences` queda fuera del subconjunto |
+| I-A05-04 | PDF: comprobaciones previas por bytes (`/ObjStm`, `/Prev`, `%%EOF` repetido, `/ByteRange`, acciones ejecutables, adjuntos) y flujos solo `FlateDecode` con tope de bytes producidos; `pikepdf` no admite límites al abrir (el hijo aporta el límite duro) | Falsos positivos aceptados; ver contrato §22 |
+| I-A05-05 | `RLIMIT_AS`/`RLIMIT_NPROC` solo en Linux; `RLIMIT_CPU`, `RLIMIT_FSIZE` y `RLIMIT_CORE` en todas | No fiables en macOS; `unconfined_development` no es *sandbox* |
+| I-A05-06 | La imagen del contenedor de referencia debe incluir `sqlalchemy[asyncio]`, `pydantic`, `lxml` y `pikepdf` (el paquete los importa); el motor no construye ni distribuye la imagen | Descubierto al probar el contenedor |
+| I-A05-07 | `NeedReconcile` y `LeaseLost` son `EngineError` internos para atravesar la frontera transaccional; nunca llegan a la API pública | `translate()` convertía las excepciones ajenas en `internal_error` |
+| I-A05-08 | El guard del corte de `admin_events` admite 60 s de diferencia de reloj entre operador y base | Un corte «exactamente 90 días» fallaba por microsegundos |
+| I-A05-09 | `FilesystemStorage._seal` es idempotente y seguro con sellos concurrentes (nunca retira un directorio sello; reintenta ante `PermissionError`/`FileExistsError`) | Defecto hallado por la prueba de limpiezas concurrentes |
+| I-A05-10 | Las fuentes de stream que fallan (cliente que se va, resolutor) se convierten en `upload_aborted`; el contador de bytes aplica el límite real, no el declarado | Pruebas de cargas interrumpidas y `declared_size` falso |
+| I-A05-11 | Pruebas heredadas actualizadas solo por constantes nuevas: nivel de esquema 3, cabeza `0003`, 17 permisos, versión `0.4.0`, códigos de error nuevos; en dos pruebas de migración el dato A01 se escribe por SQL porque el camino A05 de `update_scope` requiere las tablas de `0003` | Consecuencia directa de la migración aditiva; ver informe |
+| I-A05-12 | `ReferenceExecutor`, `job_worker()` y `maintenance()` son los puntos de integración del host; la CLI `worker` toma la inferencia de la configuración del servicio (mock en A05) | Sin cola adicional; adaptadores reales son de A09 |
+
 ## 4. Diferencias respecto del playbook (revisión 6)
 
 | # | Playbook | A05 | Motivo |
@@ -120,7 +141,7 @@ Lo no listado permanece vigente.
 
 Ninguna bloquea la especificación. Tensiones resueltas dentro del alcance, con elecciones propuestas (no aprobaciones del usuario):
 
-1. **Runtimes anteriores y scopes**: el fence (E-A05-10) mantiene la garantía sin subir `min_runtime_level`, a costa de que, durante un despliegue mixto, una edición de metadatos hecha por un runtime anterior cancele los trabajos pendientes del scope. Es una elección propuesta pendiente de revisión; la alternativa sería exigir que todos los runtimes estén actualizados antes de aceptar trabajos.
+1. **Runtimes anteriores y scopes**: el fence (E-A05-10) mantiene la garantía sin subir `min_runtime_level`, a costa de que, durante un despliegue mixto, una edición de metadatos hecha por un runtime anterior cancele los trabajos pendientes del scope. Es una elección técnica (implementada y probada con el código real de `0.3.0`) pendiente de tu revisión; la alternativa sería exigir que todos los runtimes estén actualizados antes de aceptar trabajos.
 2. **Primer corte de `admin_events`**: aplicar 90 días a eventos previos puede eliminar historial antiguo en la primera purga; mitigado por previsualización y corte explícito.
 3. **SQLite y reclamación concurrente**: un único escritor serializa reclamaciones; aceptable para el uso previsto (un nodo).
 4. **Sellos permanentes del filesystem**: una entrada vacía por cada escritura de resultado desconocido, contabilizada y acotada (E-A05-33); su compactación queda en backlog (B-A05-13).
