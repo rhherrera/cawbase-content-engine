@@ -1,6 +1,6 @@
 # A05 — Trabajos, archivos y ciclo de vida
 
-> **Estado: IMPLEMENTADA en `0.4.0`, pendiente de revisión y aceptación del usuario** (especificación rev. 3 en `d7ab051`; implementación y pruebas en `c057b27`; documentación e informe en el commit siguiente, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)). La trazabilidad de cada criterio AC-A05 a sus pruebas, las versiones y ambientes realmente ejecutados y los criterios **sin evidencia** o con evidencia parcial están en el [informe de implementación](../a05-implementation-report.md). **No está cerrada ni aceptada** (acta del usuario) y no se ejecutó GitHub Actions.
+> **Estado: IMPLEMENTADA en `0.4.0`, ACEPTADA por el usuario (con los 22 criterios parciales y las limitaciones del informe) y pendiente de merge** (especificación rev. 3 en `d7ab051`; implementación y pruebas en `c057b27`; documentación e informe en el commit siguiente, ver [A05-decisions §0](../decisions/A05-decisions.md#0-historial-de-revisiones)). La trazabilidad de cada criterio AC-A05 a sus pruebas, las versiones y ambientes realmente ejecutados y los criterios **sin evidencia** o con evidencia parcial están en el [informe de implementación](../a05-implementation-report.md). Aceptación según declaración explícita del usuario; **GitHub Actions no se ejecutó**; sin merge.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A05), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md), [A05](../decisions/A05-decisions.md)), que prevalecen.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a05-jobs-files-lifecycle`, creada desde `main` en `58001e0` (merge del PR #3 de A04).
@@ -110,7 +110,7 @@ Criterios trazables al contrato (AC-A05-01 a 52). La columna «Evidencia exigida
 ## 6. Riesgos y límites declarados
 
 - La extracción se limita al subconjunto conservador de §11.2 del contrato; muchos PDF y DOCX reales (Type0/CID, object streams, varias secciones) se rechazarán; las ampliaciones son backlog y D-A04-04 sigue en A08.
-- Mientras convivan runtimes anteriores, sus cambios efectivos sobre un scope cancelan trabajos pendientes (elección propuesta E-A05-10, pendiente de revisión).
+- Mientras convivan runtimes anteriores, sus cambios efectivos sobre un scope cancelan trabajos pendientes (E-A05-10, opción A aprobada por el usuario como D-A05-03).
 - Los sellos del filesystem de referencia son permanentes y su capacidad es finita (E-A05-33, B-A05-13); un escritor suspendido indefinidamente retiene su cargo.
 - La garantía de aislamiento depende del perfil configurado; en macOS no hay sandbox.
 - Los límites son elecciones iniciales sin medición; la capacidad no se acredita por haberlos fijado.

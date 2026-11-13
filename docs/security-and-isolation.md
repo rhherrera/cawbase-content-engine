@@ -202,7 +202,7 @@ Alcanza únicamente los datos que A01 introduce.
 
 - El motor no ofrece en A01 eliminación física. El retiro completo de la instalación (borrar el schema o las tablas con prefijo) es una operación manual del DBA, destructiva, documentada en la guía de operación de A10; el motor no la ejecuta nunca por sí mismo ni en migraciones.
 - Las copias de seguridad de la base conservan estos datos según la política del operador; no se afirma borrado inmediato en copias.
-- Cuando aparezcan datos documentales y correspondencias (A05/A06) tendrán su propia retención; no se anticipa aquí. *Registro posterior:* la retención de A05 y la de `admin_events` están especificadas (no implementadas) en [§12](#12-a05--archivos-trabajos-permisos-y-retención-implementado-en-040-pendiente-de-aceptación); las correspondencias siguen siendo de A06.
+- Cuando aparezcan datos documentales y correspondencias (A05/A06) tendrán su propia retención; no se anticipa aquí. *Registro posterior:* la retención de A05 y la de `admin_events` están especificadas (no implementadas) en [§12](#12-a05--archivos-trabajos-permisos-y-retención-implementado-en-040-aceptado-pendiente-de-merge); las correspondencias siguen siendo de A06.
 
 ## 8. Riesgos residuales conocidos
 
@@ -328,9 +328,9 @@ Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistingu
 - Los fixtures y manifiestos contienen solo valores sintéticos; ningún dato real, secreto o contenido sensible en registros o informes. Un mapa documental queda ligado al hash del archivo exacto y no se transfiere.
 - Cobertura parcial nunca se presenta como protección completa; la ausencia de valores sintéticos seleccionados no acredita ausencia universal de datos sensibles.
 
-## 12. A05 — Archivos, trabajos, permisos y retención (implementado en 0.4.0; pendiente de aceptación)
+## 12. A05 — Archivos, trabajos, permisos y retención (implementado en 0.4.0; aceptado, pendiente de merge)
 
-> **IMPLEMENTADO en `0.4.0` (A05), pendiente de revisión y aceptación del usuario.** Evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md); **no aceptada**. La viabilidad documental se limita al subconjunto conservador de [§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización). Contrato: [trabajos, archivos y ciclo de vida](jobs-files-and-lifecycle.md). Todo lo de §1–§11 sigue vigente; el catálogo implementado pasa a 17 permisos con A05.
+> **IMPLEMENTADO en `0.4.0` (A05), aceptado por el usuario (con 22 criterios parciales) y pendiente de merge.** Evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md); **no aceptada**. La viabilidad documental se limita al subconjunto conservador de [§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización). Contrato: [trabajos, archivos y ciclo de vida](jobs-files-and-lifecycle.md). Todo lo de §1–§11 sigue vigente; el catálogo implementado pasa a 17 permisos con A05.
 
 - **Permisos nuevos** (6 de scope; el catálogo pasa de 11 a **17**, `ScopePermission` en `permissions.py`): `files:write`, `files:read`, `jobs:read`, `jobs:cancel`, `results:read`, `data:delete`; `analysis:execute` se reutiliza para **enviar** trabajos sin conceder lectura de archivos ni de resultados. Sin jerarquías ni comodines; `AdminContext`/`admin:*` no acceden a archivos, trabajos ni resultados ([contrato §16](jobs-files-and-lifecycle.md#16-permisos-elección-técnica-e-a05-12)). Se mantiene la **restricción de despliegue**: no emitir claves con permisos nuevos hasta actualizar todos los runtimes (revocar no corrige un runtime anterior).
 - **Entrada no confiable**: tipo real por contenido, límites aplicados antes de abrir, ZIP/OPC/XML/PDF acotados, rechazos heredados de A04, sin ejecutar macros/scripts ni resolver recursos externos, sin saneamiento silencioso. **Cuarentena = privado y pendiente de validación**, no «libre de malware». Antivirus solo como extensión local opcional; nunca servicios externos de escaneo ([contrato §10](jobs-files-and-lifecycle.md#10-seguridad-del-procesamiento-documental)).

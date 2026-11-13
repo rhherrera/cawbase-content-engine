@@ -1,6 +1,6 @@
 # Informe de implementación de A05 — trabajos, archivos y ciclo de vida
 
-> **Estado: A05 está IMPLEMENTADA en `0.4.0` y probada localmente (macOS y Linux local en Docker); pendiente de revisión y aceptación del usuario. NO está cerrada ni aceptada. GitHub Actions NO se ejecutó.** Este informe no es un acta. Solo acredita ingeniería (estado, posesión, consistencia base/storage, aislamiento, retención) sobre documentos **sintéticos** y un adaptador de inferencia simulado; **no** acredita calidad de detección (A09) ni protección (A06–A08). 30 de 52 criterios están verificados, 22 parcialmente y 0 sin evidencia (matriz §3).
+> **Estado: A05 está IMPLEMENTADA en `0.4.0`, probada localmente (macOS y Linux local en Docker), ACEPTADA por el usuario (con los 22 criterios parciales y las limitaciones de este informe, según su declaración explícita) y PENDIENTE DE MERGE. GitHub Actions NO se ejecutó.** Las cifras de este informe son evidencia de ingeniería, no un acta; la aceptación es la declaración del usuario. Solo acredita ingeniería (estado, posesión, consistencia base/storage, aislamiento, retención) sobre documentos **sintéticos** y un adaptador de inferencia simulado; **no** acredita calidad de detección (A09) ni protección (A06–A08). 30 de 52 criterios están verificados, 22 parcialmente y 0 sin evidencia (matriz §3).
 
 Relacionado: [contrato](jobs-files-and-lifecycle.md) · [especificación](features/A05-trabajos-archivos-y-ciclo-de-vida.md) · [decisiones](decisions/A05-decisions.md) · [desarrollo](development.md).
 
@@ -13,7 +13,7 @@ Relacionado: [contrato](jobs-files-and-lifecycle.md) · [especificación](featur
 | 3 | Probado en macOS | Sí, sobre el código final (`ae062c0`; después solo cambió documentación): suite completa (SQLite 3.54.0 y PostgreSQL real) **1034 passed, 13 skipped, 0 failed** contra PostgreSQL 15.19 y **1034 passed, 13 skipped, 0 failed** contra PostgreSQL 18.6; `-m dist` 9 passed; ruff, ruff format y mypy (77 archivos) sin hallazgos. Las pruebas del contenedor de referencia **sí se ejecutaron** (Docker Desktop) |
 | 4 | Probado en Linux local (Docker, Debian 12) | Sí (Docker Desktop, contenedor Debian 12 aarch64, Python 3.13.18, SQLite 3.40.1, instantánea `git archive` de `ae062c0`): suite completa **1025 passed, 22 skipped, 0 failed** contra PostgreSQL 15.19, 16.15, 17.11 y 18.6; cotas inferiores declaradas (`lowest-direct`) 1025 passed; piso de SQLite 3.38.5: 1026 passed, 21 skipped (3.37.2 es rechazado al arrancar); `-m dist` 9 passed; auditoría de artefactos 0 hallazgos; importación en frío 848,2 ms (sin umbral), en caliente 199,3 ms (≤ 300 ms, D-33), 28 579 KiB instalados (≤ 40 MiB). Los 22 *skips* incluyen **8 pruebas del contenedor de referencia** que no se ejecutan dentro del contenedor de validación (no hay Docker) |
 | 5 | Probado en GitHub Actions | **No** (no se hizo push; el workflow no se ejecutó) |
-| 6 | Aceptado por el usuario | **No** |
+| 6 | Aceptado por el usuario | **Sí**, `0.4.0` con los 22 criterios parciales (declaración explícita del usuario; commit de cierre documental posterior a `7452505`). Pendiente de merge; sin push ni merge hechos por el agente |
 
 Un *skip* no es una aprobación (ver §5). Una corrida Linux local no es una ejecución de GitHub Actions.
 
@@ -134,6 +134,6 @@ Solo constantes que dependen de la migración, los permisos y la versión: cabez
 
 ## 6. Pendientes y decisiones
 
-- **Decisión del usuario pendiente:** la elección técnica E-A05-10 (durante un despliegue mixto, un cambio efectivo de un runtime anterior sobre un scope cancela los trabajos pendientes de ese scope) es una elección propuesta, ahora implementada y probada con las escrituras de `0.3.0`; el usuario puede preferir exigir que todos los runtimes estén actualizados antes de aceptar trabajos.
-- **Aceptación:** pendiente. No se hizo push ni merge. Los criterios parciales y sin evidencia de §3 deben revisarse antes del acta.
+- **Decisión resuelta:** el usuario aprobó la opción A de E-A05-10 como [D-A05-03](decisions/A05-decisions.md#d-a05-03--runtimes-anteriores-y-fence-del-scope-opción-a-de-e-a05-10): durante un despliegue mixto, una edición de metadatos hecha desde un runtime anterior puede cancelar trabajos pendientes del scope y requerir su reenvío.
+- **Aceptación:** A05 `0.4.0` aceptada por el usuario con los 22 criterios parciales de §3 (se conservan como parciales) y las limitaciones de §5. Pendiente de merge: el agente no hizo push ni merge. GitHub Actions no se ejecutó.
 - **Backlog:** [A05-decisions §5](decisions/A05-decisions.md#5-backlog-fuera-de-los-criterios-de-aceptación) (B-A05-01 a 16; nuevos: B-A05-15 canario periódico y de CPU/duración, B-A05-16 verificación estática del orden de bloqueos); en particular ampliar la matriz (B-A05-08, incluido `customXml/`).
