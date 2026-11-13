@@ -258,6 +258,8 @@ Autoridad temporal §6.1; orden de bloqueos §6.2. Notación: **dueño** = trans
 
 Toda hora que decide estado se toma **de la base** en la misma sentencia/transacción que la compara: PostgreSQL `clock_timestamp()`; SQLite `strftime('%Y-%m-%d %H:%M:%f','now')` (reloj del único nodo). Los relojes de workers y backends solo planifican heartbeats y abortos cooperativos (`abort_after`, §4.4); la seguridad de registro y publicación no depende de sincronizarlos. Los timestamps de A01–A03 no cambian.
 
+**La hora que decide se lee después de las esperas** (I-A05-13): una transacción toma primero los bloqueos que pueden hacerla esperar y recién después lee el reloj de la base y decide (posesión, plazo, expiración, cancelación); una hora leída antes de esperar un bloqueo no puede decidir, porque la espera puede haber vencido el lease o el plazo. En PostgreSQL (`READ COMMITTED`) la fila se vuelve a leer tras la espera; en SQLite la transacción inmediata espera al único escritor antes de su primera sentencia.
+
 ### 6.2 Orden común de bloqueos
 
 Toda transacción que tome más de un bloqueo los adquiere en este orden **ascendente** (puede omitir niveles, nunca volver a uno anterior); dentro de un nivel, por clave ascendente:
@@ -275,7 +277,7 @@ Toda transacción que tome más de un bloqueo los adquiere en este orden **ascen
 | 9 | `job_attempts`, `job_artifacts` (por id) | `FOR UPDATE` | ídem |
 | 10 | `storage_tombstones` | `FOR UPDATE` | ídem |
 
-- **Transacciones hoja**: un `UPDATE` condicional de una sola fila sin otros bloqueos previos (heartbeat, cambio de fase, marca de purga) se permite en cualquier nivel: no espera nada tras tomarla, no forma ciclos.
+- **Transacciones hoja**: una transacción que toma el bloqueo de una sola fila y nada después (heartbeat y cambio de fase: bloquean la fila del trabajo y deciden tras la espera, §6.3; marca de purga: `UPDATE` condicional) se permite en cualquier nivel: no espera nada tras tomarla, no forma ciclos.
 - Uso por operación:
 
 | Operación | Secuencia |
@@ -303,7 +305,7 @@ Toda transacción que tome más de un bloqueo los adquiere en este orden **ascen
 ### 6.3 Posesión y plazos del intento
 
 - Persistidos por intento (en `jobs` y `job_attempts`): `attempt_started_at`, `attempt_deadline_at = min(attempt_started_at + max_attempt_duration_s, deadline_at)`, `lease_expires_at`.
-- **Lease inicial** (T2) = `min(ahora + lease_ttl_s, attempt_deadline_at)`. **Heartbeat** (hoja): `UPDATE jobs SET lease_expires_at = min(ahora + lease_ttl_s, attempt_deadline_at), heartbeat_at = ahora, phase = :fase WHERE … AND state = 'running' AND attempt_no = :n AND lease_token = :t AND lease_expires_at > ahora AND attempt_deadline_at > ahora`; devuelve `cancel_requested` y si el fence cambió (el worker se detiene).
+- **Lease inicial** (T2) = `min(ahora + lease_ttl_s, attempt_deadline_at)`. **Heartbeat** (hoja, un solo bloqueo de nivel 8): bloquea la fila del trabajo, lee `ahora` **después** de la espera, comprueba `state = 'running'`, `attempt_no`, `lease_token`, `lease_expires_at > ahora` y `attempt_deadline_at > ahora`, y recién entonces escribe `lease_expires_at = min(ahora + lease_ttl_s, attempt_deadline_at)`, `heartbeat_at = ahora` y la fase; devuelve `cancel_requested` (el worker se detiene). Un lease que venció mientras la llamada esperaba el bloqueo no se extiende.
 - Cero filas ⇒ `lease_lost`: el worker deja de trabajar y no publica. Una posesión vencida **no se revive**, aunque nadie haya reclamado el trabajo.
 - El lease nunca supera `attempt_deadline_at` ni prolonga retenciones (§13.2).
 
@@ -321,7 +323,7 @@ Una transacción con la secuencia de §6.2 que comprueba, con `ahora` = hora de 
 2. **Cancelación**: `cancel_requested_at IS NULL`.
 3. **Scope**: `status = 'active'`, fence sin divergencia y `fence_generation = disable_generation` (§9.2).
 4. **Entrada principal y contexto** (bloqueados `FOR SHARE`, lo que serializa con `delete_file`, con la marca de expiración y con `lost`): `state = 'stored'`, `expires_at > ahora`, `sha256`/`size` iguales a los fijados en el snapshot; para `document_analysis`, la validación fijada existe y es `passed`.
-5. **Artefactos**: `written`, del mismo `attempt_no`, con tamaño y hash registrados.
+5. **Artefactos (conjunto exacto, I-A05-14)**: los roles de la operación y ninguno más — `text_analysis`: `result`; `document_analysis`: `result` y `source_map` —; cada referencia existe, está `written`, es del mismo trabajo y `attempt_no`, su `kind` registrado es el del rol, tiene tamaño y hash registrados y no aparece en dos roles. Un conjunto vacío, incompleto, duplicado, inesperado o con roles intercambiados es un defecto del ejecutor: el trabajo pasa a `failed` (`internal_error`, sin reintento), se descartan los artefactos del intento y no se publica nada.
 
 Si gana `delete_file` (o la entrada vence o se pierde) antes de este punto, no hay publicación: el trabajo pasa a `failed` (`input_unavailable`). Si gana la publicación, eliminar después el original **no** borra retroactivamente el resultado (que sigue su propia retención). Cualquier otra precondición fallida ⇒ T6/T8/`lease_lost` y ninguna publicación.
 
@@ -510,7 +512,7 @@ Los límites se entregan al parser antes de abrir (lectores ZIP con contador y a
 | `host_provided` | `IsolationRunner` del host con controles equivalentes | producción con otra tecnología |
 | `unconfined_development` | proceso separado + `rlimit` + plazo; sin aislamiento de red ni filesystem | solo desarrollo (p. ej. macOS) y entradas confiables |
 
-- **Canario** al iniciar el worker y periódicamente: dentro del aislamiento intenta red, escritura fuera del `tmpfs`, lectura de variables sensibles, procesos por encima del límite y exceso de memoria; cualquier éxito ⇒ perfil no disponible (`isolation_unavailable`).
+- **Canario** (`verify(limits)`, con **los límites del trabajo**, también los no predeterminados): dentro del aislamiento intenta red, escritura fuera del `tmpfs`, lectura de variables sensibles y procesos por encima de `extraction_max_pids`; informa el límite de memoria efectivo (cgroup) y un segundo arranque intenta reservar y tocar más memoria que `extraction_memory_bytes` (el control se da por aplicado solo si el hijo es terminado por el OOM o recibe `MemoryError`); cualquier éxito, error o límite más laxo ⇒ perfil no disponible (`configuration_unavailable`, I-A05-15/16). La aprobación pertenece a la instancia de `ContentEngine` y a la configuración con que se obtuvo; **no se repite periódicamente** (B-A05-15).
 - `untrusted_input = True` (predeterminado) exige `linux_container_reference` o `host_provided` verificados; **sin fallback silencioso**. `unconfined_development` requiere configuración explícita y queda en el snapshot y en la procedencia del resultado. macOS: solo separación de proceso, entorno limpio, `rlimit` (con sus limitaciones) y plazo; no es sandbox.
 
 ### 10.6 Terminación
@@ -943,7 +945,7 @@ Registradas al implementar (`I-A05-nn` en [A05-decisions](decisions/A05-decision
 4. **PDF: comprobaciones previas por bytes.** Antes de abrir con `pikepdf` se hace un conteo acotado de objetos (`" obj"`), y búsquedas de bytes de `/ObjStm`, `/Prev`, `%%EOF` repetido, `/ByteRange`, acciones ejecutables (`/JavaScript`, `/JS`, `/Launch`, `/OpenAction`…), `/EmbeddedFiles` y `/FileAttachment`. Son **conservadoras**: un PDF legítimo cuyo texto contenga esos tokens se rechaza (falso positivo aceptado). Los flujos se decodifican solo con `FlateDecode` (único filtro) y con un tope de bytes **producidos** (`inflate_limited`); cualquier otro filtro es `unsupported_structure`. `pikepdf` no admite fijar límites de memoria al abrir: el proceso aislado aporta el límite duro (`rlimit`/contenedor).
 5. **`rlimit` por plataforma.** `unconfined_development` aplica `RLIMIT_CPU`, `RLIMIT_FSIZE` y `RLIMIT_CORE` en todas las plataformas y `RLIMIT_AS`/`RLIMIT_NPROC` **solo en Linux** (en macOS no son fiables). Es desarrollo, no *sandbox*.
 6. **Imagen del contenedor de referencia.** El hijo se arranca con el código del motor montado de solo lectura; la imagen debe contener el entorno de ejecución del paquete: `sqlalchemy[asyncio]` y `pydantic` (los importa el paquete), más `lxml` y `pikepdf`. El motor **no** construye ni distribuye la imagen (infraestructura fuera de A05).
-7. **Aislamiento verificado una vez por motor.** `verify()` (canario) se ejecuta la primera vez que un trabajo documental lo necesita y se recuerda por instancia; si falla, el trabajo termina con `configuration_unavailable` y no se procesa nada.
+7. **Aislamiento verificado una vez por instancia y configuración (I-A05-15/16).** `verify(limits)` (canario, con los límites del trabajo) se ejecuta la primera vez que un trabajo documental lo necesita; la aprobación y la clave que la ata viven en la instancia de `ContentEngine` (nunca en el módulo) y se repiten si cambia la instancia, el ejecutor o algún límite de extracción; si falla o lanza, el trabajo termina con `configuration_unavailable` y no se procesa nada. Un `verify()` sin parámetros de un ejecutor del host se admite.
 8. **Tolerancia del corte de `admin_events`.** El guard del corte admite 60 s de diferencia entre el reloj del operador y el de la base (`older_than ≤ ahora_db − retención + 60 s`).
 9. **Spool por motor.** Un `Spool` por instancia de `ContentEngine`, creado de forma perezosa en `<spool_dir | raíz del storage>/spool/<instancia>/`; el barrido de residuos corre al crearlo y en cada `run_cleanup`.
 10. **`detected_format`.** La columna existe pero no se rellena: la extensión de la descarga y el tipo de contenido se deducen de la firma del archivo al servirlo (`pdf`, `docx` o `bin`).
@@ -952,3 +954,6 @@ Registradas al implementar (`I-A05-nn` en [A05-decisions](decisions/A05-decision
 13. **SQLite.** No hay bloqueo de fila: el orden de §6.2 se aplica como orden de lectura/escritura bajo el único escritor; los reclamadores se serializan.
 14. **Errores internos.** `NeedReconcile` (código `fence_reconcile_required`) y `LeaseLost` (`lease_lost`) son `EngineError` solo para atravesar la frontera transaccional sin traducirse a `internal_error`; nunca llegan a quien llama a la API pública.
 15. **Importación liviana.** Ni `jobs/` ni `documents/` se importan al importar el paquete (probado); `operations/jobs_facade.py` pertenece al núcleo liviano y solo importa lo pesado dentro de cada método.
+16. **Hora de decisión (I-A05-13).** Ver §6.1: se lee tras las esperas. Las marcas de reclamo de purga son un `UPDATE` único cuya comparación con una hora previa solo puede ser más conservadora (un reclamo vencido tarda un poco más en reutilizarse); las lecturas de solo consulta (`get_*`, descargas) usan su hora de lectura.
+17. **Conjunto de artefactos (I-A05-14).** Ver §6.5. `ReferenceExecutor` ya cumple el contrato; un ejecutor propio que lo viole falla de forma explícita y sin reintentos.
+18. **Orden de bloqueos efectivo (I-A05-17).** `claim` y `expire_deadlines` bloquean las entradas (6) antes de la fila del trabajo (8); `submit` bloquea las entradas antes de decidir sobre ellas. La evidencia del orden es el registro de las sentencias con bloqueo de cada transacción (PostgreSQL) y las carreras coordinadas con una segunda conexión; **no** hay verificación estática de todo el código y SQLite solo ofrece el orden de lectura/escritura bajo el único escritor.
