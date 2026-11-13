@@ -1,6 +1,6 @@
 # cawbase-content-engine
 
-> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`) · A04 (investigación de viabilidad) cerrada y aceptada · A05 implementada en `0.4.0` (pendiente de aceptación)
+> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`) · A04 (investigación de viabilidad) cerrada y aceptada · A05 aceptada en `0.4.0` (22 criterios parciales; pendiente de merge; GitHub Actions no ejecutado)
 >
 > | Feature | Estado |
 > |---|---|
