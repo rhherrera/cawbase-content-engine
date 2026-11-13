@@ -119,11 +119,11 @@ class TestCli:
     async def test_end_to_end_cli(self, db, tmp_path):  # AC-46, AC-95, AC-97
         backend, url = db
         env = env_for(url)
-        assert cli(env, "version").stdout.strip() == "0.3.0"
+        assert cli(env, "version").stdout.strip() == "0.4.0"
         check = cli(env, "check")
         assert check.returncode == 4 and json.loads(check.stdout)["reason"] == "schema_missing"
         mig = cli(env, "migrate")
-        assert mig.returncode == 0 and json.loads(mig.stdout)["applied"] == ["0001", "0002"]
+        assert mig.returncode == 0 and json.loads(mig.stdout)["applied"] == ["0001", "0002", "0003"]
         assert json.loads(cli(env, "migrate").stdout)["already_current"] is True
         assert cli(env, "check").returncode == 0
 
@@ -178,7 +178,7 @@ class TestParallelMigratorProcesses:
         outs = [p.communicate(timeout=120) for p in procs]
         assert [p.returncode for p in procs] == [0, 0, 0, 0], outs
         applied = sorted(len(json.loads(o[0])["applied"]) for o in outs)
-        assert applied == [0, 0, 0, 2], "exactly one process applies the sequence; the others find nothing pending"
+        assert applied == [0, 0, 0, 3], "exactly one process applies the sequence; the others find nothing pending"
         assert cli(env, "check").returncode == 0
 
 
@@ -407,7 +407,7 @@ class TestWorkerFailures:
         )
         async with eng.connect() as c:  # workers did not "repair" or migrate anything
             assert (await c.execute(sa.text(f"SELECT min_runtime_level FROM {tbl}"))).scalar_one() == 99
-            assert (await c.execute(sa.text(f"SELECT schema_level FROM {tbl}"))).scalar_one() == 2
+            assert (await c.execute(sa.text(f"SELECT schema_level FROM {tbl}"))).scalar_one() == 3
         await eng.dispose()
         assert "cce1." not in logs
         secret_bits = ["cce_test_pw"] if backend == "postgresql" else [url.split("///", 1)[1]]

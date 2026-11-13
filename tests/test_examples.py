@@ -23,7 +23,7 @@ def test_python_host_example(tmp_path):
         timeout=120,
     )
     assert r.returncode == 0, r.stderr
-    assert "migrated: ('0001', '0002')" in r.stdout
+    assert "migrated: ('0001', '0002', '0003')" in r.stdout
     assert "isolation: project-a cannot read project-b" in r.stdout
     assert "project-c" not in r.stdout.split("after host rollback:")[1]
     assert "cce1." not in r.stdout + r.stderr
@@ -39,7 +39,7 @@ def test_profiles_example(tmp_path):  # AC-A02-01
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout
-    assert "migrated: ('0001', '0002')" in out and "| 6 types" in out
+    assert "migrated: ('0001', '0002', '0003')" in out and "| 6 types" in out
     assert "published: version 1 {'classification': True, 'detection': True}" in out
     assert "version 1 unchanged after editing: True" in out
     assert "no default profile" in out and "resolved: default -> version 1" in out

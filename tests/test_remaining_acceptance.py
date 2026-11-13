@@ -81,6 +81,7 @@ class TestProductChainUpgrades:
         )
         report = await upgrade(cfg, script_location=chain)
         assert report.applied == ("0002",) and report.to_level == 2
+        monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 1)  # the runtime requirement of this scenario
         async with ContentEngine(cfg) as e:  # still compatible: newer schema, runtime requirement unchanged
             assert (await e.admin(await admin_ctx(e)).get_scope("keep-me")).scope_id == "keep-me"
         async with eng.connect() as c:
@@ -255,6 +256,20 @@ class TestDiagnosticsLimitsErrors:
             "inference_timeout": 504,
             "inference_output_invalid": 502,
             "inference_fixture_not_found": 501,
+            # A05
+            "storage_not_configured": 503,
+            "documents_not_configured": 503,
+            "storage_unavailable": 503,
+            "stored_object_unavailable": 503,
+            "upload_in_progress": 409,
+            "upload_aborted": 400,
+            "content_mismatch": 422,
+            "file_not_usable": 409,
+            "file_expiring": 409,
+            "quota_exceeded": 429,
+            "job_not_succeeded": 409,
+            "job_not_terminal": 409,
+            "job_data_expired": 410,
         }
         no_http = {
             "configuration_invalid",
@@ -267,6 +282,7 @@ class TestDiagnosticsLimitsErrors:
             "bootstrap_not_allowed",
             "recovery_not_allowed",
             "secret_delivery_failed",
+            "isolation_unavailable",
         }
         classes = [
             c

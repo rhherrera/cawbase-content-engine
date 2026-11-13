@@ -69,7 +69,7 @@ class TestInstallAndUpgrade:
         before = await inventory(url)
         report = await upgrade(EngineConfig(database_url=url))
         after = await inventory(url)
-        assert report.applied == ("0001", "0002") and report.to_level == 2
+        assert report.applied == ("0001", "0002", "0003") and report.to_level == 3
         for name, entry in before.items():
             assert after[name] == entry, f"foreign object changed: {name}"
         created = set(after) - set(before)
@@ -126,7 +126,7 @@ class TestInstallAndUpgrade:
     async def test_concurrent_startups_apply_once(self, db):  # AC-23
         _, url = db
         reports = await asyncio.gather(*[upgrade(EngineConfig(database_url=url), lock_timeout=30) for _ in range(5)])
-        assert sorted(len(r.applied) for r in reports) == [0, 0, 0, 0, 2]
+        assert sorted(len(r.applied) for r in reports) == [0, 0, 0, 0, 3]
         async with ContentEngine(EngineConfig(database_url=url)) as e:
             assert (await e.readiness()).ready
 
@@ -174,7 +174,11 @@ class TestLockAndPermissions:
                 await upgrade(EngineConfig(database_url=url), lock_timeout=1)
             holder.execute("ROLLBACK")
             holder.close()
-        assert (await upgrade(EngineConfig(database_url=url))).applied == ("0001", "0002")  # lock released: works
+        assert (await upgrade(EngineConfig(database_url=url))).applied == (
+            "0001",
+            "0002",
+            "0003",
+        )  # lock released: works
 
     async def test_postgres_role_without_ddl_permission_gets_a_permission_error(self, db):  # AC-26
         backend, url = db
@@ -283,7 +287,7 @@ class TestLockAndPermissions:
             await upgrade(EngineConfig(async_engine=host))
         assert len(host.sync_engine.dispatch.begin) == 0
         install_transaction_control(host)
-        assert (await upgrade(EngineConfig(async_engine=host))).applied == ("0001", "0002")
+        assert (await upgrade(EngineConfig(async_engine=host))).applied == ("0001", "0002", "0003")
         await host.dispose()
 
     async def test_injected_postgres_engine_can_migrate(self, db):
@@ -291,7 +295,7 @@ class TestLockAndPermissions:
         if backend != "postgresql":
             pytest.skip("PostgreSQL only")
         host = create_async_engine(url)
-        assert (await upgrade(EngineConfig(async_engine=host))).applied == ("0001", "0002")
+        assert (await upgrade(EngineConfig(async_engine=host))).applied == ("0001", "0002", "0003")
         async with host.connect() as c:  # host engine remains usable (not disposed)
             assert (await c.execute(sa.text("SELECT 1"))).scalar_one() == 1
         await host.dispose()

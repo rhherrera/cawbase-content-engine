@@ -70,6 +70,10 @@ async def dump_a01_tables(url: str, backend: str) -> dict:
         await eng.dispose()
 
 
+def tbl_scopes(backend: str) -> str:
+    return "cawbase_content_engine.scopes" if backend == "postgresql" else "cawbase_content_engine_scopes"
+
+
 class TestUpgradeFromA01:
     async def test_existing_data_is_untouched_and_no_profiles_are_created(
         self, db, tmp_path, monkeypatch
@@ -85,19 +89,21 @@ class TestUpgradeFromA01:
         ) as e1:  # real A01 data, created through the public API (the A02 code path is not used)
             await make_scope(e1, "kept")
             _, key = await issue(e1, "svc", scopes={"kept": ["scope:read", "scope:write"]})
-            await e1.scoped(e1.trusted_scope_context("kept", ["scope:write"])).update_scope(
-                "kept", expected_revision=1, display_name="X"
-            )
+            # an A01 runtime's own write (the A05 code path needs the 0003 tables, which do not exist on this schema)
+            async with e1._engine.begin() as c1:  # type: ignore[union-attr]
+                await c1.execute(
+                    sa.text(f"UPDATE {tbl_scopes(backend)} SET display_name = 'X', revision = revision + 1")
+                )
         monkeypatch.undo()
         before_a01 = await dump_a01_tables(url, backend)
         before_objects = await inventory(url)
         # a runtime that requires level 2 refuses the level-1 schema until it is migrated
-        assert SCHEMA_LEVEL == 2
+        assert SCHEMA_LEVEL == 3  # the current head; the level-1 schema is older
         with pytest.raises(SchemaIncompatibleError):
             await ContentEngine(cfg).start()
         # migrate 1 -> 2
         r2 = await upgrade(cfg)
-        assert r2.applied == ("0002",) and r2.from_revision == "0001" and r2.to_level == 2
+        assert r2.applied == ("0002", "0003") and r2.from_revision == "0001" and r2.to_level == 3
         after_objects = await inventory(url)
         assert await dump_a01_tables(url, backend) == before_a01  # business data and history intact
         for name, entry in before_objects.items():  # nothing existing (A01 or foreign) altered or removed
@@ -116,7 +122,7 @@ class TestUpgradeFromA01:
             assert (await e2.authenticate_api_key(key.secret)).scope_grants["kept"]  # old key still works
             ops = await ops_for(e2, "kept", create_scope=False)
             assert (await ops.list_profiles("kept")).items == []  # no profile for an existing scope
-            assert (await e2.schema_status()).min_runtime_level == 1 and (await e2.schema_status()).schema_level == 2
+            assert (await e2.schema_status()).min_runtime_level == 1 and (await e2.schema_status()).schema_level == 3
 
     async def test_from_empty_installs_both_revisions_in_one_transaction(self, db, tmp_path):  # AC-A02-42
         backend, url = db
@@ -127,7 +133,7 @@ class TestUpgradeFromA01:
         names = await table_names(url)
         assert not [n for n in names if "cawbase_content_engine" in n], "0001 and 0002 roll back together"
         report = await upgrade(cfg)  # the real chain
-        assert report.applied == ("0001", "0002") and report.to_level == 2 and report.from_revision is None
+        assert report.applied == ("0001", "0002", "0003") and report.to_level == 3 and report.from_revision is None
 
     async def test_a_failure_in_a_later_revision_rolls_back_0002_too(self, db, tmp_path):  # AC-A02-42
         backend, url = db
@@ -138,7 +144,7 @@ class TestUpgradeFromA01:
             await upgrade(cfg, script_location=failing)
         names = await table_names(url)
         assert not [n for n in names if n.endswith("profiles")], "0002's tables must not survive a later failure"
-        assert (await upgrade(cfg)).applied == ("0002",)
+        assert (await upgrade(cfg)).applied == ("0002", "0003")
 
 
 async def _admin(engine):
@@ -357,7 +363,9 @@ class TestCompatibilityWithA01:
         monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 1)  # what an A01 runtime requires
         async with ContentEngine(EngineConfig(database_url=url)) as e:
             status = await e.schema_status()
-            assert status.compatible and status.schema_level == 2 and status.min_runtime_level == 1
+            assert (
+                status.compatible and status.schema_level == 3 and status.min_runtime_level == 1
+            )  # A05 raised the level to 3
             assert (await e.readiness()).ready
 
 
