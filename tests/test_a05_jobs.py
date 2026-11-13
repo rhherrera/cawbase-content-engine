@@ -165,3 +165,30 @@ async def test_deterministic_failures_are_not_retried(eng):
 
 
 _ = (json, UTC, datetime, timedelta, StubAdapter, fast_limits)
+
+
+async def test_text_job_with_the_real_a03_mock_adapter(migrated, tmp_path):
+    """Same durable path with the ACTUAL A03 mock (fixtures bound to the exact request); only inference is simulated."""
+    from .a03_helpers import fixture_for, mock, ok_output
+
+    _, url = migrated
+    base = await make_engine(url, tmp_path)
+    ops = await ready_scope(base)
+    fx = await fixture_for(ops, "a", {"kind": "output", "output": ok_output()})
+    await base.aclose()
+    e = await make_engine(url, tmp_path, adapter=mock(fx), name="o-mock")
+    try:
+        ops = e.scoped(e.trusted_scope_context("a", FULL, actor="t"))
+        acc = await ops.submit_text_analysis("a", text=TEXT, idempotency_key="m1")
+        assert await run_all(e) == 1
+        res = await ops.get_job_result("a", acc.job.job_id)
+        a = res["analysis"]
+        assert a["status"] == "completed" and a["provenance"]["kind"] == "mock" and a["provenance"]["simulated"] is True
+        assert a["classification"]["resolution"]["selected_category_id"] == "finance"
+        # a text without a fixture is a deterministic failure of the mock, never an empty success, and is not retried
+        miss = await ops.submit_text_analysis("a", text=TEXT + " sin fixture", idempotency_key="m2")
+        await run_all(e)
+        j = await ops.get_job("a", miss.job.job_id)
+        assert j.state == "failed" and j.failure_code == "inference_fixture_not_found" and j.attempt_count == 1
+    finally:
+        await e.aclose()

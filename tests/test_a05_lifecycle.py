@@ -99,6 +99,8 @@ async def test_heartbeat_never_extends_beyond_the_attempt_deadline_nor_revives(e
 
 async def test_cancel_wins_over_publication_and_success_is_not_rewritten(eng):
     ops = await ready_scope(eng)
+    await submit(ops, "k1")
+    await submit(ops, "k2", TEXT + "2")
     w = eng.job_worker("w")
     c1, c2 = await w.claim(2)
     a1 = await w.write_artifact(c1, "result", b"{}", 1000)
