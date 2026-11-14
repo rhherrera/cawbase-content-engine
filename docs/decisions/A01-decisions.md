@@ -174,7 +174,7 @@ Adoptadas por el encargo de implementación de A01. **No son decisiones históri
 | Q-01 | Licencia definitiva y publicación (D-05). | A10 |
 | Q-02 | ~~Proveedor de CI~~ **Cerrada por D-31 (GitHub Actions).** (P-19). | Cerrada |
 | Q-03 | ~~¿Pepper o KMS para el hash de API keys?~~ **Cerrada por D-25: sin pepper ni KMS en A01.** | Cerrada |
-| Q-04 | ¿Política de retención/purga de `admin_events`? En A01 se conserva indefinidamente sin purga. | A05 (retención) |
+| Q-04 | ¿Política de retención/purga de `admin_events`? En A01 se conserva indefinidamente sin purga. | A05 (retención). *Registro posterior:* respondida en la especificación de A05 (D-A05-01: 90 días desde `occurred_at`, purga local explícita; [A05-decisions](A05-decisions.md), [contrato §13.6](../jobs-files-and-lifecycle.md#136-admin_events-retención-y-purga-resuelve-q-04-de-a01)); **especificada, no implementada**. El texto histórico de esta fila no se reescribe |
 | Q-05 | ¿Soporte de otros drivers (`psycopg` 3)? Fuera de A01. | Posterior |
 | Q-06 | ~~Política ante el fallo posterior de un worker~~ **Cerrada por D-32.** | Cerrada |
 | Q-07 | ~~Qué importación cumple los 300 ms~~ **Cerrada por D-33** (mediana en caliente; el frío se informa sin umbral). | Cerrada |

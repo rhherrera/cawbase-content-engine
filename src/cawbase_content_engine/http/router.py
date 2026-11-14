@@ -598,6 +598,9 @@ def create_router(engine: ContentEngine) -> APIRouter:
             return Response(status_code=499)
         return _json(result.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
 
+    from .jobs_routes import install as _install_a05
+
+    _install_a05(router, engine, ops, max_body)
     return router
 
 

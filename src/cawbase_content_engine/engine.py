@@ -42,6 +42,7 @@ from .operations import clients as cl
 from .operations import scopes as sc
 from .operations.analysis import AnalysisOperations
 from .operations.common import page_size
+from .operations.jobs_facade import JobOperations
 from .operations.profile_facade import ProfileOperations
 from .permissions import AdminPermission, ScopePermission
 from .persistence.dialect import Backend
@@ -53,6 +54,7 @@ from .transactions import HostTransaction, run_in_host, run_own, translate
 
 if TYPE_CHECKING:
     from .inference.adapter import InferenceSetup, InferenceStatus
+    from .jobs.setup import DocumentSetup, JobsSetup, StorageSetup
 
 T = TypeVar("T")
 
@@ -64,12 +66,32 @@ MIN_SQLITE_VERSION = (3, 38, 0)
 class ContentEngine:
     """Construct (no I/O) -> ``await start()`` -> operations -> ``await aclose()``."""
 
-    def __init__(self, config: EngineConfig, *, inference: InferenceSetup | None = None) -> None:
+    def __init__(
+        self,
+        config: EngineConfig,
+        *,
+        inference: InferenceSetup | None = None,
+        storage: StorageSetup | None = None,
+        documents: DocumentSetup | None = None,
+        jobs: JobsSetup | None = None,
+    ) -> None:
         if inference is not None:
             from .inference.adapter import InferenceSetup as _Setup
 
             if not isinstance(inference, _Setup):
                 raise InvalidConfigurationError("'inference' must be an InferenceSetup.")
+        if storage is not None or documents is not None or jobs is not None:
+            from .jobs import setup as _js  # lazy: only when A05 is configured
+
+            for value, kind, name in (
+                (storage, _js.StorageSetup, "storage"),
+                (documents, _js.DocumentSetup, "documents"),
+                (jobs, _js.JobsSetup, "jobs"),
+            ):
+                if value is not None and not isinstance(value, kind):
+                    raise InvalidConfigurationError(f"'{name}' must be a {kind.__name__}.")
+        self._storage, self._documents, self._jobs = storage, documents, jobs
+        self._isolation_approved: tuple[Any, ...] | None = None  # owned by THIS instance; see jobs.execute
         self._inference = inference  # the adapter belongs to the host: never started or closed here
         self._config = config
         self._backend = config.backend
@@ -91,6 +113,26 @@ class ContentEngine:
     @property
     def inference(self) -> InferenceSetup | None:
         return self._inference
+
+    @property
+    def storage(self) -> StorageSetup | None:
+        return self._storage
+
+    @property
+    def documents(self) -> DocumentSetup | None:
+        return self._documents
+
+    @property
+    def jobs_setup(self) -> JobsSetup:
+        if self._jobs is None:
+            from .jobs.setup import JobsSetup as _J
+
+            self._jobs = _J()
+        return self._jobs
+
+    @property
+    def retention(self) -> Any:
+        return self.jobs_setup.retention
 
     async def inference_status(self) -> InferenceStatus:
         """Capability status of the inference adapter (distinct from ``readiness()``, which is engine+database).
@@ -258,6 +300,21 @@ class ContentEngine:
         self._check_token(ctx._token)
         return AdminOperations(self, ctx, transaction)
 
+    # ---- trusted local surfaces (A05): never exposed over HTTP, no ScopeContext ------------------
+    def job_worker(self, worker_id: str) -> Any:
+        """Worker for the host's own process (claim / run_job / run_claimed). Cheap; no I/O on creation."""
+        from .jobs.worker import JobWorker
+
+        self._require_started()
+        return JobWorker(self, worker_id)
+
+    def maintenance(self) -> Any:
+        """Bounded, repeatable maintenance (cleanup, lease recovery, admin_events purge). Explicit calls only."""
+        from .jobs.maintenance_api import Maintenance
+
+        self._require_started()
+        return Maintenance(self)
+
     def _check_token(self, token: Any) -> None:
         if token is not self._token:
             raise PermissionDeniedError()
@@ -267,7 +324,7 @@ class ContentEngine:
         return await self._run(lambda c: ak.authenticate(c, self._tables, text, self._token), write=False, tx=None)
 
 
-class ScopedOperations(ProfileOperations, AnalysisOperations):
+class ScopedOperations(ProfileOperations, AnalysisOperations, JobOperations):
     """Operations on one scope. Every query is constrained by ``ctx.scope_id``."""
 
     def __init__(self, engine: ContentEngine, ctx: ScopeContext, tx: HostTransaction | None) -> None:
@@ -331,6 +388,7 @@ class ScopedOperations(ProfileOperations, AnalysisOperations):
                 changes=changes,
                 actor_key_id=self._ctx.key_id,
                 actor_label=self._ctx.actor,
+                retention=self._e.retention,
             ),
             write=True,
             tx=self._tx,
@@ -400,7 +458,9 @@ class AdminOperations:
         if status not in ("active", "disabled"):
             raise ValidationFailedError("Invalid status.", field="status")
         return await self._e._run(
-            lambda c: sc.set_scope_status(c, self._t, scope_id=scope_id, status=status, **self._actor),
+            lambda c: sc.set_scope_status(
+                c, self._t, scope_id=scope_id, status=status, retention=self._e.retention, **self._actor
+            ),
             write=True,
             tx=self._tx,
         )

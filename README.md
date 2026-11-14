@@ -1,15 +1,16 @@
 # cawbase-content-engine
 
-> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`) · A04 (investigación de viabilidad) cerrada y aceptada
+> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`) · A04 (investigación de viabilidad) cerrada y aceptada · A05 aceptada en `0.4.0` (22 criterios parciales; pendiente de merge; GitHub Actions no ejecutado)
 >
 > | Feature | Estado |
 > |---|---|
 > | **A01** — base del producto (`0.1.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `1b5ffab`. GitHub Actions aprobado en `main` y `feature/a01-product-foundation`, según confirmación explícita del usuario |
 > | **A02** — perfiles, categorías y tipos sensibles (`0.2.0`) | Implementada, **cerrada y aceptada por el usuario**. Commit aceptado: `f4ad3e7`. GitHub Actions pasó sobre ese commit, según confirmación explícita del usuario. El merge `e149146` (PR #1) en `main` es posterior y no es el commit aceptado. Evidencia histórica y límites en el [informe de A02](docs/a02-implementation-report.md) |
-> | **A04** — viabilidad y contrato de documentos | **Documentada y experimentada** (rama `feature/a04-document-feasibility-contract`, commits locales): contrato, matrices, experimentos EXP-01 a 10 y controles CN-01 a 07 ejecutados en macOS y Linux local (Docker) sobre documentos **sintéticos**, con el [informe de viabilidad](docs/a04-feasibility-report.md). Viabilidad demostrada **solo en el subconjunto probado y con restricciones**; **cerrada y aceptada por el usuario** como investigación acotada (evidencia sobre `b7608e7`, informe `0342cb4`); GitHub Actions no ejecutado; **ningún soporte PDF/DOCX en `0.3.0`**. Condición para A08 (D-A04-04): comprobación representativa con PDF de herramientas habituales antes de implementar su pipeline |
+> | **A04** — viabilidad y contrato de documentos | **Documentada y experimentada** (mergeada en `main` mediante el merge `58001e0` del PR #3 (verificado en el historial; el merge es posterior y distinto de los commits de código experimental `b7608e7`, del informe `0342cb4` y del cierre `ec4d951`)): contrato, matrices, experimentos EXP-01 a 10 y controles CN-01 a 07 ejecutados en macOS y Linux local (Docker) sobre documentos **sintéticos**, con el [informe de viabilidad](docs/a04-feasibility-report.md). Viabilidad demostrada **solo en el subconjunto probado y con restricciones**; **cerrada y aceptada por el usuario** como investigación acotada (evidencia sobre `b7608e7`, informe `0342cb4`); Los experimentos no se ejecutaron en GitHub Actions (histórico); el estado de cualquier ejecución de Actions sobre el merge no se verificó con la evidencia disponible y no se infiere del merge; **ningún soporte PDF/DOCX en `0.3.0`**. Condición para A08 (D-A04-04): comprobación representativa con PDF de herramientas habituales antes de implementar su pipeline |
 > | **A03** — contrato de inferencia y análisis con mock (`0.3.0`) | Implementada, **cerrada y aceptada por el usuario**, según su declaración explícita: commit de implementación y regresiones `20d9211`; `e3ca6da` contiene la documentación y evidencia posterior; mergeada en `main` (merge `ae19ef3`, PR #2). Probada en macOS y en Linux local (Docker) según el [informe de A03](docs/a03-implementation-report.md); resultado de GitHub Actions no verificado con la evidencia disponible. Solo ingeniería del contrato con un mock: **no** acredita calidad de inferencia (A09) |
+> | **A05** — trabajos, archivos y ciclo de vida (`0.4.0`) | **Implementada y aceptada por el usuario (con 22 criterios parciales), pendiente de merge** (rama `feature/a05-jobs-files-lifecycle`; **no mergeada**). Probada en macOS y en Linux local (Docker) según el [informe de A05](docs/a05-implementation-report.md); GitHub Actions no ejecutado. Solo ingeniería: **no** acredita calidad de detección (A09) ni protección (A06–A08); soporte documental limitado a la matriz conservadora del contrato |
 >
-> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: A04 en adelante (documentos, protección, trabajos, modelo real).
+> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: protección, redacción, seudonimización y restauración (A06–A08), modelo real (A09) e integración con CAWbase.
 
 Motor independiente de clasificación, detección y transformación de contenido, preparado para distribuirse como paquete Python y, más adelante, abrirse como código abierto. CAWbase será un consumidor del paquete; el motor no depende de CAWbase.
 
@@ -35,6 +36,10 @@ Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles 
 ## A04 — Viabilidad y contrato de documentos (cerrada y aceptada como investigación acotada)
 
 > **Documentada y experimentada (documentos sintéticos; sin soporte en el motor).** Define seis capas (inventario, extracción, mapeo, cobertura de extracción, cobertura de inferencia, transformación/verificación), matrices de soporte y rechazo de DOCX y PDF, bibliotecas candidatas y licencias (D-A04-01), y una batería de experimentos con fixtures sintéticos y controles negativos. Los experimentos (`experiments/a04/`, entorno independiente, fuera de la wheel y del sdist) comprueban la viabilidad dentro del subconjunto probado; no hay código en `src`, dependencias del paquete, API ni soporte documental. Contrato: [procesamiento de documentos](docs/document-processing.md); entrada: [especificación de A04](docs/features/A04-viabilidad-y-contrato-de-documentos.md).
+
+## A05 — Trabajos, archivos y ciclo de vida (implementada en `0.4.0`; aceptado, pendiente de merge)
+
+> **Implementada y aceptada por el usuario (22 criterios parciales), pendiente de merge.** Archivos administrados y referencias externas, trabajos durables (`document_analysis`, `text_analysis`) con lease y *fencing* sobre la base del motor, validación y extracción aisladas del subconjunto A04, resultados por unidad con A03, idempotencia, cuotas, retención aprobada (D-A05-01) y limpieza explícita. Contrato: [trabajos, archivos y ciclo de vida](docs/jobs-files-and-lifecycle.md); entrada: [especificación de A05](docs/features/A05-trabajos-archivos-y-ciclo-de-vida.md); evidencia: [informe de A05](docs/a05-implementation-report.md). Extra nuevo: `documents` (`lxml`, `pikepdf`).
 
 ## Probar rápidamente
 
@@ -73,6 +78,10 @@ bash scripts/linux_docker_validate.sh /tmp/ev  # validación en Linux (Docker): 
 | [Procesamiento de documentos](docs/document-processing.md) | Contrato conceptual de A04: capas, identidad, mapeo, cobertura, matrices DOCX/PDF, bibliotecas y licencias (no implementado) |
 | [Informe de viabilidad de A04](docs/a04-feasibility-report.md) | Resultados de los experimentos por ambiente, hashes, renders, conclusiones DOCX/PDF × eliminación/sustitución/restitución y consecuencias para A05/A07/A08 |
 | [Decisiones de A04](docs/decisions/A04-decisions.md) | D-A04-01 a 03 aprobadas, elecciones técnicas, diferencias con el playbook y backlog |
+| [Especificación de A05](docs/features/A05-trabajos-archivos-y-ciclo-de-vida.md) | Alcance y matriz de aceptación AC-A05 (implementada en `0.4.0`) |
+| [Trabajos, archivos y ciclo de vida](docs/jobs-files-and-lifecycle.md) | Contrato de A05: storage, consistencia, estados, lease, reintentos, idempotencia, aislamiento, extracción, límites, retención, API, permisos y persistencia (implementado) |
+| [Informe de implementación de A05](docs/a05-implementation-report.md) | Qué se implementó, trazabilidad AC-A05 → pruebas, comandos y resultados por ambiente, criterios sin evidencia y límites |
+| [Decisiones de A05](docs/decisions/A05-decisions.md) | D-A05-01 y 02 aprobadas, elecciones técnicas, diferencias con el playbook y backlog |
 | [Reglas para agentes](CLAUDE.md) | Instrucciones de trabajo del repositorio |
 
 `docs/STAGE_3_PLAYBOOK.md` puede existir en el árbol de trabajo como **copia local de referencia** del playbook (revisión 6, 11 de noviembre de 2026), pero está en `.gitignore`: **no forma parte del repositorio**, un checkout limpio no la contiene y nada (tests, enlaces, wheel, sdist) la necesita. La fuente canónica está fuera de este repositorio.

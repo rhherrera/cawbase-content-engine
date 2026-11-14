@@ -317,15 +317,22 @@ class TestDelegation:
                 "cli_x", request_id=str(uuid.uuid4()), label="l", grants={"admin": [A.ADMIN_GRANTS_WRITE]}
             )
 
-    def test_catalog_has_eleven_permissions_and_no_wildcards(self):  # AC-94, AC-A02-05
-        # 8 from A01 (scope:read|write + six admin:*), 2 from A02 (profiles:read|write), 1 from A03 (analysis:execute)
-        assert len(ScopePermission) + len(AdminPermission) == 11
+    def test_catalog_has_seventeen_permissions_and_no_wildcards(self):  # AC-94, AC-A02-05
+        # 8 from A01 (scope:read|write + six admin:*), 2 from A02 (profiles:read|write), 1 from A03 (analysis:execute),
+        # 6 from A05 (files:write|read, jobs:read|cancel, results:read, data:delete)
+        assert len(ScopePermission) + len(AdminPermission) == 17
         assert {p.value for p in ScopePermission} == {
             "scope:read",
             "scope:write",
             "profiles:read",
             "profiles:write",
             "analysis:execute",
+            "files:write",
+            "files:read",
+            "jobs:read",
+            "jobs:cancel",
+            "results:read",
+            "data:delete",
         }
         assert not [p for p in [*ScopePermission, *AdminPermission] if "*" in p.value]
         with pytest.raises(ValueError):

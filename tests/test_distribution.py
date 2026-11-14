@@ -85,6 +85,14 @@ def test_wheel_and_sdist_contents(artifacts):
         names = set(z.namelist())
     assert "cawbase_content_engine/migrations/versions/0001_initial.py" in names  # migration resources shipped
     assert "cawbase_content_engine/py.typed" in names
+    for shipped in (
+        "migrations/versions/0003_jobs_files.py",
+        "jobs/storage.py",
+        "documents/child.py",
+        "http/jobs_routes.py",
+    ):
+        assert f"cawbase_content_engine/{shipped}" in names, shipped  # A05 modules ship in the wheel
+    assert not [n for n in names if "experiments" in n]  # the A04 experiments never do
     assert not [n for n in names if n.startswith("tests/")]
     import tarfile
 
@@ -100,12 +108,12 @@ def test_base_install_is_light_and_separate_from_http(artifacts, tmp_path):  # A
     base = make_env(tmp_path, "base", str(artifacts["wheel"]))
     pkgs = installed(base, cwd)
     assert not ({"fastapi", "uvicorn", "starlette", "alembic", "asyncpg", "aiosqlite", "httpx"} & pkgs), pkgs
-    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.3.0"
+    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.4.0"
     for mod in ("fastapi", "alembic", "cawbase_content_engine.http"):
         assert py(base, "-c", f"import {mod}", cwd=cwd, check=False).returncode != 0, mod
     # the CLI is available and degrades with a clear message instead of a traceback
     cli = [str(base / "cawbase-content-engine")]
-    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.3.0"
+    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.4.0"
     r = run(
         [*cli, "migrate"],
         cwd=cwd,
@@ -127,6 +135,30 @@ def test_base_install_is_light_and_separate_from_http(artifacts, tmp_path):  # A
     )
 
 
+def test_documents_extra_is_separate_and_extracts_from_the_installed_wheel(artifacts, tmp_path):  # AC-A05-27
+    cwd = tmp_path / "elsewhere-docs"
+    cwd.mkdir()
+    base = make_env(tmp_path, "docs-base", f"cawbase-content-engine[sqlite] @ {artifacts['wheel'].as_uri()}")
+    assert not {"lxml", "pikepdf"} & installed(base, cwd)  # the light install never pulls the document libraries
+    docs = make_env(tmp_path, "docs", f"cawbase-content-engine[sqlite,documents] @ {artifacts['wheel'].as_uri()}")
+    assert {"lxml", "pikepdf"} <= installed(docs, cwd)
+    script = (
+        "import io, json, dataclasses, pikepdf\n"
+        "from cawbase_content_engine.documents.child import process\n"
+        "from cawbase_content_engine.jobs.setup import JobsLimits\n"
+        "from cawbase_content_engine.documents.common import Limits\n"
+        "pdf = pikepdf.new()\n"
+        "font = pdf.make_indirect(pikepdf.Dictionary(Type=pikepdf.Name.Font, Subtype=pikepdf.Name.Type1, BaseFont=pikepdf.Name.Helvetica, Encoding=pikepdf.Name.WinAnsiEncoding))\n"
+        "page = pikepdf.Dictionary(Type=pikepdf.Name.Page, MediaBox=[0, 0, 612, 792], Contents=pikepdf.Stream(pdf, b'BT /F1 12 Tf 72 720 Td (Hola) Tj ET'), Resources=pikepdf.Dictionary(Font=pikepdf.Dictionary(F1=font)))\n"
+        "pdf.pages.append(pikepdf.Page(page))\n"
+        "buf = io.BytesIO(); pdf.save(buf, object_stream_mode=pikepdf.ObjectStreamMode.disable)\n"
+        "p = dataclasses.asdict(JobsLimits())\n"
+        "out = process(buf.getvalue(), {k: p[k] for k in Limits.__dataclass_fields__ if k in p})\n"
+        "print(json.dumps([u['text'] for u in out['units']]))\n"
+    )
+    assert py(docs, "-c", script, cwd=cwd).stdout.strip() == '["Hola"]'
+
+
 def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # AC-03, AC-07, AC-51
     cwd = tmp_path / "elsewhere"
     cwd.mkdir()
@@ -135,7 +167,7 @@ def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # 
     assert not ({"fastapi", "uvicorn", "starlette", "asyncpg"} & pkgs), pkgs
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002"] and out["again"] is True and out["scope"] == "a"
+    assert out["applied"] == ["0001", "0002", "0003"] and out["again"] is True and out["scope"] == "a"
     assert "site-packages" in out["installed_from"] and str(ROOT) not in out["installed_from"]
 
 
@@ -160,7 +192,7 @@ def test_sdist_builds_and_installs(artifacts, tmp_path):
     env = make_env(tmp_path, "sdist", f"cawbase-content-engine[sqlite,migrations] @ {artifacts['sdist'].as_uri()}")
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002"]
+    assert out["applied"] == ["0001", "0002", "0003"]
 
 
 def test_installed_service_starts_and_stops(artifacts, tmp_path):  # AC-02
@@ -211,7 +243,7 @@ def test_python_example_from_installed_wheel_runs_on_sqlite_and_postgres(artifac
     shutil.copy(ROOT / "examples" / "python_host.py", example)
     for target in (str(cwd / "example.db"), pg_url):
         out = py(env, str(example), target, cwd=cwd).stdout
-        assert "migrated: ('0001', '0002')" in out and "isolation: project-a cannot read project-b" in out
+        assert "migrated: ('0001', '0002', '0003')" in out and "isolation: project-a cannot read project-b" in out
         assert "project-c" not in out.split("after host rollback:")[1] and "cce1." not in out
     # A02: the profiles example also runs from the installed wheel (SQLite file), without HTTP
     prof_example = cwd / "profiles_host.py"

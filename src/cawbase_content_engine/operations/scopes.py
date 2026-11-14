@@ -100,10 +100,18 @@ async def set_scope_status(
     status: str,
     actor_key_id: str | None,
     actor_label: str | None,
+    retention: Any = None,
 ) -> Scope:
     row = await get_scope_row(conn, t, scope_id)
     if row is None:
         raise ResourceNotFoundError()
+    from ..jobs import db as jdb  # A05 fence (lazy import): reconcile BEFORE any other write (I2)
+
+    ret = retention or _default_retention()
+    fence_now = await jdb.db_now(conn, t.backend)
+    await jdb.lock_scope(conn, t, scope_id, exclusive=True)
+    await jdb.reconcile_locked(conn, t, scope_id, fence_now, ret)
+    row = await get_scope_row(conn, t, scope_id)
     if row._mapping["status"] == status:
         return scope_from_row(row)
     res = await conn.execute(
@@ -112,6 +120,7 @@ async def set_scope_status(
         .values(status=status, revision=t.scopes.c.revision + 1, updated_at=now())
     )
     if res.rowcount == 1:
+        await jdb.after_scope_mutation(conn, t, scope_id, fence_now, ret, disabled=status == "disabled")
         await add_event(
             conn,
             t,
@@ -134,6 +143,7 @@ async def update_scope(
     changes: dict[str, Any],
     actor_key_id: str | None,
     actor_label: str | None,
+    retention: Any = None,
 ) -> Scope:
     """Strict optimistic concurrency (P-20 / D-30).
 
@@ -142,9 +152,15 @@ async def update_scope(
     write itself is one conditional UPDATE (revision *and* status in the WHERE), so there is no
     window between check and write.
     """
-    row = await get_scope_row(conn, t, scope_id)
-    if row is None:
+    if await get_scope_row(conn, t, scope_id) is None:
         raise ResourceNotAccessibleError()
+    from ..jobs import db as jdb  # A05 fence (lazy import): reconcile BEFORE any other write (I2)
+
+    ret = retention or _default_retention()
+    fence_now = await jdb.db_now(conn, t.backend)
+    await jdb.lock_scope(conn, t, scope_id, exclusive=True)
+    await jdb.reconcile_locked(conn, t, scope_id, fence_now, ret)
+    row = await get_scope_row(conn, t, scope_id)
     m = row._mapping
     if m["status"] == "disabled":
         raise ScopeDisabledError()
@@ -165,6 +181,7 @@ async def update_scope(
         if fresh._mapping["status"] == "disabled":
             raise ScopeDisabledError()
         raise RevisionConflictError()
+    await jdb.after_scope_mutation(conn, t, scope_id, fence_now, ret, disabled=False)
     await add_event(
         conn,
         t,
@@ -177,3 +194,9 @@ async def update_scope(
         detail={"changed_fields": sorted(effective)},
     )
     return scope_from_row(await get_scope_row(conn, t, scope_id))
+
+
+def _default_retention() -> Any:
+    from ..jobs.setup import Retention
+
+    return Retention()

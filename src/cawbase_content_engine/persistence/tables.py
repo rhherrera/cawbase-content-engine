@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import sqlalchemy as sa
 
+from .a05_schema import build_a05
 from .dialect import Backend, Namespace
 from .types import UtcDateTime, big_pk, json_type
 
@@ -17,6 +18,16 @@ class Tables:
     sensitive_types: sa.Table
     profile_versions: sa.Table
     scope_profile_defaults: sa.Table
+    stored_files: sa.Table
+    file_validations: sa.Table
+    jobs: sa.Table
+    job_attempts: sa.Table
+    job_artifacts: sa.Table
+    storage_tombstones: sa.Table
+    idempotency_records: sa.Table
+    scope_job_fences: sa.Table
+    scope_usage: sa.Table
+    engine_usage: sa.Table
 
     def __init__(self, backend: Backend) -> None:
         ns = Namespace(backend)
@@ -118,6 +129,8 @@ class Tables:
         )
 
         self._a02_tables(md, ns, fk)
+        for _name, _table in build_a05(md, ns).items():
+            setattr(self, _name, _table)
 
     def _a02_tables(self, md: sa.MetaData, ns: Namespace, fk: Callable[[str], sa.ForeignKey]) -> None:
         t, ix = ns.table, ns.index

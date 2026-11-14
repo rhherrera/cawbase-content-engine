@@ -25,7 +25,7 @@ from ..operations.selection import select_published_version
 from .adapter import CAPABILITIES, InferenceSetup
 from .build import build_result
 from .output import PROBLEM_CODES, validate_output
-from .prepared import build_request, prepare
+from .prepared import PreparedAnalysis, build_request, prepare
 from .results import AnalysisResult
 
 if TYPE_CHECKING:
@@ -119,6 +119,49 @@ async def _invoke(setup: InferenceSetup, request: Any) -> Any:
     raise failure  # raised outside the handler: no chained context carrying adapter-supplied text
 
 
+async def execute_prepared(
+    engine: ContentEngine,
+    prepared: PreparedAnalysis,
+    *,
+    requested: tuple[str, ...],
+    text: str,
+    context: str | None,
+    request_id: str,
+) -> AnalysisResult:
+    """Steps 6-8 of ``analyze_text`` on an already prepared (pinned) version: shared by the durable jobs (A05).
+
+    No permission check and no profile selection happen here; the caller pinned the version. No connection is held.
+    """
+    setup = engine.inference
+    if setup is None:
+        from ..errors import InferenceNotConfiguredError
+
+        raise InferenceNotConfiguredError()
+    executable = tuple(c for c in requested if prepared.configured(c))
+    if not executable:
+        raise CapabilitiesNotConfiguredError()
+    request = build_request(
+        prepared,
+        request_id=request_id,
+        text=text,
+        context=context,
+        capabilities=executable,
+        limits=engine.config.limits,
+    )
+    # adapter (no connection, no transaction held), then strict validation and core-side results
+    raw = await _invoke(setup, request)
+    validated = validate_output(raw, prepared, request)
+    return build_result(
+        request_id=request_id,
+        prepared=prepared,
+        requested=requested,
+        validated=validated,
+        text_length=len(text),
+        context_provided=context is not None,
+        descriptor=setup.descriptor,
+    )
+
+
 async def run_analysis(
     engine: ContentEngine,
     *,
@@ -158,23 +201,8 @@ async def run_analysis(
             tx=None,
         )
         prepared = prepare(resolved)
-        executable = tuple(c for c in requested if prepared.configured(c))
-        if not executable:
-            raise CapabilitiesNotConfiguredError()
-        request = build_request(
-            prepared, request_id=rid, text=text, context=context, capabilities=executable, limits=lim
-        )
-        # 7. adapter (no connection, no transaction held), then strict validation and core-side results
-        raw = await _invoke(setup, request)
-        validated = validate_output(raw, prepared, request)
-        result = build_result(
-            request_id=rid,
-            prepared=prepared,
-            requested=requested,
-            validated=validated,
-            text_length=len(text),
-            context_provided=context is not None,
-            descriptor=setup.descriptor,
+        result = await execute_prepared(
+            engine, prepared, requested=requested, text=text, context=context, request_id=rid
         )
     except asyncio.CancelledError:
         log.info("analysis_cancelled", extra={"request_id": rid})

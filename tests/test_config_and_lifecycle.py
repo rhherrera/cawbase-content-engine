@@ -137,7 +137,7 @@ class TestLifecycle:
         await eng.start()
         await eng.aclose()
         # runtime requires a newer schema than installed -> outdated
-        monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 3)
+        monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 4)
         with pytest.raises(SchemaIncompatibleError):
             await ContentEngine(EngineConfig(database_url=url)).start()
         monkeypatch.undo()

@@ -32,6 +32,9 @@ FORBIDDEN = {
     "pypdf",
     "docx",
     "pdfminer",
+    "lxml",
+    "pikepdf",
+    "PIL",
 }
 
 PROBE = textwrap.dedent(
@@ -82,6 +85,12 @@ def test_import_loads_no_heavy_optional_or_driver_modules():  # AC-04
     data = run_probe()
     assert not (FORBIDDEN & set(data["modules"])), FORBIDDEN & set(data["modules"])
     assert not [m for m in data["cawbase_modules"] if ".http" in m or ".migrations" in m or m.endswith(".cli")]
+    # A05: neither the jobs package nor the document extraction is loaded by importing the package
+    assert not [
+        m
+        for m in data["cawbase_modules"]
+        if m.startswith(("cawbase_content_engine.jobs", "cawbase_content_engine.documents"))
+    ], data["cawbase_modules"]
 
 
 def test_import_has_no_external_effects():  # AC-05

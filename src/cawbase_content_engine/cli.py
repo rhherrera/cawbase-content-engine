@@ -26,6 +26,15 @@ def _parser() -> argparse.ArgumentParser:
     r = sub.add_parser("recover-admin", help="issue a new administrator key in a new client")
     r.add_argument("--confirm", action="store_true", help="required: acknowledge this is a deliberate operator act")
     r.add_argument("--secret-file", help="write the secret to a new 0600 file instead of stdout")
+    w = sub.add_parser("worker", help="run the reference job executor until interrupted (A05)")
+    w.add_argument("--concurrency", type=int, default=4)
+    w.add_argument("--poll-interval", type=float, default=5.0)
+    w.add_argument("--cleanup-interval", type=float, default=None, help="seconds between cleanup runs (optional)")
+    sub.add_parser("cleanup", help="one bounded, repeatable cleanup run (A05); prints a summary without content")
+    pe = sub.add_parser("purge-admin-events", help="purge admin_events older than a cutoff (preview unless --execute)")
+    pe.add_argument("--older-than-days", type=float, required=True)
+    pe.add_argument("--batch-size", type=int, default=None)
+    pe.add_argument("--execute", action="store_true", help="delete (default: preview only)")
     s = sub.add_parser("serve", help="validate, migrate, verify, then serve HTTP")
     s.add_argument("--host")
     s.add_argument("--port", type=int)
@@ -70,6 +79,53 @@ async def _with_engine(args: argparse.Namespace) -> int:
     return 0
 
 
+async def _ops_command(args: argparse.Namespace) -> int:
+    """A05 operator commands: explicit, local, no HTTP (worker inference comes from the service env)."""
+    from datetime import UTC, datetime, timedelta
+
+    from .config import EngineConfig
+    from .engine import ContentEngine
+    from .http.service import ServiceSettings, build_inference_setup
+    from .jobs.setup_env import a05_kwargs
+
+    settings = ServiceSettings.from_env()
+    kwargs = a05_kwargs()
+    if args.command == "worker":
+        kwargs["inference"] = build_inference_setup(settings)
+    async with ContentEngine(EngineConfig.from_env(), **kwargs) as engine:
+        if args.command == "worker":
+            import contextlib
+            import signal
+
+            from .jobs.executor import ReferenceExecutor
+
+            ex = ReferenceExecutor(
+                engine,
+                concurrency=args.concurrency,
+                poll_interval_s=args.poll_interval,
+                cleanup_interval_s=args.cleanup_interval,
+            )
+            stop = asyncio.Event()
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                with contextlib.suppress(NotImplementedError):
+                    loop.add_signal_handler(sig, stop.set)
+            await ex.start()
+            await stop.wait()
+            await ex.aclose()
+            return 0
+        if args.command == "cleanup":
+            summary = await engine.maintenance().run_cleanup()
+            print(json.dumps(summary.model_dump(mode="json")))
+            return 0
+        cutoff = datetime.now(UTC) - timedelta(days=args.older_than_days)
+        res = await engine.maintenance().purge_admin_events(
+            older_than=cutoff, batch_size=args.batch_size, dry_run=not args.execute
+        )
+        print(json.dumps(res.model_dump(mode="json")))
+        return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -103,6 +159,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             return 0
+        if args.command in ("worker", "cleanup", "purge-admin-events"):
+            return asyncio.run(_ops_command(args))
         return asyncio.run(_with_engine(args))
     except ModuleNotFoundError as exc:
         print(f"error: optional dependency missing ({exc.name}); install the matching extra.", file=sys.stderr)

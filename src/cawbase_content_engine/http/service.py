@@ -169,6 +169,12 @@ def configure_logging(settings: ServiceSettings) -> None:
         target.propagate = False
 
 
+def _a05_kwargs() -> dict[str, Any]:
+    from ..jobs.setup_env import a05_kwargs
+
+    return a05_kwargs()
+
+
 def build_inference_setup(settings: ServiceSettings) -> Any:
     """Operator-chosen adapter (never a request parameter). ``None`` when inference is not configured."""
     if settings.inference_adapter != "mock":
@@ -273,7 +279,7 @@ def app_factory() -> FastAPI:
     settings = ServiceSettings.from_env()
     configure_logging(settings)
     return create_service_app(
-        ContentEngine(settings.config, inference=build_inference_setup(settings)),
+        ContentEngine(settings.config, inference=build_inference_setup(settings), **_a05_kwargs()),
         enable_openapi=settings.enable_openapi,
     )
 

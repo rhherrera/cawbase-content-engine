@@ -291,6 +291,104 @@ class InferenceFixtureNotFoundError(EngineError):
     default_message = "The mock adapter has no fixture for this input."
 
 
+class StorageNotConfiguredError(EngineError):
+    code = "storage_not_configured"
+    http_status = 503
+    retryable = False
+    default_message = "Storage is not configured."
+
+
+class DocumentsNotConfiguredError(EngineError):
+    code = "documents_not_configured"
+    http_status = 503
+    retryable = False
+    default_message = "Document processing is not configured."
+
+
+class StorageUnavailableError(EngineError):
+    code = "storage_unavailable"
+    http_status = 503
+    retryable = True
+    default_message = "The storage is temporarily unavailable."
+
+
+class StoredObjectUnavailableError(EngineError):
+    code = "stored_object_unavailable"
+    http_status = 503
+    retryable = False
+    default_message = "The stored object is unavailable."
+
+
+class IsolationUnavailableError(EngineError):
+    code = "isolation_unavailable"
+    http_status = None
+    retryable = False
+    default_message = "The required isolation profile cannot be verified."
+
+
+class UploadInProgressError(ConflictError):
+    code = "upload_in_progress"
+    http_status = 409
+    retryable = True
+    default_message = "An upload with this key is still in progress."
+
+
+class UploadAbortedError(EngineError):
+    code = "upload_aborted"
+    http_status = 400
+    retryable = True
+    default_message = "The upload was aborted."
+
+
+class ContentMismatchError(ValidationFailedError):
+    code = "content_mismatch"
+    http_status = 422
+    retryable = False
+    default_message = "The content does not match the declared hash or size."
+
+
+class FileNotUsableError(ConflictError):
+    code = "file_not_usable"
+    http_status = 409
+    retryable = False
+    default_message = "The file cannot be used."
+
+
+class FileExpiringError(ConflictError):
+    code = "file_expiring"
+    http_status = 409
+    retryable = False
+    default_message = "The input expires before the job could finish."
+
+
+class QuotaExceededError(EngineError):
+    code = "quota_exceeded"
+    http_status = 429
+    retryable = True
+    default_message = "A quota was exceeded."
+
+
+class JobNotSucceededError(ConflictError):
+    code = "job_not_succeeded"
+    http_status = 409
+    retryable = False
+    default_message = "The job has not succeeded."
+
+
+class JobNotTerminalError(ConflictError):
+    code = "job_not_terminal"
+    http_status = 409
+    retryable = False
+    default_message = "The job is not terminal."
+
+
+class JobDataExpiredError(EngineError):
+    code = "job_data_expired"
+    http_status = 410
+    retryable = False
+    default_message = "The job data expired or was deleted."
+
+
 class InternalError(EngineError):
     code = "internal_error"
     http_status = 500
