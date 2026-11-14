@@ -310,3 +310,13 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 - **Purga de `admin_events`** (CLI `cawbase-content-engine purge-admin-events --older-than-days 90 --batch-size 1000 [--execute]`): previsualización por defecto, corte ≥ 90 días configurable, resumen sin contenido. La primera ejecución puede eliminar eventos históricos anteriores a A05.
 - **Límites y cuotas iniciales** ([contrato §12](jobs-files-and-lifecycle.md#12-límites-operativos-e-a05-17)): 25 MiB por archivo, 100 páginas PDF, 200 MiB descomprimidos, 100 trabajos activos y 2 GiB por scope, lease 60 s, plazo total 24 h, 5 intentos. Son elecciones, no mediciones.
 - **Despliegue**: migrar (`0003`) → actualizar todos los runtimes → emitir claves con permisos nuevos → habilitar workers y limpieza. `readiness()`/`/readyz` no cambian.
+
+## 15. A06 — Operación de claves, contextos y limpieza (especificado, en revisión; no disponible)
+
+> **ESPECIFICADO, EN REVISIÓN (A06): no implementado.** No hay código, esquema, dependencias ni versión de A06; el motor sigue en `0.4.0` / migración `0003`. Contrato completo: [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md) (1A–4A aprobadas; `E-A06-nn` propuestas; `P-A06-nn` pendientes de revisión). Todo lo siguiente es **propuesto / no disponible**.
+
+- **Extra propuesto** `protection` (`cryptography`); **no** forma parte de la instalación base ni cambia la importación base (D-33).
+- **Claves:** las suministra el host/operador (`KeyProvider`/`KeyRing`), 32 bytes aleatorios, versionadas; la activa cifra lo nuevo y las anteriores deben conservarse hasta que venzan los contextos (y backups) que las usen; `maintenance().protection_key_usage()` informa cuándo retirarlas ([§9](text-protection.md#9-criptografía-y-claves-3a)).
+- **Limpieza:** `maintenance().run_protection_cleanup()` y CLI propuesta `cleanup-protection`; explícita, repetible, por lotes, sin claves ni contenido; cadencia recomendada ≤ 1 h (valor por medir).
+- **Despliegue:** migrar (`0004`) → actualizar todos los runtimes → configurar `ProtectionSetup` y claves → emitir claves con los permisos nuevos. Sin `ProtectionSetup`, A06 ⇒ `protection_not_configured`.
+- **Retención:** contexto 7 días fijos por defecto (configurable, máximo 30 d por defecto); metadatos 30 días tras el fin de vida; **backups fuera del alcance del motor**.

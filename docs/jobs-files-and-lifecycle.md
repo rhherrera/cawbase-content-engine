@@ -759,7 +759,7 @@ Devuelve un resumen sin contenido. Nunca elimina originales externos ni filas de
 
 ### 13.7 Correspondencias de A06
 
-Tendrán autorización, retención y eliminación propias (A06). A05 no crea tablas, APIs, criptografía ni semántica de restauración. El `SourceMap` no es una tabla reversible de valores sensibles.
+Tendrán autorización, retención y eliminación propias (A06). A05 no crea tablas, APIs, criptografía ni semántica de restauración. El `SourceMap` no es una tabla reversible de valores sensibles. *Registro posterior (A06, especificado en revisión; no disponible):* las correspondencias de A06 viven en tablas propias con vigencia independiente de los plazos de §13.1, y A06 **solo lee** trabajos `text_analysis` y sus resultados publicados; ninguno de los contratos, la expiración ni el *fence* de A05 cambia ([protección y restauración de texto §4.2](text-protection.md#42-jobanalysis-vinculación-por-identidad-del-texto)).
 
 ## 14. API Python
 

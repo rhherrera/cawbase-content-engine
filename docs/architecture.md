@@ -138,3 +138,10 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 - **Flujo `document_analysis`**: aceptación (transacción corta: idempotencia, fijación, cuotas, fence) → reclamación → validación y extracción en proceso aislado → análisis por unidad con A03 (sin conexión retenida) → escritura de artefactos (5 pasos) → publicación condicional. Ninguna transacción abarca E/S de storage, extracción ni inferencia.
 - **Ownership**: storage administrado y resolvers externos los compone el host/operador; el motor no los inicia ni cierra; el motor nunca borra originales externos. Workers, ejecutor y limpieza tienen inicio y cierre explícitos.
 - **Dirección de dependencias** sin cambios: `http` y `cli` dependen del núcleo; `documents` depende del núcleo; el núcleo no importa `documents`, FastAPI ni Alembic.
+
+## 12. A06 — Protección y restauración de texto (especificado, en revisión; no disponible)
+
+> **ESPECIFICADO, EN REVISIÓN (A06): no implementado.** No hay código, esquema, dependencias ni versión de A06; el motor sigue en `0.4.0` / migración `0003`. Contrato completo: [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md) (1A–4A aprobadas; `E-A06-nn` propuestas; `P-A06-nn` pendientes de revisión). Todo lo siguiente es **propuesto / no disponible**.
+
+- Componente propuesto: `protection/` (importación perezosa; `cryptography` solo en el extra), capa Python del mismo núcleo, **sin** adaptador HTTP ni operaciones en la cola. Flujo: autorización → fuente de análisis vinculada al texto exacto (sin transacción abierta) → **una transacción de decisión** (scope → [trabajo] → contexto → correspondencias, hora de la base tras las esperas) → cifrado/descifrado con claves del host → `COMMIT` → entrega del texto ([contrato §0](text-protection.md#0-resumen)).
+- **Ownership:** el host posee el `KeyProvider` y el `AsyncEngine` inyectado; el motor no los cierra. Dirección de dependencias sin cambios: el núcleo no importa `protection`.

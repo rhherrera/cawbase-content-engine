@@ -1,6 +1,6 @@
 # cawbase-content-engine
 
-> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`) · A04 (investigación de viabilidad) cerrada y aceptada · A05 aceptada en `0.4.0` (22 criterios parciales; mergeada en `main`, merge `f21baaf`)
+> ## Estado: A01, A02 y A03 cerradas y aceptadas (`0.3.0`) · A04 (investigación de viabilidad) cerrada y aceptada · A05 aceptada en `0.4.0` (22 criterios parciales; mergeada en `main`, merge `f21baaf`) · **A06 especificada y en revisión (solo documentación; sin código)**
 >
 > | Feature | Estado |
 > |---|---|
@@ -9,8 +9,9 @@
 > | **A04** — viabilidad y contrato de documentos | **Documentada y experimentada** (mergeada en `main` mediante el merge `58001e0` del PR #3 (verificado en el historial; el merge es posterior y distinto de los commits de código experimental `b7608e7`, del informe `0342cb4` y del cierre `ec4d951`)): contrato, matrices, experimentos EXP-01 a 10 y controles CN-01 a 07 ejecutados en macOS y Linux local (Docker) sobre documentos **sintéticos**, con el [informe de viabilidad](docs/a04-feasibility-report.md). Viabilidad demostrada **solo en el subconjunto probado y con restricciones**; **cerrada y aceptada por el usuario** como investigación acotada (evidencia sobre `b7608e7`, informe `0342cb4`); Los experimentos no se ejecutaron en GitHub Actions (histórico); el estado de cualquier ejecución de Actions sobre el merge no se verificó con la evidencia disponible y no se infiere del merge; **ningún soporte PDF/DOCX en `0.3.0`**. Condición para A08 (D-A04-04): comprobación representativa con PDF de herramientas habituales antes de implementar su pipeline |
 > | **A03** — contrato de inferencia y análisis con mock (`0.3.0`) | Implementada, **cerrada y aceptada por el usuario**, según su declaración explícita: commit de implementación y regresiones `20d9211`; `e3ca6da` contiene la documentación y evidencia posterior; mergeada en `main` (merge `ae19ef3`, PR #2). Probada en macOS y en Linux local (Docker) según el [informe de A03](docs/a03-implementation-report.md); resultado de GitHub Actions no verificado con la evidencia disponible. Solo ingeniería del contrato con un mock: **no** acredita calidad de inferencia (A09) |
 > | **A05** — trabajos, archivos y ciclo de vida (`0.4.0`) | **Implementada y aceptada por el usuario (con 22 criterios parciales), mergeada en `main` (merge `f21baaf`, PR #4)** (rama `feature/a05-jobs-files-lifecycle`). Probada en macOS y en Linux local (Docker) según el [informe de A05](docs/a05-implementation-report.md), que describe el estado previo al merge (no se ejecutó Actions durante la entrega local; la primera ejecución de Actions del check de distribución falló por el tiempo de importación y pasó al reejecutarla con el límite original de D-33, según informó el usuario; no verificado por el agente). Solo ingeniería: **no** acredita calidad de detección (A09) ni protección (A06–A08); soporte documental limitado a la matriz conservadora del contrato |
+> | **A06** — protección y restauración de texto (`0.5.0` propuesta) | **Especificada, EN REVISIÓN; no implementada.** Rama `feature/a06-text-protection-restoration` desde `main` en `f21baaf`. Decisiones 1A–4A aprobadas por el usuario; elecciones técnicas y propuestas pendientes de su revisión en [A06-decisions](docs/decisions/A06-decisions.md). Sin código, esquema, dependencias ni pruebas hasta su aprobación explícita del contrato; la aceptación final queda pendiente |
 >
-> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: protección, redacción, seudonimización y restauración (A06–A08), modelo real (A09) e integración con CAWbase.
+> El paquete **no está publicado** (no se afirma disponibilidad del nombre en PyPI) y la licencia definitiva está pendiente. Fuera de lo implementado: protección, redacción, seudonimización y restauración (A06 está solo especificada; A07–A08 pendientes), modelo real (A09) e integración con CAWbase.
 
 Motor independiente de clasificación, detección y transformación de contenido, preparado para distribuirse como paquete Python y, más adelante, abrirse como código abierto. CAWbase será un consumidor del paquete; el motor no depende de CAWbase.
 
@@ -40,6 +41,10 @@ Contrato: perfiles que pertenecen a un scope, con categorías y tipos sensibles 
 ## A05 — Trabajos, archivos y ciclo de vida (implementada en `0.4.0`; aceptado y mergeado)
 
 > **Implementada, aceptada por el usuario (22 criterios parciales) y mergeada en `main` (merge `f21baaf`, PR #4).** Archivos administrados y referencias externas, trabajos durables (`document_analysis`, `text_analysis`) con lease y *fencing* sobre la base del motor, validación y extracción aisladas del subconjunto A04, resultados por unidad con A03, idempotencia, cuotas, retención aprobada (D-A05-01) y limpieza explícita. Contrato: [trabajos, archivos y ciclo de vida](docs/jobs-files-and-lifecycle.md); entrada: [especificación de A05](docs/features/A05-trabajos-archivos-y-ciclo-de-vida.md); evidencia: [informe de A05](docs/a05-implementation-report.md). Extra nuevo: `documents` (`lxml`, `pikepdf`).
+
+## A06 — Protección y restauración de texto (especificada, en revisión; no implementada)
+
+> **Solo documentación.** API **Python** (sin HTTP ni cola) para proteger texto —redacción irreversible o seudonimización reversible con marcadores— y restaurarlo con permiso distinto, contextos persistentes `conversation`/`job` de vigencia fija, correspondencias cifradas con claves versionadas del host y política estricta ante detecciones inconclusas, marcadores no autorizados y datos sensibles nuevos. Contrato: [protección y restauración de texto](docs/text-protection.md); entrada: [especificación de A06](docs/features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](docs/decisions/A06-decisions.md). Todo es **propuesto / no disponible** hasta que el usuario apruebe el contrato.
 
 ## Probar rápidamente
 
@@ -82,6 +87,9 @@ bash scripts/linux_docker_validate.sh /tmp/ev  # validación en Linux (Docker): 
 | [Trabajos, archivos y ciclo de vida](docs/jobs-files-and-lifecycle.md) | Contrato de A05: storage, consistencia, estados, lease, reintentos, idempotencia, aislamiento, extracción, límites, retención, API, permisos y persistencia (implementado) |
 | [Informe de implementación de A05](docs/a05-implementation-report.md) | Qué se implementó, trazabilidad AC-A05 → pruebas, comandos y resultados por ambiente, criterios sin evidencia y límites |
 | [Decisiones de A05](docs/decisions/A05-decisions.md) | D-A05-01 y 02 aprobadas, elecciones técnicas, diferencias con el playbook y backlog |
+| [Especificación de A06](docs/features/A06-proteccion-y-restauracion-de-texto.md) | Alcance y matriz de aceptación AC-A06 (especificada, en revisión) |
+| [Protección y restauración de texto](docs/text-protection.md) | Contrato de A06 (propuesto): contextos, marcadores, restauración, cifrado y claves, persistencia, concurrencia, permisos y límites |
+| [Decisiones de A06](docs/decisions/A06-decisions.md) | D-A06-01 a 04 (1A–4A) aprobadas, elecciones técnicas, propuestas pendientes de revisión, diferencias con el playbook y backlog |
 | [Reglas para agentes](CLAUDE.md) | Instrucciones de trabajo del repositorio |
 
 `docs/STAGE_3_PLAYBOOK.md` puede existir en el árbol de trabajo como **copia local de referencia** del playbook (revisión 6, 11 de noviembre de 2026), pero está en `.gitignore`: **no forma parte del repositorio**, un checkout limpio no la contiene y nada (tests, enlaces, wheel, sdist) la necesita. La fuente canónica está fuera de este repositorio.
