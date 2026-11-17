@@ -1,10 +1,10 @@
 # Protección y restauración DOCX — contrato de A07
 
-> **Estado: ESPECIFICADO (revisión 1), PENDIENTE DE LA APROBACIÓN EXPLÍCITA DEL USUARIO. No implementado.** Nada de lo que describe este documento existe en el código: ni API, ni operación de trabajo, ni permiso, ni tabla, ni migración, ni versión. Todo nombre, firma, código de error, tabla o comando que aparece aquí es **propuesto / no disponible** hasta que exista con código y pruebas. Las cinco decisiones de producto de A07 (`D-A07-01` a `05`) están **aprobadas por el usuario** y se registran en [A07-decisions](decisions/A07-decisions.md); las elecciones técnicas `E-A07-nn` no son decisiones de producto; las propuestas `P-A07-nn` cambian lo que observa un integrador y están **pendientes de revisión**; las hipótesis `H-A07-nn` se verifican en el código. Alcance y matriz de aceptación: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md).
+> **Estado: ESPECIFICADO (revisión 2), PENDIENTE DE LA APROBACIÓN EXPLÍCITA DEL USUARIO. No implementado.** Nada de lo que describe este documento existe en el código: ni API, ni operación de trabajo, ni permiso, ni tabla, ni migración, ni versión. Todo nombre, firma, código de error, tabla o comando que aparece aquí es **propuesto / no disponible** hasta que exista con código y pruebas. Las cinco decisiones de producto de A07 (`D-A07-01` a `05`) y las propuestas `P-A07-01` a `07` (con el texto que el usuario fijó al aprobarlas en la revisión de `55a39ed`) están **aprobadas por el usuario** y se registran en [A07-decisions](decisions/A07-decisions.md); las elecciones técnicas `E-A07-nn` no son decisiones de producto; las hipótesis `H-A07-nn` se verifican en el código. Cambios de la revisión 2: [A07-decisions §0](decisions/A07-decisions.md#0-historial-de-revisiones). Alcance y matriz de aceptación: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md).
 
 Relacionado: [procesamiento de documentos (A04)](document-processing.md) · [trabajos, archivos y ciclo de vida (A05)](jobs-files-and-lifecycle.md) · [protección y restauración de texto (A06)](text-protection.md) · [inferencia y análisis (A03)](inference-and-analysis.md) · [seguridad y aislamiento](security-and-isolation.md) · [persistencia y migraciones](persistence-and-migrations.md).
 
-**Convención.** Cada regla indica su origen entre corchetes: **[D1]**–**[D5]** decisión aprobada (`D-A07-01` a `05`); **[E-nn]** elección técnica (`E-A07-nn`); **[P-nn]** propuesta pendiente de revisión (`P-A07-nn`); **[H-nn]** hipótesis por verificar (`H-A07-nn`). Las referencias `A04 §n`, `A05 §n` y `A06 §n` apuntan a [document-processing.md](document-processing.md), [jobs-files-and-lifecycle.md](jobs-files-and-lifecycle.md) y [text-protection.md](text-protection.md).
+**Convención.** Cada regla indica su origen entre corchetes: **[D1]**–**[D5]** decisión aprobada (`D-A07-01` a `05`); **[E-nn]** elección técnica (`E-A07-nn`); **[P-nn]** propuesta **aprobada por el usuario** (`P-A07-nn`, revisión 2); **[H-nn]** hipótesis por verificar (`H-A07-nn`). Las referencias `A04 §n`, `A05 §n` y `A06 §n` apuntan a [document-processing.md](document-processing.md), [jobs-files-and-lifecycle.md](jobs-files-and-lifecycle.md) y [text-protection.md](text-protection.md).
 
 ## 0. Resumen
 
@@ -78,11 +78,13 @@ Todas se exigen; cualquier fallo ⇒ error sin efectos (en el envío) o fallo no
 | S7 | **Extractor**: `source_map.identity.extractor` y `result.provenance.extractor` = `{id, version, config_sha256}` del extractor que ejecuta el worker (A05 §8.5) | intento | `analysis_source_stale` |
 | S8 | **Mapa exacto**: la reextracción aislada del original con ese extractor produce un `SourceMap` cuyo JSON canónico es **idéntico byte a byte** al artefacto publicado, y cada `units[i].text_length` del resultado = longitud del texto reextraído | intento | `analysis_source_stale` |
 | S9 | **Detección concluyente**: `per_capability.detection.status = completed`, `complete = true`; cada unidad analizada con `detection.status = completed` y `coverage.complete = true`; ninguna unidad `inconclusive` | intento | `detection_inconclusive` / `capabilities_not_configured` |
-| S10 | **Perfil identificable**: `result.profile` (scope, perfil, versión, `content_hash`) = identidad fijada del análisis; procedencia de A03 presente | intento | `analysis_source_invalid` |
+| S10 | **Perfil identificable**: `result.profile` (scope, perfil, versión, `content_hash`, `selection`) = identidad fijada del análisis (columnas de `jobs`) | intento | `analysis_source_invalid` |
+| S10b | **Procedencia simulada del mock de A03** [E-22] (A01–A08 solo aceptan el mock): `result.provenance.inference` = `inference_provenance` del `execution_snapshot` fijado del análisis (igualdad campo a campo) **y** cumple `kind = "mock"`, `simulated = true`, `adapter_id = "cce-mock-fixtures"`, `adapter_version = "1"`, `configuration_id` con forma `fxs-` + 16 hex, `model = null`, `inference_contract_version = 1`; además, en cada unidad analizada, `analysis.provenance` es igual a esa procedencia | intento | `analysis_provenance_unsupported` |
 | S11 | Cada hallazgo cumple `0 ≤ start < end ≤ len(unit.text)` sobre el texto reextraído, con `type_id` válido | intento | `analysis_source_invalid` |
 | S12 | El llamador tiene `results:read` además de `docx:protect` (§9) | envío | `permission_denied` |
 
 - **Por qué la reextracción (S8).** El resultado y el mapa de A05 **no contienen el texto** de las unidades (solo `text_length` y posiciones): la única forma de aplicar los offsets al **texto exacto** es reextraer el original exacto con el mismo extractor y configuración y demostrar que el mapa resultante es el publicado. Una configuración de extracción distinta (p. ej. otros límites de A05 §12.1) o una versión distinta del extractor vuelven **desactualizado** el análisis: se rechaza, no se recalcula [D1, E-03].
+- **Por qué S10b y no la mera presencia de procedencia**. A05 guarda con igual forma el análisis de un adaptador de modelo (`kind = "model"`, `simulated = false`) y el del mock; la presencia de una procedencia no distingue uno de otro. Hasta A09 el contrato de A07 solo se acredita con el mock: un análisis cuya procedencia no sea exactamente la simulada del mock de A03, o cuya procedencia por unidad o del manifiesto difiera de la fijada en el trabajo, se rechaza con `analysis_provenance_unsupported`, sin crear correspondencias ni artefactos. A09 revisará esta condición al incorporar el modelo real.
 - **Qué demuestra y qué no.** Demuestra que los hallazgos pertenecen al texto exacto del original exacto y que el análisis vigente y autorizado se hizo con un perfil identificable. **No** demuestra calidad de detección (A09) ni qué ocurrencia idéntica habría señalado un modelo real (A06 §5.6).
 - Los hallazgos se resuelven **por unidad** y offsets `[start,end)` en **puntos de código** del texto de la unidad [D1]; nunca por búsqueda de texto.
 
@@ -194,32 +196,55 @@ Toda protección elimina las clases `E` de A04 §13 presentes y registra las **e
 
 ## 6. Verificación antes de publicar [D5, E-08]
 
-La verificación corre en un proceso aislado **distinto** del que transforma, con un **analizador XML distinto** (biblioteca estándar `zipfile` + `xml.etree.ElementTree` sin DTD ni entidades, frente a `lxml` del transformador) y recibe por *pipe* el original, el derivado, las selecciones (con sus valores) y el oráculo. Devuelve un informe **sin valores**. Cualquier comprobación fallida ⇒ fallo del trabajo sin publicar (`derivative_verification_failed` o `residue_detected`), sin reintento (determinista).
+La verificación corre en un proceso aislado **distinto** del que transforma, con un **analizador XML distinto** (biblioteca estándar `zipfile` + `xml.etree.ElementTree` y `xml.parsers.expat` sin DTD ni entidades, frente a `lxml` del transformador) y recibe por *pipe* el original, el derivado, las selecciones (con sus valores) y el oráculo. Devuelve un informe **sin valores**. Cualquier comprobación fallida ⇒ fallo del trabajo sin publicar (`derivative_verification_failed` o `residue_detected`), sin reintento (determinista).
 
-### 6.1 Validez del paquete (apertura sin reparación)
+### 6.1 Validación estructural del paquete
 
 V1: ZIP legible sin errores; sin entradas duplicadas ni nombres inválidos (A05 §10.1). V2: toda parte XML se analiza sin `DOCTYPE`, sin entidades y sin errores. V3: `[Content_Types].xml` cubre todas las partes y no menciona eliminadas. V4: cada relación interna apunta a una parte existente; cada parte es alcanzable. V5: el derivado vuelve a pasar la **validación y la extracción de A05** (mismo extractor) sin rechazo. V6: las clases `E` registradas están ausentes (partes, relaciones, tipos de contenido, anclajes, elementos de propiedades).
+
+**Validación estructural ≠ apertura real.** V1–V6 son la **validación estructural del paquete** que el motor ejecuta en cada trabajo antes de publicar; **no** acreditan que un procesador de textos abra el archivo sin reparación. La **apertura sin reparación** y la **inspección visual** del DOCX protegido y restaurado se acreditan como **evidencia de aceptación** (no en tiempo de ejecución) con **LibreOffice Writer en Linux** (Docker), registrando versión, plataforma y fuentes en el momento de ejecutar las pruebas (§15). **Microsoft Word queda pendiente** como lector: no está disponible y su apertura no se afirma.
 
 ### 6.2 Oráculo por posición (texto de las unidades)
 
 - **Oráculo:** para cada unidad, `oracle(u) = texto_original(u)` con cada selección `[g_start,g_end)` reemplazada por su sustituto, calculado de forma **pura** en el proceso padre a partir del texto reextraído (S8) y de las selecciones.
 - **Comprobación O1:** la extracción independiente (verificador) **y** la del extractor de A05 sobre el derivado producen exactamente las mismas unidades, en el mismo orden, con `text = oracle(u)`. Toda diferencia (texto no seleccionado perdido o alterado, sustituto ausente o desplazado, unidad nueva o perdida) ⇒ `derivative_verification_failed`.
-- **Ocurrencia idéntica no seleccionada** [D5]: si el valor de una selección aparece en otra posición de una unidad que **no** está seleccionada, el oráculo la contiene en esa posición y O1 exige que siga allí. No es un residuo: se conserva y se comprueba **por posición**.
+- **Ocurrencia idéntica no seleccionada** [D5]: si el valor de una selección aparece en otra posición de una unidad que **no** está seleccionada, el oráculo la contiene en esa posición y O1 exige que siga allí. Es una **ocurrencia permitida** (§6.3.1): se conserva y se comprueba **por posición**; la excepción cubre **solo** esa coincidencia en esa ubicación exacta del XML.
 - **Comprobación O2 (marcadores):** las coincidencias de la clase S de A06 en las unidades del derivado son exactamente los sustitutos de seudonimización emitidos, en las posiciones del oráculo; no hay R1 ni R2. Las ocurrencias del vínculo (§12.1) se calculan con el **extractor de A05** sobre el derivado (el mismo que usará la restauración).
 
 ### 6.3 Residuos en el contenido inspeccionable
 
 Los **valores seleccionados** son los fragmentos de **todas** las selecciones (seudonimizadas y redactadas). Se busca cada valor en estas **representaciones**: (a) exacta; (b) NFC; (c) NFD; (d) plegado de mayúsculas (`casefold`) de (a)–(c); (e) con los blancos colapsados a un espacio. Se descartan valores vacíos tras normalizar.
 
-| Alcance inspeccionado | Cómo | Regla |
+**Todo** el paquete se escanea; ninguna región se excluye en bloque. Cada coincidencia se **atribuye** (§6.3.1): solo una coincidencia atribuida a una ocurrencia permitida o a un sustituto emitido queda exenta; **cualquier otra** ⇒ `residue_detected`, sin publicar.
+
+| Objetivo de escaneo (K) | Cómo | Unidad de atribución |
 |---|---|---|
-| **Texto de las unidades** (contenido `S`) | O1 (oráculo) | una ocurrencia solo es válida en una posición que el oráculo contiene; ninguna búsqueda global |
-| **Contenido no `S` de cada párrafo** (`w:instrText`, `m:t`, texto de controles no extraído, cualquier nodo de texto que no sea pieza de unidad) | concatenación, **por párrafo**, de esos nodos en orden de documento (cubre valores partidos entre nodos) | cualquier coincidencia ⇒ `residue_detected` |
-| **Atributos** de todas las partes XML (incluidos `wp:docPr/@descr/@title`, `@w:instr`, `@w:val` y los estructurales) | valor de cada atributo (las referencias de carácter ya resueltas por el analizador); además, decodificado como URL (`%XX` en UTF-8) | ídem (fallo cerrado aun en atributos estructurales: falso positivo aceptado) |
-| **Relaciones** (`Target` internos y externos, incluidos destinos de hipervínculo) | valor y valor decodificado como URL | ídem |
-| **Propiedades** (`docProps/*` que queden) y partes `P` | texto de cada elemento | ídem |
-| **Comentarios XML, instrucciones de procesamiento y CDATA** de cualquier parte | texto | ídem |
-| **Bytes crudos de todas las partes** (XML y binarias: imágenes, fuentes) | UTF-8, UTF-16LE y UTF-16BE de (a)–(c) | ídem |
+| K1 **Texto de las unidades** (contenido `S`) | O1 (oráculo, §6.2) **y** búsqueda de (a)–(e) en `oracle(u)` | `(unit_id, [start,end))` |
+| K2 **Texto de cada nodo** (`w:t`, `w:instrText`, `m:t`, cualquier nodo de texto, *tails*) | valor del nodo tras analizar (referencias de carácter y entidades predefinidas resueltas) | `(parte, node_path, [c0,c1))` en caracteres del nodo |
+| K3 **Concatenación por párrafo** de **todos** sus nodos de texto (S y no S) en orden de documento | cubre valores **partidos entre nodos** (entre runs, entre `w:instrText` de un campo) | tramo de la concatenación → lista de `(node_path, [c0,c1))` |
+| K4 **Atributos** de todas las partes XML (incluidos `wp:docPr/@descr/@title`, `@w:instr`, `@w:val` y los estructurales) | valor de cada atributo; además decodificado como URL (`%XX` en UTF-8) | nunca exenta (fallo cerrado aun en atributos estructurales: falso positivo aceptado) |
+| K5 **Relaciones** (`Target` internos y externos, incluidos destinos de hipervínculo) | valor y valor decodificado como URL | nunca exenta |
+| K6 **Comentarios XML, instrucciones de procesamiento y CDATA** | texto | nunca exenta |
+| K7 **Bytes crudos de cada parte XML** | UTF-8, UTF-16LE y UTF-16BE de (a)–(c) sobre los bytes tal como están en el ZIP (descomprimidos) | tramo de bytes `[b0,b1)` de la parte |
+| K8 **Bytes crudos de cada parte binaria** (imágenes, fuentes, otras) | ídem | nunca exenta |
+
+#### 6.3.1 Atribución de coincidencias y ocurrencias permitidas [D5, E-21]
+
+1. **Ocurrencias permitidas** `A`: los tramos `(unit_id, [start,end))` de `oracle(u)` donde aparece un valor seleccionado en cualquier representación (a)–(e) y que **no** se solapan con un sustituto. Por construcción son texto no seleccionado (D5: ocurrencias idénticas fuera de la selección). Cada una se traduce, con las piezas del `SourceMap` del **derivado** (extractor de A05), a su **ubicación exacta**: la lista de `(parte, node_path, [c0,c1))` de los `w:t` que la contienen.
+2. **Tramos de sustituto** `M`: los de cada marcador o `[REDACTED]` emitido; una coincidencia **enteramente dentro** de un sustituto (p. ej. un valor que es subcadena de `[REDACTED]`) se atribuye al sustituto: no es copia del valor.
+3. **Mapa de bytes de nodos**: el verificador recorre cada parte XML con `xml.parsers.expat` (biblioteca estándar) y registra, para cada elemento `w:t`, su `node_path` y el tramo de bytes `[b0,b1)` de su **contenido de caracteres** en la parte (entre el fin de la etiqueta de apertura y el inicio de la de cierre, con `CurrentByteIndex`), y si ese contenido contiene referencias de carácter o entidades.
+4. **Regla de exención** (una coincidencia se exime **solo** si se cumple su caso; cada ocurrencia permitida exime **a lo sumo una** coincidencia por objetivo y por representación):
+
+| Objetivo | La coincidencia está exenta si y solo si |
+|---|---|
+| K1 | su tramo es exactamente una ocurrencia de `A` o está dentro de un tramo de `M` |
+| K2 | está en un nodo `w:t` que es pieza de unidad y su `(node_path, [c0,c1))` es exactamente la ubicación de una ocurrencia de `A` contenida en ese único nodo, o cae dentro de un sustituto |
+| K3 | su tramo corresponde exactamente a la lista de ubicaciones de una ocurrencia de `A` (también si está partida entre varios `w:t`), o cae dentro de un sustituto |
+| K7 | su tramo de bytes `[b0,b1)` está **dentro** del contenido de un único `w:t` cuya ubicación coincide con una ocurrencia de `A` contenida en ese nodo, y `[b0,b1)` es exactamente la codificación UTF-8 de los caracteres `[c0,c1)` de esa ocurrencia (contenido literal, sin referencias); o cae dentro de los bytes de un sustituto |
+| K4, K5, K6, K8 | nunca |
+
+5. **Consecuencias.** (i) Una ocurrencia permitida dentro de un **solo** `w:t` aparece en K1, K2, K3 y K7 y en todos se atribuye a su ubicación: **pasa**. (ii) Una **copia adicional** en la **misma parte** —en un atributo (`wp:docPr/@descr`), en un `w:instrText`, en un comentario XML o en otro nodo que no sea esa ubicación— produce coincidencias en K2/K3/K4/K6/K7 que **no** se atribuyen a ninguna ocurrencia permitida: **falla**. (iii) Una ocurrencia permitida **partida entre runs** no produce coincidencia contigua en K2 ni en K7; K1 y K3 la atribuyen a su lista de ubicaciones: **pasa**; un valor **seleccionado** que reapareciera partido entre runs fuera de las ocurrencias permitidas rompe O1 (el texto difiere del oráculo) y produce en K3 una coincidencia no atribuible: **falla** (comprobación independiente de valores partidos, conservada). (iv) Una ocurrencia permitida escrita con referencias de carácter no produce coincidencia literal en K7; K2/K3 la atribuyen.
+6. La atribución se calcula **en el verificador** con su propio analizador (`zipfile`, `expat`, `ElementTree`) y el `SourceMap` del derivado producido por el extractor de A05; las posiciones nunca salen del proceso ni van al informe.
 
 - **Una búsqueda literal de bytes no basta** y no es la única comprobación: valores partidos entre runs solo aparecen en el oráculo y en las concatenaciones; codificaciones y entidades solo tras analizar.
 - **Ausencia global** (CN-03): cuando el análisis selecciona **todas** las ocurrencias de un valor, el oráculo no lo contiene en ninguna unidad y las demás reglas exigen su ausencia: el valor queda ausente de **todo** el alcance inspeccionable.
@@ -234,8 +259,9 @@ E1: partes no editadas (incluidas `styles`, `numbering`, `settings`, `fontTable`
 
 ### 7.1 Entrada y autorización
 
-- El llamador presenta **la copia que posee** del derivado como archivo de A05 (`file_id`, cargado con `upload_file` o registrado con `register_external_file`, `files:write`) junto con el `derivative_id`, el `context_id` y el `kind` del contexto [P-02]. El motor **no** restaura a partir de un DOCX que no sea byte a byte el emitido.
-- Requiere `docx:restore` (distinto de `docx:protect`) [D2, P-05]. El host comprueba el acceso a la conversación o trabajo concreto (A06 P-A06-06).
+- El host presenta **la copia que posee** del derivado como archivo de A05 (`file_id`, cargado con `upload_file` o registrado con `register_external_file`, ambos con `files:write`) junto con las referencias que exige el contrato: `derivative_id`, `context_id` y `kind` del contexto [P-02]. El motor verifica **identidad, tamaño y digest** de esa copia contra el **vínculo persistido** (T1–T2) y **no** restaura a partir de un DOCX que no sea byte a byte el emitido. La restauración funciona con la copia exacta del host **aunque el original y el análisis fuente ya hayan expirado o se hayan purgado** (y aunque se hayan eliminado los datos del trabajo de protección, P-06).
+- Requiere `docx:restore` (distinto de `docx:protect`) [D2, P-05]: **`docx:restore` autoriza producir un archivo restaurado**. El host comprueba el acceso a la conversación o trabajo concreto (A06 P-A06-06).
+- **Restauración como texto** [P-01]: un valor cuyo marcador se emitió en un DOCX también puede recuperarse **como texto** con `restore_text` de A06 (`text:restore`), si se cumplen **todas** las condiciones de A06 §7: el host incluyó ese **marcador exacto** en el material que entregó al modelo para esa respuesta (`delivered_material`/`delivered_markers`), el host comprobó el acceso a la conversación o al trabajo concreto, el contexto está vigente y del tipo pedido, el scope activo y se evaluaron los datos nuevos de la respuesta. Esa vía no produce ni da acceso a ningún archivo: `docx:restore` sigue siendo necesario para un DOCX restaurado y `docx:restored:read` para leerlo. A07 no cambia `restore_text`.
 - La restauración depende **solo** de: el derivado (sus bytes), su **vínculo** persistido y un **contexto vigente** con sus correspondencias. **No** necesita el original, el análisis fuente ni el trabajo de protección: funciona aunque estén vencidos, eliminados o purgados [D3].
 - **No llama a la inferencia** ni evalúa «datos nuevos» (a diferencia de A06 §7.3): la igualdad del digest garantiza que el contenido es exactamente el emitido por el motor, sin texto de terceros [E-09].
 
@@ -243,7 +269,7 @@ E1: partes no editadas (incluidas `styles`, `numbering`, `settings`, `fontTable`
 
 | # | Comprobación | Error |
 |---|---|---|
-| T1 | El vínculo existe en **este scope**, `state = active`, su `context_id` y `kind` son los pedidos | `resource_not_found` / `derivative_binding_unavailable` / `context_kind_mismatch` |
+| T1 | El vínculo existe en **este scope**, `state = active` (su contexto no terminó), su `context_id` y `kind` son los pedidos. El estado de los datos del trabajo de protección **no** interviene [P-06] | `resource_not_found` / `derivative_binding_unavailable` / `context_kind_mismatch` |
 | T2 | El archivo de entrada es `stored`, no vencido; su SHA-256 y tamaño (calculados por A05 sobre los bytes recibidos) son **iguales** al digest y tamaño del vínculo. Se comprueba **en el envío** (metadatos) y de nuevo **sobre los bytes leídos** en el intento, **antes de analizar** nada | `derivative_mismatch` |
 | T3 | Contexto vigente (`ahora < expires_at`, no eliminado), `kind` correcto, scope activo | `context_unavailable` / `scope_disabled` |
 | T4 | **Integridad del vínculo**: `binding_mac` verificado (§12.1) con la clave de índice del contexto | `binding_integrity_failed` / `protection_key_unavailable` |
@@ -296,6 +322,8 @@ class NewContext:                 # el envío crea un contexto `job` de A06 en l
     ttl_s: int | None = None      # misma regla que create_context (A06 §8.2)
 ```
 
+- **`NewContext`** [P-07]: con `docx:protect` (sin `text:protect`), el envío crea un contexto de A06 de tipo `job` (cuota, clave de índice envuelta con la versión activa, `expires_at` fijo) **en la misma transacción** que admite el trabajo: se confirman **juntos** o ninguno (un fallo o una reversión no deja contexto sin trabajo ni trabajo sin contexto). Un **replay idempotente** (misma clave y huella) devuelve el **contexto original** (mismo `context_id`, `kind` y `expires_at`), sin crear otro. **`ExistingContext`**: contexto de A06 del **mismo scope**, vigente y del tipo indicado; el host autoriza el acceso a esa conversación o trabajo antes de delegar (A06 P-A06-06).
+
 - Consulta de estado, cancelación y eliminación de datos: **las de A05** (`get_job`, `list_jobs`, `cancel_job`, `delete_job_data`), con su permiso y su `JobInfo` sin cambios (`operation ∈ {docx_protection, docx_restoration}`).
 - Sin `DocumentSetup`, `StorageSetup` o `ProtectionSetup` ⇒ `documents_not_configured` / `storage_not_configured` / `protection_not_configured` (antes de efectos).
 
@@ -321,7 +349,7 @@ class DocxProtectionResult:     # artefacto `docx_protection_report` (JSON canó
     transformer: {id, version}
 
 class DocxDerivativeInfo:       scope_id; derivative_id; protection_job_id; context_id; context_kind
-                                sha256; size_bytes; occurrence_count; state: Literal["active", "revoked", "ended"]
+                                sha256; size_bytes; occurrence_count; state: Literal["active", "ended"]   # sin revocación individual [P-06]
                                 created_at; ended_at | None
 class DocxRestorationResult:    # artefacto `docx_restoration_report`
     contract_version: Literal[1]; job_id: str; derivative_id: str; restored: {sha256, size_bytes}
@@ -336,12 +364,12 @@ Los de A05 §5.3 (`queued`, `running`, `retry_wait`, `succeeded`, `failed`, `can
 
 | Código | Reintentable | Cuándo |
 |---|---|---|
-| `analysis_source_invalid` (A06) | no | S1, S10 en el envío |
+| `analysis_source_invalid` (A06) | no | S1 en el envío |
 | `analysis_expiring` (nuevo) | no | S3 |
 | `job_not_succeeded`, `job_data_expired`, `file_not_usable`, `file_expiring` (A05) | no | S2, S4 |
 | `context_unavailable`, `context_kind_mismatch` (A06) | no | contexto existente vencido/eliminado o de otro tipo |
 | `context_expiring` (nuevo) | no | `context.expires_at < deadline_at` del trabajo |
-| `derivative_binding_unavailable` (nuevo) | no | vínculo `revoked`/`ended` o purgado |
+| `derivative_binding_unavailable` (nuevo) | no | vínculo `ended` (su contexto terminó y la limpieza lo marcó) o purgado |
 | `derivative_mismatch` (nuevo) | no | T2 en el envío |
 | `idempotency_conflict`, `quota_exceeded`, `scope_disabled`, `permission_denied`, `resource_not_found`, `transaction_incompatible`, `*_not_configured` | según A01–A06 | — |
 
@@ -351,6 +379,7 @@ Los de A05 §5.3 (`queued`, `running`, `retry_wait`, `succeeded`, `failed`, `can
 |---|---|---|
 | `analysis_unavailable` | no | S2 en intento o publicación |
 | `analysis_source_invalid`, `analysis_source_stale`, `detection_inconclusive`, `capabilities_not_configured` | no | S5–S11 |
+| `analysis_provenance_unsupported` (nuevo) | no | S10b: análisis no producido por el mock de A03 (p. ej. adaptador de modelo, `simulated = false`) o procedencia distinta de la fijada |
 | `marker_collision` | no | PC-04 |
 | `field_result_not_transformable`, `selection_crosses_boundary`, `selection_not_transformable` | no | §4.3–§4.4 |
 | `unsupported_structure` (A05) | no | PC-01 a PC-03 |
@@ -365,14 +394,14 @@ Mensajes genéricos; nunca texto, valores, marcadores, tokens, posiciones ni nom
 
 ## 9. Permisos y acceso a artefactos [D2, P-05]
 
-### 9.1 Permisos nuevos (catálogo 21 → **25**; propuestos)
+### 9.1 Permisos nuevos (catálogo 21 → **25**; aprobados por el usuario, no implementados)
 
 | Permiso | Habilita |
 |---|---|
-| `docx:protect` | `submit_docx_protection` (con `ExistingContext` o `NewContext`) |
-| `docx:restore` | `submit_docx_restoration` (**distinto** de `docx:protect`) |
+| `docx:protect` | `submit_docx_protection` (con `ExistingContext` o `NewContext`); autoriza al **motor** a usar el original fijado del análisis para producir el derivado. **No** autoriza descargar el original, que sigue exigiendo `files:read` (A05) |
+| `docx:restore` | `submit_docx_restoration` (**distinto** de `docx:protect`): autoriza **producir un archivo restaurado**. Recuperar un valor **como texto** es `text:restore` de A06 (§7.1, P-01) |
 | `docx:protected:read` | `get_docx_protection_result`, `open_docx_protected`, `get_docx_derivative` |
-| `docx:restored:read` | `get_docx_restoration_result`, `open_docx_restored` (material **sensible**) |
+| `docx:restored:read` | `get_docx_restoration_result`, `open_docx_restored` (material **sensible**), con las condiciones de §9.3 [P-03] |
 
 - Combinaciones: `submit_docx_protection` exige además `results:read` (consume un resultado sensible de A05, como `JobAnalysis` en A06 §12.1). La carga o registro de la copia a restaurar exige `files:write` (A05). Sin jerarquías ni comodines; `AdminContext`/`admin:*` no acceden.
 - **Restricción de despliegue** heredada y ampliada: no emitir claves con estos cuatro permisos hasta actualizar **todos** los runtimes que acceden a la base (un runtime anterior falla al cargar grants desconocidos y revocar no lo corrige). Orden: migrar → actualizar runtimes → configurar → emitir claves.
@@ -391,9 +420,20 @@ Mensajes genéricos; nunca texto, valores, marcadores, tokens, posiciones ni nom
 1. `get_job_result` / `open_job_artifact` (Python, `results:read`) y `GET /jobs/{id}/result` · `/source-map` (HTTP): sirven **solo** trabajos `document_analysis` y `text_analysis`; para `docx_protection`/`docx_restoration` ⇒ `resource_not_found` (404 idéntico en HTTP). Se comprueba la **operación** además del `kind`. En runtimes anteriores, que solo buscan roles `result`/`source_map` por `kind`, los artefactos de A07 tampoco se sirven [H-03].
 2. `open_file_content` (`files:read`): los derivados **nunca** son `stored_files` (son artefactos de trabajo), de modo que no pueden descargarse como archivos. La copia que el host carga para restaurar es un archivo suyo (A05 §3.7: solo descargable con validación `passed`).
 3. `get_job`/`list_jobs` (`jobs:read`, Python y HTTP): exponen solo los metadatos de `JobInfo` (sin contenido, sin `context_id`, sin `derivative_id`).
-4. `restore_text` de A06 (`text:restore`): los marcadores emitidos en un DOCX son correspondencias del contexto; **su tratamiento lo decide el usuario** (P-A07-01, pendiente): ver [A07-decisions §4](decisions/A07-decisions.md#4-propuestas-pendientes-de-revisión-p-a07-nn).
-5. `delete_job_data` (`data:delete`) sobre un trabajo de A07: elimina sus artefactos (A05) y, en uno de protección, **revoca** el vínculo en la misma transacción [P-06].
+4. `restore_text` de A06 (`text:restore`): **admitido** para marcadores emitidos en un DOCX [P-01], con **todas** las condiciones de A06 §7 (marcador exacto en el material que el host entregó al modelo para esa respuesta, acceso del host a la conversación o trabajo concreto, contexto vigente, scope activo, evaluación de datos nuevos). Devuelve **texto**; no produce, no lee y no habilita ningún DOCX restaurado. No es una vía para eludir `docx:restore`/`docx:restored:read`: esos permisos controlan el **archivo**; `text:restore` controla la **restauración de texto** que A06 ya define para cualquier marcador del contexto.
+5. `delete_job_data` (`data:delete`) sobre un trabajo de A07: elimina sus artefactos según A05. En uno de protección **conserva el vínculo** [P-06]: mientras el contexto siga vigente, el host puede restaurar presentando su copia exacta. A07 **no ofrece revocación individual** por derivado; eliminar el contexto (`delete_context`) termina la restaurabilidad de **todos** sus derivados.
 6. `cancel_job` (`jobs:cancel`): A05 sin cambios.
+
+### 9.3 Lectura del DOCX restaurado y de su informe [P-03]
+
+Leer cualquiera de los dos exige, **en un único instante de autorización** con la hora de la base: `docx:restored:read`; trabajo `succeeded` con `data_state = available` y `result_expires_at > ahora` (vigencia del resultado, D-A05-01); el **contexto** del vínculo vigente (no vencido ni eliminado) y del tipo registrado; y el **scope activo** (`status = active`). Si falta cualquiera ⇒ `resource_not_found` (permiso presente, recurso no disponible), `job_data_expired`, `context_unavailable` o `scope_disabled`, sin entregar ningún byte. Las lecturas de A05 sobre scopes deshabilitados (A05 §9.3) **no** se extienden al restaurado.
+
+| Camino | Pasos | Instante de autorización |
+|---|---|---|
+| `open_docx_restored` (bytes) | (1) comprobación previa de permisos y existencia; (2) lectura del objeto al **spool** privado verificando SHA-256 y tamaño (A05 §3.7), sin entregar nada; (3) **transacción corta de autorización** (lee la hora de la base, comprueba todas las condiciones de arriba); (4) solo si pasa, se entrega el *stream* al llamador | **(3)**: después de verificar el objeto en el spool e **inmediatamente antes** de entregar el *stream*. Si el contexto vence o se elimina, o el scope se deshabilita, **mientras se lee el storage** (paso 2), la descarga **no empieza** y el spool se libera. Una descarga ya entregada en (4) se rige por ese instante: un `delete_context` posterior no la interrumpe (se sirve desde el spool verificado) |
+| `get_docx_restoration_result` (informe JSON) | lectura y verificación del artefacto en el spool; deserialización; transacción de autorización; devolución del objeto | la transacción de autorización, **después** de leer y verificar el informe e inmediatamente antes de devolverlo |
+
+El DOCX protegido y su informe (`docx:protected:read`) siguen la regla de lectura de resultados de A05 (vigencia del resultado; permitidos con el scope deshabilitado, A05 §9.3), con el mismo orden de pasos: verificación en el spool y luego la decisión.
 
 ## 10. Ejecución durable, bloqueos y publicación [D2]
 
@@ -412,7 +452,7 @@ Mensajes genéricos; nunca texto, valores, marcadores, tokens, posiciones ni nom
 | 11 | `protection_scope_usage` | `FOR UPDATE` (solo `NewContext`) |
 | 12 | `protection_contexts` | `FOR SHARE` (envío, publicación, descifrado) o `FOR NO KEY UPDATE` (correspondencias) |
 | 13 | `protection_mappings` | inserción / lectura |
-| **14** | **`docx_derivatives`** (nuevo) | inserción (publicación) / `FOR SHARE` (restauración) / `FOR UPDATE` (revocación, limpieza) |
+| **14** | **`docx_derivatives`** (nuevo) | inserción (publicación) / `FOR SHARE` (restauración) / `FOR UPDATE` (limpieza) |
 
 Secuencias (siempre ascendentes; hora de la base leída **después** del último bloqueo):
 
@@ -425,7 +465,7 @@ Secuencias (siempre ascendentes; hora de la base leída **después** del último
 | Descifrado (restauración) | 1 → 8 (propio, `FOR SHARE`, posesión) → 12 `FOR SHARE` → 13 (lectura) → 14 `FOR SHARE` |
 | Publicación (protección) | 1 → 2 → 3 → 4 → 6 (original) → 7 → 8 (análisis `FOR SHARE` y propio `FOR UPDATE`, por `job_id`) → 9 → 12 `FOR SHARE` → 13 (lectura de los tokens usados) → 14 (inserción) |
 | Publicación (restauración) | 1 → 2 → 3 → 4 → 6 (copia) → 8 (propio `FOR UPDATE`) → 9 → 12 `FOR SHARE` → 14 `FOR SHARE` |
-| `delete_job_data` (protección) | A05 (1 → 3 → 4 → 8 → 9) → 14 `FOR UPDATE` |
+| `delete_job_data` (protección) | A05 sin cambios (1 → 3 → 4 → 8 → 9); **no** toma 14: el vínculo no cambia [P-06] |
 | Limpieza de vínculos | 1 → 12 `FOR SHARE` → 14 `FOR UPDATE` |
 | `delete_context` (A06) | sin cambios (1 → 11 → 12 → 13); no toma 14, de modo que no hay ciclo |
 
@@ -450,9 +490,11 @@ En la transacción de publicación, tras adquirir **todos** los bloqueos de su s
 | F11 | Proceso aislado muere o excede un límite | `extraction_process_failed` (reintentable) o `limit_exceeded` |
 | F12 | Verificación fallida (residuo, oráculo, estructura) | `failed`, no reintentable; ningún artefacto publicado |
 | F13 | Clave ausente o registro alterado | `protection_key_unavailable` / `mapping_integrity_failed` / `binding_integrity_failed`; sin publicación |
-| F14 | Restauración: vínculo revocado o terminado, o contexto eliminado, entre el descifrado y la publicación | sin publicación (`derivative_binding_unavailable` / `context_unavailable`); el DOCX restaurado escrito queda `discarded` y se purga (A05 §4.3; plazo según P-A07-04) |
+| F14 | Restauración: contexto eliminado o vencido (o vínculo marcado `ended`) entre el descifrado y la publicación, también mientras la publicación espera bloqueos | sin publicación (`context_unavailable` / `derivative_binding_unavailable`); el DOCX restaurado escrito queda `discarded` y es elegible para purga inmediata (§11.1, P-04) |
 | F15 | Cancelación | A05 §5.4 |
 | F16 | Purga de metadatos del trabajo de protección (30 d) | el vínculo **sobrevive** (es independiente del trabajo) hasta que termina el contexto (§11) |
+| F17 | `delete_job_data` del trabajo de protección (antes o después de emitir el derivado al host) | artefactos del trabajo eliminados (A05); el vínculo sigue `active`; la restauración con la copia exacta del host **sigue funcionando** mientras el contexto esté vigente [P-06] |
+| F18 | `delete_context` del contexto de un derivado | todas las correspondencias desaparecen (A06 §8.4); toda restauración posterior de **cualquier** derivado de ese contexto ⇒ `context_unavailable` (envío o intento); la limpieza marca los vínculos `ended` |
 
 **Escrituras parciales.** Las únicas escrituras previas a la publicación son: correspondencias de A06 (confirmadas, sin referencia hasta publicar; reutilizables; viven y mueren con el contexto) y artefactos `reserved`/`written` (invisibles; `discarded` al terminar el intento; sello o borrado según A05 §4.4). El vínculo **solo** se escribe en la publicación.
 
@@ -461,8 +503,8 @@ En la transacción de publicación, tras adquirir **todos** los bloqueos de su s
 | Dato | Vive | Se elimina |
 |---|---|---|
 | DOCX protegido e informe | D-A05-01: 7 d desde la terminación | limpieza de A05; `delete_job_data` |
-| DOCX restaurado e informe | D-A05-01: 7 d desde la terminación; **además**, solo descargable con contexto vigente y scope activo [P-03] | limpieza de A05; `delete_job_data`; discarded según P-A07-04 |
-| Vínculo (`docx_derivatives`) | hasta el fin del contexto (vencimiento o eliminación) o la revocación | limpieza de vínculos: se borran ocurrencias y `binding_mac` y queda una lápida de metadatos 30 d (como A06 §8.5) |
+| DOCX restaurado e informe | D-A05-01: 7 d desde la terminación; **además**, solo legibles con contexto vigente y scope activo (§9.3) [P-03] | limpieza de A05; `delete_job_data`; un `docx_restored` descartado, de inmediato (§11.1) [P-04] |
+| Vínculo (`docx_derivatives`) | hasta el fin del contexto (vencimiento o eliminación); **no** lo afectan `delete_job_data` ni la purga del trabajo de protección [P-06] | limpieza de vínculos: se marca `ended`, se borran ocurrencias y `binding_mac` y queda una lápida de metadatos 30 d (como A06 §8.5) |
 | Correspondencias | A06 (contexto) | A06 |
 | Copia cargada para restaurar | A05 (7 d) | A05 |
 | Metadatos de trabajos e idempotencia | A05 (30 d) | A05 |
@@ -470,6 +512,13 @@ En la transacción de publicación, tras adquirir **todos** los bloqueos de su s
 - La vigencia del contexto **no se extiende** por proteger, restaurar ni reintentar (A06 §8.2) [D3].
 - Limpieza de vínculos: `engine.maintenance().run_docx_cleanup(batch_size=…)` y CLI `cawbase-content-engine cleanup-docx` (propuestos): explícita, por lotes, repetible, sin claves; marca `ended` los vínculos cuyo contexto ya no está vigente, borra sus ocurrencias y `binding_mac`, y purga lápidas vencidas. **No** cambia `run_cleanup` (A05) ni `run_protection_cleanup` (A06) [E-13].
 - Mientras la limpieza no corra, un vínculo de un contexto terminado **no sirve**: la restauración comprueba el contexto en cada decisión (T3) y las correspondencias ya no existen.
+- **Sin revocación individual** [P-06]: `delete_job_data` del trabajo de protección elimina sus artefactos y deja el vínculo `active`; la purga de los metadatos del trabajo tampoco lo toca. La única forma de terminar la restaurabilidad de un derivado es que termine su contexto (vencimiento o `delete_context`), lo que la termina para **todos** los derivados de ese contexto.
+
+### 11.1 Purga inmediata de un `docx_restored` descartado [P-04]
+
+- **Excepción acotada a D-A05-01** (aprobada por el usuario): **solo** el artefacto de rol `docx_restored` queda **elegible para purga inmediata** una vez **confirmado su descarte** (fila `discarded` confirmada por el fin del intento, una recuperación, una cancelación o la limpieza). Para él `delete_after = discarded_at` en lugar de `abandoned_at + 24 h`. Todos los demás roles y objetos (incluidos `docx_protected` y los informes) conservan las 24 h de D-A05-01.
+- La **eliminación física** sigue el protocolo de A05 §4.3–§4.4 sin atajos: escritura completada ⇒ `delete` + `stat = None`; resultado desconocido ⇒ `delete_and_seal` + `writers_released`; cargo incierto hasta la confirmación. **Depende de que se ejecute la limpieza** (`run_cleanup`): elegible no significa borrado; el motor no borra fuera de una limpieza.
+- **Qué runtime aplica la excepción.** La aplica la limpieza de un runtime **`0.6.0` o posterior**, que considera elegible todo `docx_restored` en estado `discarded` **independientemente** del `delete_after` grabado (también los descartados por un runtime anterior, que grabó 24 h). La limpieza de un runtime **anterior** (`0.4.0`/`0.5.0`) no conoce el rol y aplica la regla genérica: los purga cuando vence el `delete_after` grabado (24 h si lo descartó él; inmediato si lo descartó `0.6.0`, porque el valor grabado ya es `discarded_at`). En ningún caso un runtime anterior publica, sirve ni retiene más allá de la regla genérica un `docx_restored`.
 
 ## 12. Persistencia y migración `0005`
 
@@ -485,7 +534,7 @@ En la transacción de publicación, tras adquirir **todos** los bloqueos de su s
 | `occurrences` (JSON) | lista ordenada `{unit_id, start, end, part_name, node_path, char_start, char_end, token}`; **sin** valores, tipos ni fragmentos |
 | `occurrence_count` | tamaño de la lista |
 | `binding_mac`, `mac_key_version` | `HMAC-SHA256(clave de índice del contexto, "cce.docx.binding.v1" ‖ JSON canónico de {scope_id, derivative_id, context_id, context_kind, sha256, size_bytes, extractor, occurrences})`; versión con la que está envuelta esa clave (A06 §9.3) [E-14] |
-| `state` (`active` / `revoked` / `ended`), `created_at`, `revoked_at`, `ended_at`, `metadata_expires_at` | ciclo |
+| `state` (`active` / `ended`), `created_at`, `ended_at`, `metadata_expires_at` | ciclo (sin revocación individual, P-06); `ended` lo fija la limpieza cuando el contexto terminó |
 
 - `scope_id` en PK y FK (→ `scopes`); `CHECK` de estados; índices por `(state)`, `(scope_id, context_id)`, `(metadata_expires_at)`.
 - **Sin cambios** en tablas de A01–A06: las operaciones y los roles nuevos son valores de texto en `jobs.operation` y `job_artifacts.kind` (sin `CHECK` que los limite, verificado en `persistence/a05_schema.py`); la fijación de A07 (contexto, política, análisis fuente, `derivative_id`) vive en `execution_snapshot`; `result_artifact_id` apunta al informe y `source_map_artifact_id` al DOCX del trabajo de A07 (la operación determina el significado del rol) [E-15, H-04].
@@ -496,11 +545,11 @@ En la transacción de publicación, tras adquirir **todos** los bloqueos de su s
 - No reclaman trabajos de A07: su `requirements_key` incluye el transformador de A07, que ningún runtime anterior anuncia [H-02].
 - Sus lectores genéricos no sirven artefactos de A07 (§9.2 punto 1) [H-03].
 - Sus cancelaciones, deshabilitaciones del scope (fence), limpiezas y purgas operan sobre los trabajos y artefactos de A07 con las reglas genéricas de A05 (correctas para ellos).
-- **Degradaciones declaradas** durante un despliegue mixto: `delete_job_data` desde un runtime anterior no revoca el vínculo (la restauración seguirá posible mientras el contexto viva); la regla de purga de P-A07-04 no se aplica en su limpieza.
+- **Durante un despliegue mixto**: `delete_job_data` de un runtime anterior tiene el mismo efecto que el de `0.6.0` (elimina artefactos según A05 y no toca el vínculo), de modo que no hay degradación; la purga inmediata de `docx_restored` la aplica solo la limpieza de `0.6.0` (§11.1).
 
 ## 13. Idempotencia y límites
 
-- Idempotencia de A05 §8 (clave obligatoria; misma clave y huella ⇒ mismo trabajo; huella distinta ⇒ `idempotency_conflict`). Huellas: protección `{operation, analysis_job_id, policy canónica, context: {existing, context_id, kind} | {new, ttl_s}}`; restauración `{operation, derivative_id, file_id, context_id, kind}`. Una repetición con `NewContext` devuelve el **mismo** contexto (creado una sola vez con el trabajo).
+- Idempotencia de A05 §8 (clave obligatoria; misma clave y huella ⇒ mismo trabajo; huella distinta ⇒ `idempotency_conflict`). Huellas: protección `{operation, analysis_job_id, policy canónica, context: {existing, context_id, kind} | {new, ttl_s}}`; restauración `{operation, derivative_id, file_id, context_id, kind}`. Una repetición con `NewContext` devuelve el **mismo** contexto (creado una sola vez, en la transacción de admisión del trabajo; §8.1).
 - Límites (elecciones iniciales, no mediciones) [E-16]: los de A05 §12 para leer, aislar y escribir (`max_file_bytes` también acota el derivado y el restaurado: exceder ⇒ `limit_exceeded`); `max_docx_selections_per_document` = 10 000; los de A06 §15 por contexto (`max_mappings_per_context`, `max_context_bytes`, `max_fragment_chars`); `max_docx_occurrences_per_derivative` = 10 000; informes ≤ `max_result_bytes`.
 
 ## 14. Observabilidad
@@ -511,7 +560,8 @@ Registrador `cawbase_content_engine.docx`. Permitido: ids (`job_id`, `derivative
 
 - **Fixtures sintéticos** con manifiesto independiente (oráculo escrito por el generador, nunca por el extractor), valores evidentemente falsos (`example.test`), copiados a `tests/` (sin importar `experiments/a04`): equivalentes a D01–D10 de A04 aptos para la matriz de A05 (sin `customXml`), más casos propios de A07 (campos complejos que cruzan párrafos, controles con bloqueo, marcadores de posición, hipervínculos con la selección dentro y cruzando, CN-02/03/05).
 - **Al menos un fixture guardado por un editor habitual**: documento sintético generado y **guardado con LibreOffice Writer** en la imagen Linux de referencia (versión registrada). Si la matriz de A05 lo rechazara (p. ej. por una parte `customXml` o una estructura no admitida), se registra el motivo y se trae al usuario antes de cambiar el alcance [D5].
-- **Lectores y renders:** apertura con `python-docx`, `lxml` y la biblioteca estándar; **LibreOffice Writer headless** (Linux, Docker) para convertir original, protegido y restaurado a PDF y renderizar páginas comparables (Poppler `pdftoppm`), registrando versión, plataforma y fuentes. **Microsoft Word no está disponible**: la apertura sin reparación en Word queda **pendiente** y se declara (como en A04).
+- **Validación estructural del paquete** (V1–V6, §6.1): en cada trabajo y en las pruebas, con `zipfile`/`expat`/`ElementTree`, `lxml`, `python-docx` (apertura de biblioteca) y el extractor de A05. **No** acredita la apertura en un procesador de textos.
+- **Apertura sin reparación e inspección visual** del DOCX **protegido y restaurado** (y del original, para comparar): **LibreOffice Writer en Linux** (Docker). Apertura = carga y conversión a PDF en modo *headless* con éxito y **sin aviso de reparación** ni de formato dañado en la salida del proceso; renders comparables con Poppler (`pdftoppm`). Al **ejecutar** las pruebas se registran: versión de LibreOffice y Poppler, plataforma (SO, arquitectura, imagen), fuentes instaladas usadas en el render y comando. **Microsoft Word queda pendiente** como lector: no está disponible y su apertura no se afirma (como en A04).
 - **Ambientes:** macOS (sin renders DOCX si no hay LibreOffice: pendientes declarados) y Linux local (Docker, con aislamiento `linux_container_reference`, PostgreSQL y SQLite reales). **GitHub Actions** no se ejecuta salvo que lo haga el usuario; un *skip* no es aprobación.
 - **Fuera de A07:** varias secciones y demás formatos fuera de la matriz; PDF (A08); inferencia real (A09).
 
@@ -535,3 +585,6 @@ Registrador `cawbase_content_engine.docx`. Permitido: ids (`job_id`, `derivative
 | H-A07-08 | El extractor de A05 no extrae `w:sym`, `w:ptab` ni `w:softHyphen`; el contenido que representan queda fuera del texto de las unidades | lectura de `documents/docx.py` y fixture |
 | H-A07-09 | Un DOCX guardado por LibreOffice con contenido sintético pasa la matriz de A05 | fixture del editor |
 | H-A07-10 | D-33 intacta: importar el paquete no importa nada de A07 | `-m dist` y `scripts/measure_import.py` |
+| H-A07-11 | `xml.parsers.expat` (`CurrentByteIndex`) da tramos de bytes exactos del contenido de cada `w:t` en la parte descomprimida, también con referencias de carácter y espacios de nombres, sin `DOCTYPE` ni entidades | prueba pura del mapa de bytes contra fixtures construidos byte a byte |
+| H-A07-12 | La lógica de descarte de A05 permite fijar `delete_after = discarded_at` solo para el rol `docx_restored` sin cambiar el comportamiento de los demás roles; la limpieza de `0.4.0`/`0.5.0` purga según el `delete_after` grabado | lectura de `jobs/db.py`/`jobs/maintenance.py` y prueba con filas preparadas |
+| H-A07-13 | El resultado de A05 conserva en cada unidad la procedencia de A03 y el `execution_snapshot` fijado conserva `inference_provenance`, de modo que S10b es verificable sin datos nuevos | lectura de `jobs/execute.py` y `jobs/ops.py`; prueba |
