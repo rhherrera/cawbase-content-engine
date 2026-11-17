@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import secrets
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from ..errors import ValidationFailedError
@@ -30,17 +30,25 @@ class Scan:
     altered: bool  # a recognizable alteration (R1 or R2) outside any strict marker
 
 
+def outside_all(spans: Sequence[tuple[int, int, str]], matches: Iterable[tuple[int, int]]) -> bool:
+    """True if some match is NOT contained in a strict span. Linear: ``spans`` are disjoint and sorted, ``matches``
+    arrive in increasing start order (``finditer``), so a single forward pointer over ``spans`` suffices."""
+    i, n = 0, len(spans)
+    for start, end in matches:
+        while i < n and spans[i][1] <= start:  # spans that end before this match cannot contain it or any later one
+            i += 1
+        if not (i < n and spans[i][0] <= start and end <= spans[i][1]):
+            return True
+    return False
+
+
 def scan(text: str) -> Scan:
-    """Classifies the marker-like content of ``text``. Prose that merely mentions "CCE" matches nothing."""
+    """Classifies the marker-like content of ``text``. Prose that merely mentions "CCE" matches nothing.
+
+    Cost: three regular-expression passes plus one merge of each lax pass against the strict spans (linear in the
+    text and in the number of matches); a text full of strict markers does not make it quadratic."""
     spans = [(m.start(), m.end(), m.group(0)) for m in STRICT.finditer(text)]
-    altered = False
-    for rx in (_CORE, _PREFIX):
-        for m in rx.finditer(text):
-            if not any(a <= m.start() and m.end() <= b for a, b, _ in spans):
-                altered = True
-                break
-        if altered:
-            break
+    altered = any(outside_all(spans, ((m.start(), m.end()) for m in rx.finditer(text))) for rx in (_CORE, _PREFIX))
     return Scan(tuple(spans), altered)
 
 

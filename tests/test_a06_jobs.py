@@ -3,6 +3,8 @@ operation, permission and the re-check in the decision transaction. AC-A06-11, 1
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 import sqlalchemy as sa
 
@@ -30,9 +32,7 @@ SP = ScopePermission
 ALL = [*FULL, SP.TEXT_PROTECT, SP.TEXT_RESTORE, SP.CONTEXTS_READ, SP.CONTEXTS_DELETE]
 
 
-@pytest.fixture
-async def jh(migrated, tmp_path):
-    _, url = migrated
+async def compose(url, tmp_path):
     keys = Keys()
     eng = ContentEngine(
         EngineConfig(database_url=url),
@@ -44,6 +44,23 @@ async def jh(migrated, tmp_path):
     await eng.start()
     await build_profile(eng, "a")
     ops = eng.scoped(eng.trusted_scope_context("a", ALL, actor="host"))
+    return eng, ops, keys
+
+
+@pytest.fixture
+async def jh(migrated, tmp_path):
+    _, url = migrated
+    eng, ops, keys = await compose(url, tmp_path)
+    yield eng, ops, keys
+    await eng.aclose()
+
+
+@pytest.fixture
+async def pg_jh(pg_url, tmp_path):
+    from cawbase_content_engine.migrations import upgrade
+
+    await upgrade(EngineConfig(database_url=pg_url))
+    eng, ops, keys = await compose(pg_url, tmp_path)
     yield eng, ops, keys
     await eng.aclose()
 
@@ -252,3 +269,89 @@ async def test_job_source_takes_the_job_lock_before_the_context_lock(jh):  # AC-
     if eng.backend.value == "postgresql":  # row locks exist only there; SQLite serializes with its single writer
         assert names[:3] == ["scopes", "jobs", "protection_contexts"], names
     assert stmts  # the statement log is real on both backends
+
+
+# ---- one decision instant for the job result AND the context (PostgreSQL, coordinated) -------------------------
+async def expire_job_result_in(eng, job_id: str, seconds: int) -> None:
+    t = eng.tables.jobs
+    async with eng._engine.begin() as c:
+        await c.execute(
+            sa.update(t)
+            .where(t.c.job_id == job_id)
+            .values(result_expires_at=sa.text(f"clock_timestamp() + interval '{seconds} seconds'"))
+        )
+
+
+async def result_expires_while_waiting_for_the_context(eng, cid: str, job_id: str, operation):
+    """The result is valid when the job row is locked; the operation then waits for the CONTEXT lock (held by an
+    independent connection); the result's time passes during that wait; the context stays valid throughout.
+    Returns the outcome of the operation once the context lock is released."""
+    from .a06_helpers import wait_for_lock_wait
+
+    ctx_t, job_t = eng.tables.protection_contexts, eng.tables.jobs
+    async with eng._engine.connect() as holder:
+        await holder.begin()
+        await holder.execute(sa.select(ctx_t).where(ctx_t.c.context_id == cid).with_for_update())
+        task = asyncio.create_task(operation())
+        await wait_for_lock_wait(eng)  # it is waiting for the context row ...
+        async with eng._engine.connect() as probe:  # ... and it already holds the job row FOR SHARE (rank 8 first)
+            await probe.begin()
+            with pytest.raises(sa.exc.DBAPIError):
+                await probe.execute(sa.select(job_t).where(job_t.c.job_id == job_id).with_for_update(nowait=True))
+            await probe.rollback()
+        deadline = (
+            await holder.execute(sa.select(job_t.c.result_expires_at).where(job_t.c.job_id == job_id))
+        ).scalar_one()
+        for _ in range(600):  # poll the DATABASE clock until the result's time has passed (no fixed sleep)
+            if (await holder.execute(sa.text("SELECT clock_timestamp() > :d"), {"d": deadline})).scalar_one():
+                break
+            await asyncio.sleep(0.02)
+        else:
+            raise AssertionError("the result never expired")
+        still_valid = (
+            await holder.execute(
+                sa.select(ctx_t.c.expires_at > sa.func.clock_timestamp()).where(ctx_t.c.context_id == cid)
+            )
+        ).scalar_one()
+        assert still_valid  # the context's own deadline is NOT what is being tested
+        await holder.rollback()  # release the context lock: the operation resumes
+    try:
+        return await task
+    except Exception as exc:  # noqa: BLE001
+        return exc
+
+
+async def test_protect_fails_when_the_job_result_expires_while_waiting_for_the_context(pg_jh):  # AC-A06-13, 47, 49
+    eng, ops, _ = pg_jh
+    cid = (await ops.create_context("a", kind="conversation")).context_id
+    job_id = await done_job(eng, ops)
+    await expire_job_result_in(eng, job_id, 4)
+    out = await result_expires_while_waiting_for_the_context(eng, cid, job_id, lambda: protect(ops, cid, job_id))
+    assert isinstance(out, JobDataExpiredError), out
+    assert await rows(eng, "protection_mappings") == []  # nothing was written
+    assert (await ops.get_context("a", cid)).state == "active" and (await ops.get_context("a", cid)).mapping_count == 0
+
+
+async def test_restore_fails_when_the_job_result_expires_while_waiting_for_the_context(pg_jh):  # AC-A06-13, 47, 49
+    eng, ops, keys = pg_jh
+    cid = (await ops.create_context("a", kind="conversation")).context_id
+    first = await done_job(eng, ops)
+    res = await protect(ops, cid, first)
+    reply_job = await done_job(eng, ops, res.text, key="reply")
+    before = (len(await rows(eng, "protection_mappings")), keys.key_calls)
+    await expire_job_result_in(eng, reply_job, 4)
+
+    def restore():
+        return ops.restore_text(
+            "a",
+            context_id=cid,
+            kind="conversation",
+            text=res.text,
+            analysis=JobAnalysis(reply_job),
+            delivered_markers=res.markers,
+        )
+
+    out = await result_expires_while_waiting_for_the_context(eng, cid, reply_job, restore)
+    assert isinstance(out, JobDataExpiredError), out
+    assert (len(await rows(eng, "protection_mappings")), keys.key_calls) == before  # no original was decrypted
+    assert (await ops.get_context("a", cid)).state == "active"

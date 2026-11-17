@@ -174,17 +174,23 @@ async def _resolve_job(engine: ContentEngine, scope_id: str, job_id: str, text: 
     )
 
 
-async def lock_and_recheck_job(conn: AsyncConnection, t: Any, scope_id: str, binding: JobBinding, now_fn: Any) -> None:
-    """In the decision transaction: lock the job row FOR SHARE (rank 8), THEN read the time, then re-verify
-    state, expiry and that the published artifact is the one that was read (docs 4.2)."""
-    row = (
+async def lock_job(conn: AsyncConnection, t: Any, scope_id: str, binding: JobBinding) -> Any:
+    """Rank 8: lock the job row FOR SHARE and return it. The time is NOT read here: the caller reads it ONCE, after
+    it holds every lock of the transaction (job and context), and decides with that single instant (docs 11.1)."""
+    return (
         await conn.execute(
             sa.select(t.jobs)
             .where(t.jobs.c.scope_id == scope_id, t.jobs.c.job_id == binding.job_id)
             .with_for_update(read=True)
         )
     ).first()
-    now: datetime = await now_fn(conn)
+
+
+async def recheck_job(
+    conn: AsyncConnection, t: Any, scope_id: str, binding: JobBinding, row: Any, now: datetime
+) -> None:
+    """Re-verify, with the decision instant ``now``, the state, the expiry of the result and that the published
+    artifact is the one that was read before the transaction (docs 4.2)."""
     if row is None:
         raise ResourceNotFoundError()
     if row.state != "succeeded":

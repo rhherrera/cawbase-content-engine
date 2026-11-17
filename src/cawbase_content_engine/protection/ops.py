@@ -34,7 +34,7 @@ from ..operations.common import decode_cursor, encode_cursor, insert_ignore
 from . import crypto
 from .grouping import Group
 from .markers import REDACTED, marker_of, new_token, scan, token_of
-from .sources import JobBinding, lock_and_recheck_job
+from .sources import JobBinding, lock_job, recheck_job
 from .types import (
     ContextInfo,
     Kind,
@@ -304,10 +304,11 @@ async def _protect_once(
 
     async def fn(conn: AsyncConnection) -> tuple[str, list[dict[str, Any]], tuple[str, ...], dict[str, int], datetime]:
         await _active_scope(conn, engine, scope_id)  # rank 1
-        if job is not None:
-            await lock_and_recheck_job(conn, t, scope_id, job, now_of)  # rank 8, then the time
+        job_row = await lock_job(conn, t, scope_id, job) if job is not None else None  # rank 8
         row = await _context_row(conn, engine, scope_id, context_id, "no_key_update")  # rank 12
-        now = await now_of(conn)  # AFTER every lock wait
+        now = await now_of(conn)  # ONE instant, AFTER every lock wait, for the job result AND the context
+        if job is not None:
+            await recheck_job(conn, t, scope_id, job, job_row, now)
         _check_usable(row, kind, now)
 
         fragments: dict[str, None] = {}
@@ -489,10 +490,11 @@ async def restore_decide(
 
     async def fn(conn: AsyncConnection) -> dict[str, str]:
         await _active_scope(conn, engine, scope_id)  # rank 1
-        if job is not None:
-            await lock_and_recheck_job(conn, t, scope_id, job, now_of)  # rank 8
+        job_row = await lock_job(conn, t, scope_id, job) if job is not None else None  # rank 8
         row = await _context_row(conn, engine, scope_id, context_id, "share")  # rank 12
-        now = await now_of(conn)
+        now = await now_of(conn)  # ONE instant, AFTER every lock wait, for the job result AND the context
+        if job is not None:
+            await recheck_job(conn, t, scope_id, job, job_row, now)
         _check_usable(row, kind, now)
         if not tokens:
             return {}
