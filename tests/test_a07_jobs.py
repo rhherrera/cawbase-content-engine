@@ -266,3 +266,123 @@ async def test_restoration_rejects_another_file(world):  # AC-A07-43
                 idempotency_key="r-" + label,
             )
         assert getattr(ei.value, "code", "") in ("derivative_mismatch", "file_not_usable")
+
+
+async def test_permission_matrix_of_every_a07_operation(world):  # AC-A07-48, 53
+    data = DOC.build()
+    eng, o, fid, aid, acc, out = await protect_world(world, data)
+    res = await o.get_docx_protection_result("a", acc.job.job_id)
+    copy = await upload(o, await read_all(await o.open_docx_protected("a", acc.job.job_id)), "copy")
+    racc = await o.submit_docx_restoration(
+        "a", derivative_id=res.derivative_id, file_id=copy, context_id=acc.context_id, kind="job", idempotency_key="r"
+    )
+    await run(eng, racc.job.job_id)
+    calls = {
+        SP.DOCX_PROTECT: lambda x: x.submit_docx_protection(
+            "a", analysis_job_id=aid, policy=PSEUDO, context=NewContext(), idempotency_key="pp"
+        ),
+        SP.DOCX_RESTORE: lambda x: x.submit_docx_restoration(
+            "a",
+            derivative_id=res.derivative_id,
+            file_id=copy,
+            context_id=acc.context_id,
+            kind="job",
+            idempotency_key="rr",
+        ),
+        SP.DOCX_PROTECTED_READ: lambda x: x.open_docx_protected("a", acc.job.job_id),
+        SP.DOCX_RESTORED_READ: lambda x: x.open_docx_restored("a", racc.job.job_id),
+    }
+    for needed, call in calls.items():
+        others = [p_ for p_ in FULL if p_ != needed]
+        with pytest.raises(PermissionDeniedError):
+            await call(ops(eng, others))
+    with pytest.raises(PermissionDeniedError):  # protection also needs results:read
+        await calls[SP.DOCX_PROTECT](ops(eng, [p_ for p_ in FULL if p_ != SP.RESULTS_READ]))
+    for reader in ("get_docx_protection_result", "get_docx_derivative"):
+        with pytest.raises(PermissionDeniedError):
+            arg = res.derivative_id if reader == "get_docx_derivative" else acc.job.job_id
+            await getattr(ops(eng, [p_ for p_ in FULL if p_ != SP.DOCX_PROTECTED_READ]), reader)("a", arg)
+    with pytest.raises(PermissionDeniedError):
+        await ops(eng, [p_ for p_ in FULL if p_ != SP.DOCX_RESTORED_READ]).get_docx_restoration_result(
+            "a", racc.job.job_id
+        )
+    with pytest.raises(PermissionDeniedError):  # the copy is an A05 file: files:write
+        await upload(ops(eng, [p_ for p_ in FULL if p_ != SP.FILES_WRITE]), b"x", "nope")
+    admin_only = eng.scoped(eng.trusted_scope_context("a", [], actor="t"))
+    with pytest.raises(PermissionDeniedError):
+        await admin_only.open_docx_protected("a", acc.job.job_id)
+
+
+async def test_redaction_never_comes_back_and_restoration_needs_no_inference(world):  # AC-A07-49, 52
+    from cawbase_content_engine.protection.types import ProtectionPolicy
+
+    data = DOC.build()
+    policy = ProtectionPolicy("pseudonymize", {"password": "redact"})
+    picks = {
+        t: ([("personal_data", NAME, 0), ("password", MAIL, 0)] if t.startswith("Contactar") else [])
+        for t in unit_texts(data)
+    }
+    eng, o, fid, aid, acc, out = await protect_world(world, data, policy=policy, picks=picks)
+    assert out.state == "succeeded"
+    res = await o.get_docx_protection_result("a", acc.job.job_id)
+    assert res.counts["redacted"] == 1
+    derivative = await read_all(await o.open_docx_protected("a", acc.job.job_id))
+    no_inference = await world.engine(None)  # restoration does not call any adapter
+    o2 = ops(no_inference)
+    copy = await upload(o2, derivative, "copy")
+    racc = await o2.submit_docx_restoration(
+        "a", derivative_id=res.derivative_id, file_id=copy, context_id=acc.context_id, kind="job", idempotency_key="r"
+    )
+    assert (await run(no_inference, racc.job.job_id)).state == "succeeded"
+    restored = unit_texts(await read_all(await o2.open_docx_restored("a", racc.job.job_id)))
+    assert "[REDACTED]" in restored[0] and MAIL not in "".join(restored) and NAME in restored[0]
+
+
+async def test_source_identity_profile_original_and_collision(world):  # AC-A07-04, 05, 09, 11, 31, 39
+    from .test_a07_lifecycle import rewrite_artifact
+
+    data = DOC.build()
+    eng, o, fid, aid, acc, out = await protect_world(world, data)
+    res = await o.get_docx_protection_result("a", acc.job.job_id)
+    assert res.coverage["textual_subset_complete"] is True and res.coverage["document_coverage_complete"] is True
+    assert res.inspection_scope["targets"]["K7"] >= 1 and "image_pixels" in res.inspection_scope["not_covered"]
+    cases = {
+        "identity": lambda m: {**m, "document": {**m["document"], "sha256": "0" * 64}},
+        "profile": lambda m: {**m, "profile": {**m["profile"], "version_number": 99}},
+        "range": lambda m: _shift_finding(m),
+    }
+    for label, fn in cases.items():
+        _f, a2 = await analyse(eng, data, key=label)
+        await rewrite_artifact(eng, a2, "result", fn)
+        a = await o.submit_docx_protection(
+            "a", analysis_job_id=a2, policy=PSEUDO, context=NewContext(), idempotency_key="c-" + label
+        )
+        await run(eng, a.job.job_id)
+        assert (await o.get_job("a", a.job.job_id)).failure_code == "analysis_source_invalid", label
+    # an original that is no longer usable
+    _f, a3 = await analyse(eng, data, key="gone")
+    await o.delete_file("a", _f)
+    from cawbase_content_engine.errors import FileNotUsableError
+
+    with pytest.raises(FileNotUsableError):
+        await o.submit_docx_protection(
+            "a", analysis_job_id=a3, policy=PSEUDO, context=NewContext(), idempotency_key="g"
+        )
+    # marker syntax in the document: refused before any mapping
+    marked = Doc(body=[p(r(f"Ya protegido [[CCE1:0123456789ABCDEF]] y {NAME}"))]).build()
+    base = await setup_scope(world)
+    eng2 = await world.engine(await mock_for(base, {t: [("personal_data", NAME, 0)] for t in unit_texts(marked)}))
+    _f2, a4 = await analyse(eng2, marked, key="marked")
+    a = await ops(eng2).submit_docx_protection(
+        "a", analysis_job_id=a4, policy=PSEUDO, context=NewContext(), idempotency_key="mk"
+    )
+    await run(eng2, a.job.job_id)
+    assert (await o.get_job("a", a.job.job_id)).failure_code == "marker_collision"
+
+
+def _shift_finding(m):
+    for u in m["units"]:
+        if u["status"] == "analyzed" and u["analysis"]["detection"]["findings"]:
+            u["analysis"]["detection"]["findings"][0]["end"] = u["text_length"] + 5
+            break
+    return m

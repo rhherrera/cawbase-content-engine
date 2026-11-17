@@ -635,3 +635,17 @@ def test_markers_in_input_are_found_by_the_a06_parser():  # AC-A07-11 (pure part
 
 
 _ = (re, t)
+
+
+def test_verifier_uses_runtime_dependencies_only_and_python_docx_opens_outputs():  # AC-A07-27
+    import inspect
+    import io
+
+    src = inspect.getsource(docx_verify)
+    assert "import docx" not in src and "lxml" not in src.replace("``lxml``", "").replace("(``lxml``)", "")
+    import docx as python_docx  # test-only check (development dependency)
+
+    data = commented_doc().build()
+    der = derivative(protect(data, [("anotado", NAME, 0, M1)]))
+    opened = python_docx.Document(io.BytesIO(der))
+    assert any(M1 in par.text for par in opened.paragraphs)
