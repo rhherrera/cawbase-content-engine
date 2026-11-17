@@ -13,7 +13,9 @@ Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persi
 | `sqlite` | `aiosqlite` | SQLite |
 | `migrations` | `alembic` | quien ejecute migraciones |
 | `http` | `fastapi`, `uvicorn`, `migrations` | adaptador HTTP y servicio independiente |
-| `inference`, `documents` | **reservados**, no se crean en A01 | A03+ |
+| `documents` | `lxml`, `pikepdf` (A05) | extracción DOCX/PDF |
+| `protection` | `cryptography` (A06) | proteger y restaurar texto (cifrado de correspondencias); no se importa con el paquete |
+| `inference` | **reservado**, no se creó | A09 |
 
 Instalación desde artefactos locales (no hay publicación; `uv build` produce `dist/*.whl` y `dist/*.tar.gz`):
 
@@ -311,12 +313,12 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 - **Límites y cuotas iniciales** ([contrato §12](jobs-files-and-lifecycle.md#12-límites-operativos-e-a05-17)): 25 MiB por archivo, 100 páginas PDF, 200 MiB descomprimidos, 100 trabajos activos y 2 GiB por scope, lease 60 s, plazo total 24 h, 5 intentos. Son elecciones, no mediciones.
 - **Despliegue**: migrar (`0003`) → actualizar todos los runtimes → emitir claves con permisos nuevos → habilitar workers y limpieza. `readiness()`/`/readyz` no cambian.
 
-## 15. A06 — Operación de claves, contextos y limpieza (especificado, en revisión; no disponible)
+## 15. A06 — Operación de claves, contextos y limpieza (implementado en `0.5.0`)
 
-> **ESPECIFICADO, EN REVISIÓN (A06): no implementado.** No hay código, esquema, dependencias ni versión de A06; el motor sigue en `0.4.0` / migración `0003`. Contrato completo: [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md) (1A–4A y P-A06-01 a 06 aprobadas por el usuario; contrato en revisión 2, pendiente de su aprobación explícita; `E-A06-nn` elecciones técnicas propuestas). Todo lo siguiente es **propuesto / no disponible**.
+> **IMPLEMENTADO en `0.5.0` (A06; migración `0004`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 2, commit `17b545d`): [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md); evidencia y limitaciones: [informe de A06](a06-implementation-report.md).
 
-- **Extra propuesto** `protection` (`cryptography`); **no** forma parte de la instalación base ni cambia la importación base (D-33).
+- **Extra** `protection` (`cryptography`); **no** forma parte de la instalación base ni cambia la importación base (D-33).
 - **Claves:** las suministra el host/operador (`KeyProvider`/`KeyRing`), 32 bytes aleatorios, versionadas; la activa cifra lo nuevo y las anteriores deben conservarse hasta que venzan los contextos (y backups) que las usen; `maintenance().protection_key_usage()` informa cuándo retirarlas ([§9](text-protection.md#9-criptografía-y-claves-3a)).
-- **Limpieza:** `maintenance().run_protection_cleanup()` y CLI propuesta `cleanup-protection`; explícita, repetible, por lotes, sin claves ni contenido; cadencia recomendada ≤ 1 h (valor por medir).
+- **Limpieza:** `maintenance().run_protection_cleanup()` y CLI `cleanup-protection`; explícita, repetible, por lotes, sin claves ni contenido; cadencia recomendada ≤ 1 h (valor por medir).
 - **Despliegue:** migrar (`0004`) → actualizar todos los runtimes → configurar `ProtectionSetup` y claves → emitir claves con los permisos nuevos. Sin `ProtectionSetup`, A06 ⇒ `protection_not_configured`.
 - **Retención:** contexto 7 días fijos por defecto (configurable, máximo 30 d por defecto); metadatos 30 días tras el fin de vida; **backups fuera del alcance del motor**.

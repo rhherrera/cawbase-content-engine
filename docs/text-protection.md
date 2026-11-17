@@ -1,10 +1,10 @@
 # Protección y restauración de texto — contrato de A06
 
-> **Estado: ESPECIFICADO, EN REVISIÓN (revisión 2 del contrato, tras la revisión del usuario de `a74e148`). No hay código, esquema, dependencias, pruebas ni versión de A06.** El motor sigue en `0.4.0` / migración `0003` (A05, aceptada y mergeada en `main`, merge `f21baaf`). Todo lo que aquí figura como «propuesto» pasa a «implementado» solo cuando exista código y pruebas, y solo tras la **aprobación explícita del usuario de este contrato revisado** (la aprobación de las propuestas P-A06 **no** la sustituye). Alcance y matriz de aceptación: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md). Decisiones: [A06-decisions](decisions/A06-decisions.md) (**1A–4A y las seis propuestas P-A06-01 a 06 aprobadas por el usuario**, estas últimas con las precisiones de la revisión 2; `E-A06-nn` elecciones técnicas propuestas; `H-A06-nn` hipótesis por verificar en código).
+> **Estado: IMPLEMENTADO en `0.5.0` (migración `0004`, `schema_level` 4); la aceptación queda pendiente de la revisión del código y la evidencia por el usuario.** Contrato **aprobado explícitamente por el usuario en su revisión 2 (commit `17b545d`)** e implementado sobre él; las dos filas de la matriz que el usuario precisó al aprobar (AC-A06-59 y AC-A06-62(a)) se alinearon en `7fa33e3`. Evidencia (macOS, Linux local en Docker; **no** GitHub Actions) y limitaciones: [informe de A06](a06-implementation-report.md). Alcance y matriz de aceptación: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md). Decisiones: [A06-decisions](decisions/A06-decisions.md) (**1A–4A y P-A06-01 a 06 aprobadas por el usuario**; `E-A06-nn` elecciones técnicas; `H-A06-nn` hipótesis, con su resultado en el informe). Las notas sobre lo que el código hace de más o de forma concreta están en [§18](#18-notas-de-implementación).
 
 Relacionado: [API pública](public-api.md) · [seguridad y aislamiento](security-and-isolation.md) · [persistencia y migraciones](persistence-and-migrations.md) · [instalación y operación](installation-and-operations.md) · [inferencia y análisis (A03)](inference-and-analysis.md) · [trabajos, archivos y ciclo de vida (A05)](jobs-files-and-lifecycle.md) · [procesamiento documental](document-processing.md).
 
-**Convención de este documento.** Cada regla indica su origen entre corchetes: **[1A]**–**[4A]** decisión aprobada por el usuario; **[E-nn]** elección técnica propuesta (`E-A06-nn`); **[P-nn]** propuesta **aprobada por el usuario** en la revisión de `a74e148` (con las precisiones que este documento recoge); **[H-nn]** hipótesis que el código debe confirmar o refutar. Los bloques de código son **ilustrativos** (propuestos / no disponibles).
+**Convención de este documento.** Cada regla indica su origen entre corchetes: **[1A]**–**[4A]** decisión aprobada por el usuario; **[E-nn]** elección técnica (`E-A06-nn`); **[P-nn]** propuesta **aprobada por el usuario** en la revisión de `a74e148` (con las precisiones que este documento recoge); **[H-nn]** hipótesis que el código debe confirmar o refutar. Los bloques de código reproducen la API implementada (firmas abreviadas).
 
 ## 0. Resumen
 
@@ -57,12 +57,12 @@ Principios (heredados y propios):
 | **Material entregado** | Los textos (con marcadores) que el host efectivamente envió al modelo para generar una respuesta |
 | **Versión de clave** | Etiqueta (`key_version`) de una clave que el host suministra; la activa cifra lo nuevo |
 
-## 3. API Python (propuesta; no disponible)
+## 3. API Python (implementada en 0.5.0)
 
 Nuevos métodos de `ScopedOperations` (mismo patrón que A05: `scope_id` explícito + `ScopeContext`; ver §12 para permisos). Todos son asíncronos, **rechazan `HostTransaction`** (`transaction_incompatible`) [E-23] y no existen en HTTP ni en la cola durable [1A].
 
 ```python
-# Ejemplo ilustrativo — propuesto, no disponible
+# Firmas implementadas (abreviadas)
 class ScopedOperations:
     async def create_context(self, scope_id: str, *, kind: Literal["conversation", "job"],
                              ttl_s: int | None = None) -> ContextInfo: ...
@@ -381,7 +381,7 @@ Un contexto está **vencido** si `hora_de_la_base ≥ expires_at` (en el instant
 
 ### 8.5 Limpieza física y retención [E-15]
 
-`engine.maintenance().run_protection_cleanup(batch_size=...)` (y CLI propuesta `cawbase-content-engine cleanup-protection`): explícita, repetible, por lotes de transacciones cortas, **nunca** automática al importar ni al iniciar; **no requiere claves**. Por contexto vencido: elimina sus correspondencias y la clave de índice envuelta, marca `state = expired`, fija `metadata_expires_at`; después purga las filas de contextos eliminados/vencidos cuyo `metadata_expires_at` pasó (por defecto **30 días** tras el fin de vida, `ProtectionSetup.metadata_retention_s`). El resumen devuelto solo tiene conteos. Sin cleanup, los textos cifrados de contextos vencidos **permanecen en la base** (ilegibles para el motor, no para quien tenga base **y** clave) hasta la primera pasada: se recomienda ejecutarla con una cadencia ≤ 1 hora [H-A06-02: el valor se fijará al medir].
+`engine.maintenance().run_protection_cleanup(batch_size=...)` (y CLI `cawbase-content-engine cleanup-protection`): explícita, repetible, por lotes de transacciones cortas, **nunca** automática al importar ni al iniciar; **no requiere claves**. Por contexto vencido: elimina sus correspondencias y la clave de índice envuelta, marca `state = expired`, fija `metadata_expires_at`; después purga las filas de contextos eliminados/vencidos cuyo `metadata_expires_at` pasó (por defecto **30 días** tras el fin de vida, `ProtectionSetup.metadata_retention_s`). El resumen devuelto solo tiene conteos. Sin cleanup, los textos cifrados de contextos vencidos **permanecen en la base** (ilegibles para el motor, no para quien tenga base **y** clave) hasta la primera pasada: se recomienda ejecutarla con una cadencia ≤ 1 hora [H-A06-02: el valor se fijará al medir].
 
 No toca A05: `run_cleanup`, su resumen y sus tablas no cambian.
 
@@ -401,7 +401,7 @@ No toca A05: `run_cleanup`, su resumen y sus tablas no cambian.
 ### 9.1 Suministro de claves
 
 ```python
-# Ejemplo ilustrativo — propuesto, no disponible
+# Firmas implementadas (abreviadas)
 class KeyProvider(Protocol):
     def active_version(self) -> str: ...
     def key(self, version: str) -> bytes | None: ...        # 32 bytes; None si la versión no está disponible
@@ -470,7 +470,7 @@ Cualquier fallo **revierte la transacción** y la operación devuelve el error *
 
 ### 9.4 Disponibilidad de versiones y fallo cerrado [3A]
 
-- La versión **activa** cifra lo nuevo. Las anteriores siguen **disponibles para leer hasta el vencimiento de los contextos que las usan**: el operador debe conservarlas en el `KeyProvider` hasta entonces. `engine.maintenance().protection_key_usage()` (propuesto) informa, por versión, el número de contextos vigentes que la referencian y su `expires_at` máximo (sin contenido), para decidir cuándo retirarla.
+- La versión **activa** cifra lo nuevo. Las anteriores siguen **disponibles para leer hasta el vencimiento de los contextos que las usan**: el operador debe conservarlas en el `KeyProvider` hasta entonces. `engine.maintenance().protection_key_usage()` informa, por versión, el número de contextos vigentes que la referencian y su `expires_at` máximo (sin contenido), para decidir cuándo retirarla.
 - **Clave ausente** (`key(version) is None`) al descifrar o desenvolver ⇒ `protection_key_unavailable`; **fallo de autenticación** (registro, índice o AAD alterados, clave equivocada bajo la misma etiqueta) o **original descifrado distinto del fragmento** al reutilizar un marcador (§9.3.1) ⇒ `mapping_integrity_failed`. En ambos casos la operación completa falla **sin texto parcial**. Esto incluye a `protect_text`: una **versión anterior ausente al reutilizar una correspondencia** (o al desenvolver la clave de índice) falla con `protection_key_unavailable`; el motor **no** crea un marcador alternativo ni devuelve el marcador existente sin verificar.
 - Crear un contexto o proteger **sin** versión activa utilizable ⇒ `protection_key_unavailable`.
 - Con `start()` y un `ProtectionSetup`, se verifica que la biblioteca criptográfica cargue y pase una prueba de respuesta conocida (`configuration_invalid` si no) [H-A06-01]; sin `ProtectionSetup`, `start()` no cambia.
@@ -479,7 +479,7 @@ Cualquier fallo **revierte la transacción** y la operación devuelve el error *
 
 1. Añadir `v2` al `KeyProvider` conservando `v1`; 2. marcar `v2` como activa; 3. los contextos nuevos usan `v2`; los existentes siguen funcionando; 4. cuando `protection_key_usage()` muestre cero contextos vigentes con `v1` **y** hayan caducado los backups que la requieran, retirar `v1`. Quitar `v1` antes deja los contextos que la usan en fallo cerrado (`protection_key_unavailable`), por diseño.
 
-## 10. Persistencia y migración `0004` (propuesta)
+## 10. Persistencia y migración `0004`
 
 Namespace fijo, `scope_id` en toda PK y FK; ninguna garantía depende solo de FK/`CHECK`. Definición compartida con la migración y congelada en su revisión (patrón de `a05_schema.py`) [H-A06-07].
 
@@ -538,7 +538,7 @@ En la transacción de decisión, `scopes.status ≠ active` ⇒ `scope_disabled`
 
 ### 12.1 Permisos nuevos [E-22, P-A06-05]
 
-El catálogo pasaría de **17** a **21** (4 nuevos de scope). Sin jerarquías ni comodines; `AdminContext`/`admin:*` **no** acceden a contextos, correspondencias ni textos protegidos.
+El catálogo pasa de **17** a **21** (4 nuevos de scope). Sin jerarquías ni comodines; `AdminContext`/`admin:*` **no** acceden a contextos, correspondencias ni textos protegidos.
 
 | Permiso | Habilita |
 |---|---|
@@ -549,7 +549,7 @@ El catálogo pasaría de **17** a **21** (4 nuevos de scope). Sin jerarquías ni
 
 Combinaciones necesarias: `protect_text` con `InlineAnalysis` ⇒ + `analysis:execute`; con `JobAnalysis` ⇒ + `results:read`. `restore_text` ⇒ `text:restore` + (`analysis:execute` | `results:read`). Se reutilizan `ScopeContext`, grants, API keys y delegación D-27 (subconjunto del emisor); los grants existentes no cambian. Sin ruta HTTP, no hay clave HTTP asociada.
 
-### 12.2 Errores nuevos (propuestos)
+### 12.2 Errores nuevos
 
 | Código | HTTP | Reintentable | Cuándo |
 |---|---|---|---|
@@ -628,3 +628,18 @@ Se reutilizan `permission_denied`, `resource_not_accessible`, `resource_not_foun
 | H-A06-10 | Se puede añadir `run_protection_cleanup` y `protection_key_usage` a `engine.maintenance()` sin cambiar el contrato ni el resumen de `run_cleanup` de A05 | revisar `jobs/maintenance.py` y `engine.maintenance()`; regresión de A05 |
 | H-A06-11 | Las expresiones S, R1 y R2 de §6.2 con `re.ASCII` se comportan como describe la tabla (incluidos prosa ordinaria, signo Kelvin y tramos de S que contienen R1/R2) y se ejecutan en tiempo lineal sobre 8192 puntos de código (sin retroceso catastrófico) | tabla de casos, `find_markers` y un caso de entrada adversarial de longitud máxima |
 | H-A06-12 | La biblioteca permite comparar en tiempo constante (`hmac.compare_digest`) y descifrar con AAD que incluye el `equality_index`; la composición de §9.2–9.3.1 no requiere cambiar el esquema | prueba con filas manipuladas (índice, token, versión, ciphertext) |
+
+## 18. Notas de implementación
+
+Detalles concretos del código de `0.5.0` que el contrato dejaba abiertos o que conviene saber; **ninguno cambia una regla aprobada**.
+
+1. **Código HTTP de los errores:** todos los errores de A06 llevan `http_status = None` (la tabla de §12.2 los lista sin HTTP); `context_unavailable` también (§8.3 mencionaba 410 al describirlo: A06 no tiene rutas HTTP).
+2. **`request_id`:** si se entrega, debe ser un UUID (mismo criterio que el resto del motor); se registra en el log del motor y se pasa al análisis inline.
+3. **Cuota de contextos:** `max_active_contexts_per_scope` se aplica sobre los contextos `active` **no vencidos** (consulta bajo el bloqueo de `protection_scope_usage`); `protection_scope_usage.active_contexts` es el contador del bloqueo de rango 11 y cuenta los activos aún no limpiados.
+4. **Restauración sin marcadores:** `restore_text` abre siempre la transacción de decisión (valida scope, trabajo y contexto aunque no haya nada que descifrar); solo no la abre cuando `new_sensitive_data` o `detection_inconclusive` rechazan antes.
+5. **Red de seguridad al ensamblar:** tras construir el texto protegido el motor lo vuelve a analizar con el mismo parser (§6.2): si contuviera algo con forma de marcador distinto de los emitidos, falla con `marker_collision` **antes del `COMMIT`**. El ensamblado de `restore_text` verifica además que los tramos sean disjuntos.
+6. **Limpieza:** fija `metadata_expires_at = expires_at + metadata_retention_s` para los vencidos y `deleted_at + metadata_retention_s` para los eliminados; una pasada procesa hasta `batch_size` contextos por fase (vencer y purgar); `delete_context` sobre un contexto ya limpiado (`expired`) lo marca `deleted`.
+7. **`list_contexts`:** orden ascendente por `context_id`; el filtro `state` usa el estado **efectivo** (hora de la base).
+8. **Registros de log del motor** (`cawbase_content_engine.protection`): `protect_completed|failed`, `restore_completed|failed`, `protection_cleanup`, con `scope_id`, `context_id`, `kind`, conteos, duración, `request_id` y `error_code`. El registro de terceros (aiosqlite, eco de SQLAlchemy) a nivel DEBUG imprime parámetros enlazados —incluidos los tokens—: activarlo es decisión del host.
+9. **`ProtectedText.outcome`:** `no_findings` si no hay grupos (también con detección completa y política que no cambie nada).
+

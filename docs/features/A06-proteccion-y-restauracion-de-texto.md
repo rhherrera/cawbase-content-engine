@@ -1,18 +1,18 @@
 # A06 — Protección y restauración de texto
 
-> **Estado: ESPECIFICADA, EN REVISIÓN (revisión 2 tras la revisión del usuario de `a74e148`). Solo documentación: no hay código, esquema, dependencias, pruebas ni versión de A06.** El usuario aprobó las propuestas P-A06-01 a 06 (con las precisiones de [A06-decisions §4](../decisions/A06-decisions.md#4-propuestas-aprobadas-por-el-usuario-p-a06-nn)), pero eso **no autoriza la Fase 2**: la implementación empieza únicamente tras su **aprobación explícita de este contrato revisado**. La aceptación final de A06 queda pendiente de su revisión.
+> **Estado: IMPLEMENTADA en `0.5.0` (migración `0004`); la aceptación final queda pendiente de la revisión del código y de la evidencia por el usuario.** El contrato (revisión 2, commit `17b545d`) fue **aprobado explícitamente por el usuario**, que al aprobarlo precisó dos filas de la matriz (AC-A06-59 y AC-A06-62(a)), alineadas en `7fa33e3`. La matriz AC-A06 de abajo es la **prevista**; el resultado real de cada criterio (verificado, parcial, sin evidencia), los comandos, versiones y limitaciones están en el [informe de implementación](../a06-implementation-report.md). No está aceptada, no se ejecutó en GitHub Actions.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A06, §§4, 8–10 y 12; copia local ignorada por Git), más las decisiones posteriores ([A01](../decisions/A01-decisions.md), [A02](../decisions/A02-decisions.md), [A03](../decisions/A03-decisions.md), [A04](../decisions/A04-decisions.md), [A05](../decisions/A05-decisions.md), [A06](../decisions/A06-decisions.md)), que prevalecen.
 - Repositorio: `cawbase-content-engine` · rama: `feature/a06-text-protection-restoration`, creada desde `main` en `f21baaf` (merge del PR #4 de A05; `main` = `origin/main` verificado con `git fetch`).
 - Dependencias: A01–A05 cerradas y aceptadas; A05 mergeada (`0.4.0`, migración `0003`). No requiere modelo real (usa el mock de A03).
 - Contrato permanente: [protección y restauración de texto](../text-protection.md). Este documento define alcance y aceptación y **enlaza**; no copia el contrato.
-- Versión propuesta: `0.5.0` · migración propuesta: `0004_text_protection` · `schema_level` 4 · `min_runtime_level` 1 · extra nuevo: `protection` (`cryptography`) · permisos: 17 → 21.
+- Versión: `0.5.0` · migración: `0004_text_protection` · `schema_level` 4 · `min_runtime_level` 1 · extra nuevo: `protection` (`cryptography`) · permisos: 17 → 21.
 
 ## 1. Objetivo, alcance y exclusiones
 
 **Objetivo.** Producir texto protegido y restaurarlo cuando corresponda, **por API Python**, con contextos persistentes, correspondencias cifradas y política estricta.
 
-**Incluye:** contextos `conversation`/`job` con vigencia fija ([contrato §8](../text-protection.md#8-contextos)); `protect_text` con redacción irreversible y seudonimización reversible, unión determinista de hallazgos y precedencia de redacción ([§5](../text-protection.md#5-protección-protect_text)); marcadores y su parser ([§6](../text-protection.md#6-marcadores)); `restore_text` con autorización por respuesta, evaluación de datos nuevos y una sola pasada ([§7](../text-protection.md#7-restauración-restore_text)); fuentes de análisis vinculadas al texto exacto, también desde A05 ([§4](../text-protection.md#4-fuentes-de-análisis-y-vinculación-al-texto-exacto-4a)); cifrado autenticado, claves versionadas y rotación ([§9](../text-protection.md#9-criptografía-y-claves-3a)); persistencia y migración `0004` ([§10](../text-protection.md#10-persistencia-y-migración-0004-propuesta)); transacciones, bloqueos y concurrencia ([§11](../text-protection.md#11-transacciones-bloqueos-tiempo-y-concurrencia)); permisos y errores ([§12](../text-protection.md#12-permisos-y-errores)); limpieza y retención ([§8.5–8.6](../text-protection.md#85-limpieza-física-y-retención-e-15)).
+**Incluye:** contextos `conversation`/`job` con vigencia fija ([contrato §8](../text-protection.md#8-contextos)); `protect_text` con redacción irreversible y seudonimización reversible, unión determinista de hallazgos y precedencia de redacción ([§5](../text-protection.md#5-protección-protect_text)); marcadores y su parser ([§6](../text-protection.md#6-marcadores)); `restore_text` con autorización por respuesta, evaluación de datos nuevos y una sola pasada ([§7](../text-protection.md#7-restauración-restore_text)); fuentes de análisis vinculadas al texto exacto, también desde A05 ([§4](../text-protection.md#4-fuentes-de-análisis-y-vinculación-al-texto-exacto-4a)); cifrado autenticado, claves versionadas y rotación ([§9](../text-protection.md#9-criptografía-y-claves-3a)); persistencia y migración `0004` ([§10](../text-protection.md#10-persistencia-y-migración-0004)); transacciones, bloqueos y concurrencia ([§11](../text-protection.md#11-transacciones-bloqueos-tiempo-y-concurrencia)); permisos y errores ([§12](../text-protection.md#12-permisos-y-errores)); limpieza y retención ([§8.5–8.6](../text-protection.md#85-limpieza-física-y-retención-e-15)).
 
 **Excluye:** DOCX/PDF y aplicar sustituciones a archivos (A07/A08); inferencia real, calidad de detección y segmentación por modelo (A09); integración con CAWbase, UI, streaming y políticas de salida (bloque B); rutas HTTP y operaciones de protección/restauración en la cola durable; KMS obligatorio, recifrado automático y criptografía propia; ACL por contexto; borrado en copias de seguridad; promesas de anonimización o cumplimiento.
 
@@ -25,14 +25,14 @@ Aprobadas: **D-A06-01 (1A), D-A06-02 (2A), D-A06-03 (3A), D-A06-04 (4A)**, texto
 | Tema | Contrato |
 |---|---|
 | Fronteras, confianza y principios | [§1](../text-protection.md#1-fronteras-confianza-y-principios) |
-| API Python y tipos | [§3](../text-protection.md#3-api-python-propuesta-no-disponible) |
+| API Python y tipos | [§3](../text-protection.md#3-api-python-implementada-en-050) |
 | Fuentes de análisis y vinculación | [§4](../text-protection.md#4-fuentes-de-análisis-y-vinculación-al-texto-exacto-4a) |
 | Protección: unión, acción, redacción, vacíos | [§5](../text-protection.md#5-protección-protect_text) |
 | Marcadores, candidatos, literales | [§6](../text-protection.md#6-marcadores) |
 | Restauración, autorización, datos nuevos | [§7](../text-protection.md#7-restauración-restore_text) |
 | Contextos: creación, vigencia, eliminación, limpieza, backups | [§8](../text-protection.md#8-contextos) |
 | Cifrado, claves, índice de igualdad, rotación | [§9](../text-protection.md#9-criptografía-y-claves-3a) |
-| Persistencia, `0004`, compatibilidad, despliegue | [§10](../text-protection.md#10-persistencia-y-migración-0004-propuesta) |
+| Persistencia, `0004`, compatibilidad, despliegue | [§10](../text-protection.md#10-persistencia-y-migración-0004) |
 | Tiempo, bloqueos, concurrencia, fallos | [§11](../text-protection.md#11-transacciones-bloqueos-tiempo-y-concurrencia) |
 | Permisos y errores | [§12](../text-protection.md#12-permisos-y-errores) |
 | Configuración y dependencias | [§13](../text-protection.md#13-configuración-y-dependencias) |
@@ -40,7 +40,7 @@ Aprobadas: **D-A06-01 (1A), D-A06-02 (2A), D-A06-03 (3A), D-A06-04 (4A)**, texto
 | Límites | [§15](../text-protection.md#15-límites-iniciales-elecciones-técnicas-no-mediciones-e-27) |
 | Fuera de alcance y limitaciones | [§16](../text-protection.md#16-fuera-de-alcance-y-limitaciones-declaradas) |
 
-## 4. Reglas de implementación (Fase 2, tras la aprobación)
+## 4. Reglas de implementación (Fase 2; seguidas)
 
 1. Primer paso: incorporar las correcciones acordadas y **un commit local separado** para el contrato aprobado; después implementar sobre ese contrato.
 2. El código vive en `src/cawbase_content_engine/protection/` con importación **perezosa**; `cryptography` solo en el extra `protection` y fuera de la importación base (H-A06-06). Reutiliza las capas de alcance, autorización, persistencia, errores, hora de la base y migraciones existentes; no copia lógica de A03 ni de A05.
@@ -53,7 +53,7 @@ Aprobadas: **D-A06-01 (1A), D-A06-02 (2A), D-A06-03 (3A), D-A06-04 (4A)**, texto
 
 ## 5. Matriz de aceptación AC-A06 (para la implementación posterior)
 
-Cada fila: **precondición** → **resultado esperado** → **evidencia prevista** (prueba y ambiente). «PG+SQ» = PostgreSQL y SQLite reales. El estado real (verificado, parcial, sin evidencia) irá en el informe de implementación; **nada de esta tabla está implementado todavía**. Los criterios **AC-A06-56 a 63** se agregaron en la revisión 2 y se ubican en la sección que les corresponde (la numeración no sigue el orden de lectura para no renumerar los anteriores); los AC-A06-14, 30–32, 34, 36, 42 y 43 se reescribieron en esa revisión.
+Cada fila: **precondición** → **resultado esperado** → **evidencia prevista** (prueba y ambiente). «PG+SQ» = PostgreSQL y SQLite reales. El estado real (verificado, parcial, sin evidencia) irá en el informe de implementación; el estado real está en el informe, no aquí. Los criterios **AC-A06-56 a 63** se agregaron en la revisión 2 y se ubican en la sección que les corresponde (la numeración no sigue el orden de lectura para no renumerar los anteriores); los AC-A06-14, 30–32, 34, 36, 42 y 43 se reescribieron en esa revisión.
 
 ### 5.1 Protección
 
