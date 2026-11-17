@@ -87,6 +87,10 @@ def test_wheel_and_sdist_contents(artifacts):
     assert "cawbase_content_engine/py.typed" in names
     for shipped in (
         "migrations/versions/0003_jobs_files.py",
+        "migrations/versions/0004_text_protection.py",
+        "protection/crypto.py",
+        "protection/service.py",
+        "persistence/a06_schema.py",
         "jobs/storage.py",
         "documents/child.py",
         "http/jobs_routes.py",
@@ -108,12 +112,12 @@ def test_base_install_is_light_and_separate_from_http(artifacts, tmp_path):  # A
     base = make_env(tmp_path, "base", str(artifacts["wheel"]))
     pkgs = installed(base, cwd)
     assert not ({"fastapi", "uvicorn", "starlette", "alembic", "asyncpg", "aiosqlite", "httpx"} & pkgs), pkgs
-    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.4.0"
+    assert py(base, "-c", "import cawbase_content_engine as c; print(c.__version__)", cwd=cwd).stdout.strip() == "0.5.0"
     for mod in ("fastapi", "alembic", "cawbase_content_engine.http"):
         assert py(base, "-c", f"import {mod}", cwd=cwd, check=False).returncode != 0, mod
     # the CLI is available and degrades with a clear message instead of a traceback
     cli = [str(base / "cawbase-content-engine")]
-    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.4.0"
+    assert run([*cli, "version"], cwd=cwd).stdout.strip() == "0.5.0"
     r = run(
         [*cli, "migrate"],
         cwd=cwd,
@@ -159,6 +163,39 @@ def test_documents_extra_is_separate_and_extracts_from_the_installed_wheel(artif
     assert py(docs, "-c", script, cwd=cwd).stdout.strip() == '["Hola"]'
 
 
+def test_protection_extra_is_separate_and_runs_the_example_from_the_installed_wheel(artifacts, tmp_path):  # AC-A06-53
+    cwd = tmp_path / "elsewhere-protection"
+    cwd.mkdir()
+    base = make_env(tmp_path, "prot-base", f"cawbase-content-engine[sqlite,migrations] @ {artifacts['wheel'].as_uri()}")
+    assert "cryptography" not in installed(base, cwd)  # the base install never pulls the crypto library
+    probe = "import sys, cawbase_content_engine; print('cryptography' in sys.modules, 'cawbase_content_engine.protection' in sys.modules)"
+    assert py(base, "-c", probe, cwd=cwd).stdout.strip() == "False False"
+    prot = make_env(
+        tmp_path, "prot", f"cawbase-content-engine[sqlite,migrations,protection] @ {artifacts['wheel'].as_uri()}"
+    )
+    assert "cryptography" in installed(prot, cwd) and not ({"fastapi", "uvicorn", "starlette"} & installed(prot, cwd))
+    assert (
+        py(prot, "-c", probe, cwd=cwd).stdout.strip() == "False False"
+    )  # installed, still not imported by the package
+    example = cwd / "protection_host.py"
+    shutil.copy(ROOT / "examples" / "protection_host.py", example)
+    out = py(prot, str(example), str(cwd / "protection.db"), cwd=cwd).stdout
+    assert (
+        "restored: Entendido: escribiré a Ana Ejemplo hoy. | restored" in out
+        and "after delete: context_unavailable" in out
+    )
+    where = py(prot, "-c", "import cawbase_content_engine as c; print(c.__file__)", cwd=cwd).stdout
+    assert "site-packages" in where and str(ROOT) not in where
+    # without the extra, using A06 fails with a clear configuration error, not a traceback from the library
+    missing = (
+        "import asyncio\nfrom cawbase_content_engine import ContentEngine, EngineConfig, KeyRing, ProtectionSetup\n"
+        "from cawbase_content_engine.errors import InvalidConfigurationError\n"
+        "e = ContentEngine(EngineConfig(database_url='sqlite+aiosqlite:///x.db'), protection=ProtectionSetup(keys=KeyRing('v', {'v': bytes(32)})))\n"
+        "try:\n    asyncio.run(e.start())\nexcept InvalidConfigurationError as x:\n    print('config-error', 'protection' in str(x))\n"
+    )
+    assert py(base, "-c", missing, cwd=cwd).stdout.strip() == "config-error True"
+
+
 def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # AC-03, AC-07, AC-51
     cwd = tmp_path / "elsewhere"
     cwd.mkdir()
@@ -167,7 +204,7 @@ def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # 
     assert not ({"fastapi", "uvicorn", "starlette", "asyncpg"} & pkgs), pkgs
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002", "0003"] and out["again"] is True and out["scope"] == "a"
+    assert out["applied"] == ["0001", "0002", "0003", "0004"] and out["again"] is True and out["scope"] == "a"
     assert "site-packages" in out["installed_from"] and str(ROOT) not in out["installed_from"]
 
 
@@ -192,7 +229,7 @@ def test_sdist_builds_and_installs(artifacts, tmp_path):
     env = make_env(tmp_path, "sdist", f"cawbase-content-engine[sqlite,migrations] @ {artifacts['sdist'].as_uri()}")
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002", "0003"]
+    assert out["applied"] == ["0001", "0002", "0003", "0004"]
 
 
 def test_installed_service_starts_and_stops(artifacts, tmp_path):  # AC-02
@@ -243,7 +280,9 @@ def test_python_example_from_installed_wheel_runs_on_sqlite_and_postgres(artifac
     shutil.copy(ROOT / "examples" / "python_host.py", example)
     for target in (str(cwd / "example.db"), pg_url):
         out = py(env, str(example), target, cwd=cwd).stdout
-        assert "migrated: ('0001', '0002', '0003')" in out and "isolation: project-a cannot read project-b" in out
+        assert (
+            "migrated: ('0001', '0002', '0003', '0004')" in out and "isolation: project-a cannot read project-b" in out
+        )
         assert "project-c" not in out.split("after host rollback:")[1] and "cce1." not in out
     # A02: the profiles example also runs from the installed wheel (SQLite file), without HTTP
     prof_example = cwd / "profiles_host.py"

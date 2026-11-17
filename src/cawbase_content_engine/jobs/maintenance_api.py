@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from . import maintenance as m
 from .models import CleanupSummary, PurgeSummary
@@ -24,6 +24,18 @@ class Maintenance:
 
     async def run_cleanup(self, *, batch_size: int | None = None) -> CleanupSummary:
         return await m.run_cleanup(self._e, batch_size=batch_size)
+
+    async def run_protection_cleanup(self, *, batch_size: int | None = None) -> Any:
+        """A06: expire due contexts and purge old tombstones (explicit, bounded, repeatable; needs no keys)."""
+        from ..protection import maintenance as pm
+
+        return await pm.run_protection_cleanup(self._e, batch_size=batch_size)
+
+    async def protection_key_usage(self) -> Any:
+        """A06: live contexts per key version, to decide when a version can be retired (counts only)."""
+        from ..protection import maintenance as pm
+
+        return await pm.protection_key_usage(self._e)
 
     async def purge_admin_events(
         self, *, older_than: datetime, batch_size: int | None = None, dry_run: bool = True

@@ -13,7 +13,9 @@ Relacionado: [API pública](public-api.md) · [persistencia y migraciones](persi
 | `sqlite` | `aiosqlite` | SQLite |
 | `migrations` | `alembic` | quien ejecute migraciones |
 | `http` | `fastapi`, `uvicorn`, `migrations` | adaptador HTTP y servicio independiente |
-| `inference`, `documents` | **reservados**, no se crean en A01 | A03+ |
+| `documents` | `lxml`, `pikepdf` (A05) | extracción DOCX/PDF |
+| `protection` | `cryptography` (A06) | proteger y restaurar texto (cifrado de correspondencias); no se importa con el paquete |
+| `inference` | **reservado**, no se creó | A09 |
 
 Instalación desde artefactos locales (no hay publicación; `uv build` produce `dist/*.whl` y `dist/*.tar.gz`):
 
@@ -298,9 +300,9 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 
 > **A04 está CERRADA Y ACEPTADA por el usuario como investigación de viabilidad acotada ([informe de viabilidad](a04-feasibility-report.md)); no hay soporte documental productivo en `0.3.0`.** Sin extras, variables de entorno, límites de `Limits`, dependencias ni configuración nuevos; `0.3.0` no cambia. Los experimentos viven en `experiments/a04/` (entorno propio; **no** forman parte del paquete instalable). Los límites de [contrato §16](document-processing.md#16-límites-conservadores-para-los-experimentos-e-a04-20) son **elecciones técnicas de experimentos**, no límites productivos (los fijará A05). Los criterios de importación liviana (D-33) no se ven afectados: no se agrega nada al paquete.
 
-## 14. A05 — Operación de trabajos, archivos y limpieza (implementado en 0.4.0; aceptado, pendiente de merge)
+## 14. A05 — Operación de trabajos, archivos y limpieza (implementado en 0.4.0; aceptado y mergeado)
 
-> **IMPLEMENTADO en `0.4.0` (A05), aceptado por el usuario (con 22 criterios parciales) y pendiente de merge.** Evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md); **no aceptada**. La viabilidad documental se limita al subconjunto conservador de [§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización). Contrato: [trabajos, archivos y ciclo de vida](jobs-files-and-lifecycle.md). Variables de entorno del servicio y de las órdenes de operador: `CAWBASE_CONTENT_ENGINE_STORAGE_DIR`, `…_DOCUMENTS_ISOLATION` (`none` | `linux_container` | `unconfined_development`), `…_DOCUMENTS_IMAGE`, `…_DOCUMENTS_UNTRUSTED_INPUT`.
+> **IMPLEMENTADO en `0.4.0` (A05), aceptado por el usuario (con 22 criterios parciales) y mergeada en `main` (merge `f21baaf`, PR #4).** Evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md); **no aceptada**. La viabilidad documental se limita al subconjunto conservador de [§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización). Contrato: [trabajos, archivos y ciclo de vida](jobs-files-and-lifecycle.md). Variables de entorno del servicio y de las órdenes de operador: `CAWBASE_CONTENT_ENGINE_STORAGE_DIR`, `…_DOCUMENTS_ISOLATION` (`none` | `linux_container` | `unconfined_development`), `…_DOCUMENTS_IMAGE`, `…_DOCUMENTS_UNTRUSTED_INPUT`.
 
 - **Extra `documents`** (`lxml`, `pikepdf`): inventario, extracción, mapeo y validación DOCX/PDF con importación perezosa; la base y la Lambda de CAWbase no lo instalan. Gate D-33 sin cambios.
 - **Storage**: implementación de referencia en filesystem privado (directorio `0700` exclusivo, no servido como estático; un nodo o FS compartido con semánticas equivalentes; NFS sin garantías no soportado; sellos permanentes como directorios vacíos tras escrituras de resultado desconocido, con capacidad finita por scope e instalación; `flock` por clave como evidencia de liberación de escritores). El operador puede aportar otro `ManagedStorage` solo si cumple las capacidades del contrato (*create-only*, sello durable, evidencia de liberación, `stat` que distingue ausencia de error); si no, es incompatible (`configuration_invalid`). Las descargas usan un spool privado acotado (`max_spool_bytes` por proceso); los residuos de procesos muertos se eliminan al iniciar y en `run_cleanup` del nodo. El resumen de limpieza informa purgas pendientes por escritores vivos o errores del backend.
@@ -310,3 +312,13 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 - **Purga de `admin_events`** (CLI `cawbase-content-engine purge-admin-events --older-than-days 90 --batch-size 1000 [--execute]`): previsualización por defecto, corte ≥ 90 días configurable, resumen sin contenido. La primera ejecución puede eliminar eventos históricos anteriores a A05.
 - **Límites y cuotas iniciales** ([contrato §12](jobs-files-and-lifecycle.md#12-límites-operativos-e-a05-17)): 25 MiB por archivo, 100 páginas PDF, 200 MiB descomprimidos, 100 trabajos activos y 2 GiB por scope, lease 60 s, plazo total 24 h, 5 intentos. Son elecciones, no mediciones.
 - **Despliegue**: migrar (`0003`) → actualizar todos los runtimes → emitir claves con permisos nuevos → habilitar workers y limpieza. `readiness()`/`/readyz` no cambian.
+
+## 15. A06 — Operación de claves, contextos y limpieza (implementado en `0.5.0`)
+
+> **IMPLEMENTADO en `0.5.0` (A06; migración `0004`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 2, commit `17b545d`): [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md); evidencia y limitaciones: [informe de A06](a06-implementation-report.md).
+
+- **Extra** `protection` (`cryptography`); **no** forma parte de la instalación base ni cambia la importación base (D-33).
+- **Claves:** las suministra el host/operador (`KeyProvider`/`KeyRing`), 32 bytes aleatorios, versionadas; la activa cifra lo nuevo y las anteriores deben conservarse hasta que venzan los contextos (y backups) que las usen; `maintenance().protection_key_usage()` informa cuándo retirarlas ([§9](text-protection.md#9-criptografía-y-claves-3a)).
+- **Limpieza:** `maintenance().run_protection_cleanup()` y CLI `cleanup-protection`; explícita, repetible, por lotes, sin claves ni contenido; cadencia recomendada ≤ 1 h (valor por medir).
+- **Despliegue:** migrar (`0004`) → actualizar todos los runtimes → configurar `ProtectionSetup` y claves → emitir claves con los permisos nuevos. Sin `ProtectionSetup`, A06 ⇒ `protection_not_configured`.
+- **Retención:** contexto 7 días fijos por defecto (configurable, máximo 30 d por defecto); metadatos 30 días tras el fin de vida; **backups fuera del alcance del motor**.

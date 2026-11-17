@@ -1,6 +1,6 @@
 # Trabajos, archivos y ciclo de vida — contrato de A05
 
-> **Estado: IMPLEMENTADO en `0.4.0` (A05, revisión 3 de la especificación), aceptada por el usuario (con los 22 criterios parciales del informe) y pendiente de merge.** Describe el código real (`src/cawbase_content_engine/jobs/`, `documents/`, `http/jobs_routes.py`, migración `0003_jobs_files`); evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md). Las decisiones de producto son `D-A05-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A05-nn` y las precisiones de implementación `I-A05-nn` ([A05-decisions](decisions/A05-decisions.md)); **ninguna de estas últimas es una decisión de producto**. Alcance y aceptación: [especificación de A05](features/A05-trabajos-archivos-y-ciclo-de-vida.md). Los bloques de código son ilustrativos de las firmas reales; §22 enumera las precisiones y límites comprobados al implementar.
+> **Estado: IMPLEMENTADO en `0.4.0` (A05, revisión 3 de la especificación), aceptada por el usuario (con los 22 criterios parciales del informe) y mergeada en `main` (merge `f21baaf`, PR #4).** Describe el código real (`src/cawbase_content_engine/jobs/`, `documents/`, `http/jobs_routes.py`, migración `0003_jobs_files`); evidencia por ambiente y trazabilidad de criterios en el [informe de A05](a05-implementation-report.md). Las decisiones de producto son `D-A05-nn` (aprobadas por el usuario); las elecciones técnicas derivadas son `E-A05-nn` y las precisiones de implementación `I-A05-nn` ([A05-decisions](decisions/A05-decisions.md)); **ninguna de estas últimas es una decisión de producto**. Alcance y aceptación: [especificación de A05](features/A05-trabajos-archivos-y-ciclo-de-vida.md). Los bloques de código son ilustrativos de las firmas reales; §22 enumera las precisiones y límites comprobados al implementar.
 
 Relacionado: [arquitectura](architecture.md) · [API pública](public-api.md) · [persistencia y migraciones](persistence-and-migrations.md) · [seguridad y aislamiento](security-and-isolation.md) · [instalación y operación](installation-and-operations.md) · [perfiles (A02)](profiles-and-catalog.md) · [inferencia y análisis (A03)](inference-and-analysis.md) · [procesamiento de documentos (A04)](document-processing.md).
 
@@ -759,7 +759,7 @@ Devuelve un resumen sin contenido. Nunca elimina originales externos ni filas de
 
 ### 13.7 Correspondencias de A06
 
-Tendrán autorización, retención y eliminación propias (A06). A05 no crea tablas, APIs, criptografía ni semántica de restauración. El `SourceMap` no es una tabla reversible de valores sensibles.
+Tendrán autorización, retención y eliminación propias (A06). A05 no crea tablas, APIs, criptografía ni semántica de restauración. El `SourceMap` no es una tabla reversible de valores sensibles. *Registro posterior (A06, especificado en revisión; no disponible):* las correspondencias de A06 viven en tablas propias con vigencia independiente de los plazos de §13.1, y A06 **solo lee** trabajos `text_analysis` y sus resultados publicados; ninguno de los contratos, la expiración ni el *fence* de A05 cambia ([protección y restauración de texto §4.2](text-protection.md#42-jobanalysis-vinculación-por-identidad-del-texto)).
 
 ## 14. API Python
 

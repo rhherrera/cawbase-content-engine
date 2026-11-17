@@ -94,3 +94,14 @@ async def pg_url():
         async with admin.connect() as c:
             await c.execute(sa.text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
         await admin.dispose()
+
+
+@pytest.fixture
+async def a06(migrated):
+    """A06 harness: real engine, real cryptography and persistence; only detection is scripted."""
+    from .a06_helpers import make_harness
+
+    backend, url = migrated
+    harness = await make_harness(backend, url)
+    yield harness
+    await harness.engine.aclose()

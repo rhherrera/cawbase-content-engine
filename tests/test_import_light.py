@@ -35,6 +35,7 @@ FORBIDDEN = {
     "lxml",
     "pikepdf",
     "PIL",
+    "cryptography",  # A06: the extra 'protection' is imported lazily, never with the package
 }
 
 PROBE = textwrap.dedent(
@@ -89,7 +90,9 @@ def test_import_loads_no_heavy_optional_or_driver_modules():  # AC-04
     assert not [
         m
         for m in data["cawbase_modules"]
-        if m.startswith(("cawbase_content_engine.jobs", "cawbase_content_engine.documents"))
+        if m.startswith(
+            ("cawbase_content_engine.jobs", "cawbase_content_engine.documents", "cawbase_content_engine.protection")
+        )
     ], data["cawbase_modules"]
 
 
@@ -133,7 +136,10 @@ def test_core_does_not_import_http_cli_migrations_fastapi_alembic(path):  # AC-0
             names.append(("." * node.level) + (node.module or ""))
     for name in names:
         root = name.lstrip(".").split(".")[0]
-        assert root not in {"fastapi", "starlette", "uvicorn", "alembic", "asyncpg", "aiosqlite"}, (path, name)
+        assert root not in {"fastapi", "starlette", "uvicorn", "alembic", "asyncpg", "aiosqlite", "cryptography"}, (
+            path,
+            name,
+        )
         assert name.lstrip(".").split(".")[0] not in {"http", "migrations", "cli"}, (path, name)
 
 

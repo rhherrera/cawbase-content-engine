@@ -389,6 +389,85 @@ class JobDataExpiredError(EngineError):
     default_message = "The job data expired or was deleted."
 
 
+# ---- A06: text protection and restoration (Python only; no HTTP status) -----------------------------
+class ProtectionNotConfiguredError(EngineError):
+    code = "protection_not_configured"
+    http_status = None
+    default_message = "Text protection is not configured for this engine."
+
+
+class ProtectionKeyUnavailableError(EngineError):
+    code = "protection_key_unavailable"
+    http_status = None
+    default_message = "A required encryption key version is not available."
+
+
+class MappingIntegrityError(EngineError):
+    code = "mapping_integrity_failed"
+    http_status = None
+    default_message = "A stored mapping failed its integrity check."
+
+
+class ContextUnavailableError(EngineError):
+    code = "context_unavailable"
+    http_status = None
+    default_message = "The context expired or was deleted."
+
+
+class ContextKindMismatchError(EngineError):
+    code = "context_kind_mismatch"
+    http_status = None
+    default_message = "The context has a different kind."
+
+
+class DetectionInconclusiveError(EngineError):
+    code = "detection_inconclusive"
+    http_status = None
+    default_message = "Detection did not complete; the text cannot be declared protected."
+
+
+class AnalysisTextMismatchError(EngineError):
+    code = "analysis_text_mismatch"
+    http_status = None
+    default_message = "The analysis result does not belong to this text."
+
+
+class AnalysisSourceInvalidError(EngineError):
+    code = "analysis_source_invalid"
+    http_status = None
+    default_message = "The analysis source is not valid for this operation."
+
+
+class MarkerCollisionError(EngineError):
+    code = "marker_collision"
+    http_status = None
+    default_message = "The input contains something that looks like a protection marker."
+
+
+class MarkerMalformedError(EngineError):
+    code = "marker_malformed"
+    http_status = None
+    default_message = "The text contains an altered protection marker."
+
+
+class MarkerNotAuthorizedError(EngineError):
+    code = "marker_not_authorized"
+    http_status = None
+    default_message = "A marker is not authorized for this response."
+
+
+class MarkerUnknownError(EngineError):
+    code = "marker_unknown"
+    http_status = None
+    default_message = "A marker has no mapping in this context."
+
+
+class NewSensitiveDataError(EngineError):
+    code = "new_sensitive_data"
+    http_status = None
+    default_message = "The response contains new sensitive data."
+
+
 class InternalError(EngineError):
     code = "internal_error"
     http_status = 500

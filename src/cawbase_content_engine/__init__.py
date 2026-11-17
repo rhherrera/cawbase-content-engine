@@ -60,6 +60,24 @@ if TYPE_CHECKING:  # pragma: no cover - names resolved lazily at runtime (see __
     from .inference import (
         request_for as build_inference_request,
     )
+    from .protection.markers import find_markers
+    from .protection.types import (
+        AnalysisRef,
+        ContextInfo,
+        InlineAnalysis,
+        JobAnalysis,
+        KeyProvider,
+        KeyRing,
+        KeyVersionUsage,
+        NewFindingRegion,
+        ProtectedGroup,
+        ProtectedText,
+        ProtectionCleanupSummary,
+        ProtectionLimits,
+        ProtectionPolicy,
+        ProtectionSetup,
+        RestoredText,
+    )
 
 _LAZY_INFERENCE = {
     "AdapterDescriptor": "AdapterDescriptor",
@@ -77,8 +95,36 @@ _LAZY_INFERENCE = {
 }
 
 
+_LAZY_PROTECTION = (
+    "AnalysisRef",
+    "ContextInfo",
+    "InlineAnalysis",
+    "JobAnalysis",
+    "KeyProvider",
+    "KeyRing",
+    "KeyVersionUsage",
+    "NewFindingRegion",
+    "ProtectedGroup",
+    "ProtectedText",
+    "ProtectionCleanupSummary",
+    "ProtectionLimits",
+    "ProtectionPolicy",
+    "ProtectionSetup",
+    "RestoredText",
+)
+
+
 def __getattr__(name: str) -> Any:
-    """A03 inference types load on first use, keeping ``import cawbase_content_engine`` light (D-33)."""
+    """A03 inference and A06 protection types load on first use, keeping ``import cawbase_content_engine`` light
+    (D-33): neither the inference package nor ``cryptography`` is imported with the base package."""
+    if name in _LAZY_PROTECTION:
+        from .protection import types as _ptypes
+
+        return getattr(_ptypes, name)
+    if name == "find_markers":
+        from .protection.markers import find_markers
+
+        return find_markers
     target = _LAZY_INFERENCE.get(name)
     if target is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -95,6 +141,22 @@ def starter_catalog() -> StarterCatalog:
 
 
 __all__ = [
+    "AnalysisRef",
+    "ContextInfo",
+    "InlineAnalysis",
+    "JobAnalysis",
+    "KeyProvider",
+    "KeyRing",
+    "KeyVersionUsage",
+    "NewFindingRegion",
+    "ProtectedGroup",
+    "ProtectedText",
+    "ProtectionCleanupSummary",
+    "ProtectionLimits",
+    "ProtectionPolicy",
+    "ProtectionSetup",
+    "RestoredText",
+    "find_markers",
     "AdapterDescriptor",
     "AdapterState",
     "AnalysisResult",

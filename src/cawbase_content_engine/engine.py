@@ -44,6 +44,7 @@ from .operations.analysis import AnalysisOperations
 from .operations.common import page_size
 from .operations.jobs_facade import JobOperations
 from .operations.profile_facade import ProfileOperations
+from .operations.protection_facade import ProtectionOperations
 from .permissions import AdminPermission, ScopePermission
 from .persistence.dialect import Backend
 from .persistence.engines import create_owned_engine
@@ -55,6 +56,7 @@ from .transactions import HostTransaction, run_in_host, run_own, translate
 if TYPE_CHECKING:
     from .inference.adapter import InferenceSetup, InferenceStatus
     from .jobs.setup import DocumentSetup, JobsSetup, StorageSetup
+    from .protection.types import ProtectionSetup
 
 T = TypeVar("T")
 
@@ -74,6 +76,7 @@ class ContentEngine:
         storage: StorageSetup | None = None,
         documents: DocumentSetup | None = None,
         jobs: JobsSetup | None = None,
+        protection: ProtectionSetup | None = None,
     ) -> None:
         if inference is not None:
             from .inference.adapter import InferenceSetup as _Setup
@@ -90,6 +93,12 @@ class ContentEngine:
             ):
                 if value is not None and not isinstance(value, kind):
                     raise InvalidConfigurationError(f"'{name}' must be a {kind.__name__}.")
+        if protection is not None:
+            from .protection.types import ProtectionSetup as _PS  # lazy: A06 is imported only when configured
+
+            if not isinstance(protection, _PS):
+                raise InvalidConfigurationError("'protection' must be a ProtectionSetup.")
+        self._protection = protection  # the key provider belongs to the host: never closed here
         self._storage, self._documents, self._jobs = storage, documents, jobs
         self._isolation_approved: tuple[Any, ...] | None = None  # owned by THIS instance; see jobs.execute
         self._inference = inference  # the adapter belongs to the host: never started or closed here
@@ -113,6 +122,10 @@ class ContentEngine:
     @property
     def inference(self) -> InferenceSetup | None:
         return self._inference
+
+    @property
+    def protection(self) -> ProtectionSetup | None:
+        return self._protection
 
     @property
     def storage(self) -> StorageSetup | None:
@@ -184,6 +197,10 @@ class ContentEngine:
             if self._engine is None:
                 self._engine = create_owned_engine(self._config)
                 created_here = True
+            if self._protection is not None:  # A06: the library must load and pass a known-answer test
+                from .protection import crypto
+
+                crypto.self_test()
             await self._verify_engine_preconditions()
             status = await self.schema_status()
             if not status.present:
@@ -324,7 +341,7 @@ class ContentEngine:
         return await self._run(lambda c: ak.authenticate(c, self._tables, text, self._token), write=False, tx=None)
 
 
-class ScopedOperations(ProfileOperations, AnalysisOperations, JobOperations):
+class ScopedOperations(ProfileOperations, AnalysisOperations, JobOperations, ProtectionOperations):
     """Operations on one scope. Every query is constrained by ``ctx.scope_id``."""
 
     def __init__(self, engine: ContentEngine, ctx: ScopeContext, tx: HostTransaction | None) -> None:

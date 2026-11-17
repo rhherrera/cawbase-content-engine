@@ -23,7 +23,7 @@ def test_python_host_example(tmp_path):
         timeout=120,
     )
     assert r.returncode == 0, r.stderr
-    assert "migrated: ('0001', '0002', '0003')" in r.stdout
+    assert "migrated: ('0001', '0002', '0003', '0004')" in r.stdout
     assert "isolation: project-a cannot read project-b" in r.stdout
     assert "project-c" not in r.stdout.split("after host rollback:")[1]
     assert "cce1." not in r.stdout + r.stderr
@@ -39,7 +39,7 @@ def test_profiles_example(tmp_path):  # AC-A02-01
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout
-    assert "migrated: ('0001', '0002', '0003')" in out and "| 6 types" in out
+    assert "migrated: ('0001', '0002', '0003', '0004')" in out and "| 6 types" in out
     assert "published: version 1 {'classification': True, 'detection': True}" in out
     assert "version 1 unchanged after editing: True" in out
     assert "no default profile" in out and "resolved: default -> version 1" in out
@@ -78,3 +78,20 @@ def test_analysis_example(tmp_path):  # AC-A03-01, 02, 53
         and "no fixture: inference_fixture_not_found" in r.stdout
     )
     assert "cce1." not in r.stdout + r.stderr
+
+
+def test_protection_example(tmp_path):  # AC-A06-53 (the documented example runs as written)
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "examples" / "protection_host.py"), str(tmp_path / "prot.db")],
+        capture_output=True,
+        text=True,
+        env=clean_env(),
+        timeout=120,
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout
+    assert "context: active | kind: conversation" in out and "Mi contraseña es [REDACTED]." in out
+    assert "Ana Ejemplo" not in out.split("protected:")[1].split("\n")[0]  # the protected text hides the value
+    assert "restored: Entendido: escribiré a Ana Ejemplo hoy. | restored" in out
+    assert "forged marker: marker_not_authorized" in out and "after delete: context_unavailable" in out
+    assert "cce1." not in out + r.stderr
