@@ -31,6 +31,10 @@ def _parser() -> argparse.ArgumentParser:
     w.add_argument("--poll-interval", type=float, default=5.0)
     w.add_argument("--cleanup-interval", type=float, default=None, help="seconds between cleanup runs (optional)")
     sub.add_parser("cleanup", help="one bounded, repeatable cleanup run (A05); prints a summary without content")
+    sub.add_parser(
+        "cleanup-protection",
+        help="one bounded, repeatable cleanup of A06 contexts; prints counts only (no keys needed)",
+    )
     pe = sub.add_parser("purge-admin-events", help="purge admin_events older than a cutoff (preview unless --execute)")
     pe.add_argument("--older-than-days", type=float, required=True)
     pe.add_argument("--batch-size", type=int, default=None)
@@ -118,6 +122,11 @@ async def _ops_command(args: argparse.Namespace) -> int:
             summary = await engine.maintenance().run_cleanup()
             print(json.dumps(summary.model_dump(mode="json")))
             return 0
+        if args.command == "cleanup-protection":
+            import dataclasses
+
+            print(json.dumps(dataclasses.asdict(await engine.maintenance().run_protection_cleanup())))
+            return 0
         cutoff = datetime.now(UTC) - timedelta(days=args.older_than_days)
         res = await engine.maintenance().purge_admin_events(
             older_than=cutoff, batch_size=args.batch_size, dry_run=not args.execute
@@ -159,7 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             return 0
-        if args.command in ("worker", "cleanup", "purge-admin-events"):
+        if args.command in ("worker", "cleanup", "cleanup-protection", "purge-admin-events"):
             return asyncio.run(_ops_command(args))
         return asyncio.run(_with_engine(args))
     except ModuleNotFoundError as exc:

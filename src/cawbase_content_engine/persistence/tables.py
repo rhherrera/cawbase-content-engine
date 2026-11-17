@@ -8,6 +8,7 @@ from functools import lru_cache
 import sqlalchemy as sa
 
 from .a05_schema import build_a05
+from .a06_schema import build_a06
 from .dialect import Backend, Namespace
 from .types import UtcDateTime, big_pk, json_type
 
@@ -28,6 +29,9 @@ class Tables:
     scope_job_fences: sa.Table
     scope_usage: sa.Table
     engine_usage: sa.Table
+    protection_contexts: sa.Table
+    protection_mappings: sa.Table
+    protection_scope_usage: sa.Table
 
     def __init__(self, backend: Backend) -> None:
         ns = Namespace(backend)
@@ -130,6 +134,8 @@ class Tables:
 
         self._a02_tables(md, ns, fk)
         for _name, _table in build_a05(md, ns).items():
+            setattr(self, _name, _table)
+        for _name, _table in build_a06(md, ns).items():
             setattr(self, _name, _table)
 
     def _a02_tables(self, md: sa.MetaData, ns: Namespace, fk: Callable[[str], sa.ForeignKey]) -> None:
