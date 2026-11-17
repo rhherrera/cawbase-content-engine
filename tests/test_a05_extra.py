@@ -92,7 +92,15 @@ def test_static_boundaries_experiments_not_imported_and_no_protection_operations
     from cawbase_content_engine.engine import ScopedOperations
 
     names = {n.lower() for n in dir(ScopedOperations)}
-    assert not {n for n in names if any(w in n for w in ("protect", "redact", "restore", "pseudonym", "mapping"))}
+    # A06 (0.5.0) deliberately adds exactly the two text operations; nothing else of that family exists
+    assert {n for n in names if any(w in n for w in ("protect", "redact", "restore", "pseudonym", "mapping"))} == {
+        "protect_text",
+        "restore_text",
+    }
+    # ... and the A05 job/document code still knows nothing about protection (its contracts are untouched)
+    for path in [*(SRC / "jobs").rglob("*.py"), *(SRC / "documents").rglob("*.py")]:
+        if path.name != "maintenance_api.py":  # the only bridge: Maintenance.run_protection_cleanup (lazy import)
+            assert "protection" not in path.read_text().lower(), path
 
 
 async def test_mixed_concurrency_never_deadlocks_between_engine_operations(eng):
