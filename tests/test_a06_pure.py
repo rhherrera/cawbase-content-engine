@@ -117,6 +117,78 @@ def test_linear_time_on_adversarial_maximum_inputs():  # AC-A06-60 (e): measured
         assert time.perf_counter() - t0 < 2.0
 
 
+class CountingSpans(list):
+    """A list that counts every element access: the number of steps is the evidence of the complexity class."""
+
+    reads = 0
+
+    def __getitem__(self, i):
+        CountingSpans.reads += 1
+        return super().__getitem__(i)
+
+
+def spans_steps(monkeypatch, text: str) -> tuple[int, object]:
+    """Runs the real ``scan`` and returns how many span reads the strict/lax comparison performed (both passes)."""
+    from cawbase_content_engine.protection import markers
+
+    real = markers.outside_all
+    CountingSpans.reads = 0
+    monkeypatch.setattr(markers, "outside_all", lambda spans, matches: real(CountingSpans(spans), matches))
+    result = markers.scan(text)
+    return CountingSpans.reads, result
+
+
+def many_markers(n: int) -> str:
+    return " ".join(marker_of(new_token()) for _ in range(n))
+
+
+def test_comparison_with_strict_markers_is_linear_by_counting_steps(monkeypatch):  # AC-A06-60 (g)
+    """Every strict marker also matches R1 and R2 inside itself, so N markers produce 2N lax matches that must all be
+    classified as "inside a strict span". A comparison against every span would take ~2N^2 reads; the merge takes O(N).
+    The proof is the COUNT of element reads and its growth, not a wall-clock threshold."""
+    sizes = (250, 500, 1000, 2000, 4000)
+    counts = {}
+    for n in sizes:
+        reads, result = spans_steps(monkeypatch, many_markers(n))
+        assert len(result.strict) == n and result.altered is False  # the whole text is strict markers: nothing altered
+        counts[n] = reads
+    for n in sizes:
+        assert counts[n] <= 10 * n, (n, counts[n])  # a constant number of reads per marker (8: 2 lax matches x 4)
+    for small, big in zip(sizes, sizes[1:], strict=False):
+        assert counts[big] / counts[small] <= 2.2, counts  # doubling the input at most doubles the work (quadratic: 4x)
+    assert counts[4000] < 4000 * 4000 / 100  # and nowhere near the ~2N^2 of a comparison against every span
+
+
+def test_an_alteration_after_many_strict_markers_is_still_found_in_linear_work(monkeypatch):  # AC-A06-60 (g)
+    n = 3000
+    text = many_markers(n) + " [CCE1:" + T16 + "]"  # one recognizable alteration at the very end
+    reads, result = spans_steps(monkeypatch, text)
+    assert len(result.strict) == n and result.altered is True
+    assert reads <= 10 * n
+    inside_only = many_markers(n) + " [CCE report]"
+    reads2, result2 = spans_steps(monkeypatch, inside_only)
+    assert result2.altered is False and reads2 <= 10 * n
+
+
+def test_outside_all_matches_a_naive_reference_on_random_layouts():  # AC-A06-60 (g)
+    from cawbase_content_engine.protection.markers import outside_all
+
+    rnd = random.Random(21)  # noqa: S311 - reproducible test data, not security
+    for _ in range(400):
+        spans, pos = [], 0
+        for _ in range(rnd.randint(0, 8)):
+            pos += rnd.randint(0, 5)
+            length = rnd.randint(1, 6)
+            spans.append((pos, pos + length, "x"))
+            pos += length
+        matches, p = [], 0
+        for _ in range(rnd.randint(0, 8)):
+            p += rnd.randint(0, 7)
+            matches.append((p, p + rnd.randint(1, 5)))
+        naive = any(not any(a <= s and e <= b for a, b, _ in spans) for s, e in matches)
+        assert outside_all(spans, iter(matches)) == naive, (spans, matches)
+
+
 def test_find_markers_order_and_duplicates():
     a, b = marker_of(new_token()), marker_of(new_token())
     assert find_markers(f"{b} x {a} y {b}") == (b, a)
