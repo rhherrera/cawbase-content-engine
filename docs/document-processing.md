@@ -327,6 +327,6 @@ A06 cubre **solo texto**. Un `SourceMap` sigue representando **posiciones docume
 
 ## 22. A07 — Transformación y restauración DOCX (especificado; no disponible)
 
-> **ESPECIFICADO (revisión 2), pendiente de la aprobación del usuario; no implementado.** Contrato propuesto: [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md).
+> **ESPECIFICADO (revisión 3), pendiente de la aprobación del usuario; no implementado.** Contrato propuesto: [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md).
 
 A07 propone aplicar la transformación y la restitución **solo sobre DOCX** y **dentro de la matriz de extracción de A05** (sin ampliarla), con su propia matriz de transformación cruzada con las filas DX de §11 ([contrato de A07 §4](docx-protection.md#4-matriz-de-transformación-docx-d4-d5)). Este documento conserva el contrato de A04 sin cambios; el extractor de A05 y el `SourceMap` (`document-structures/1`) no cambian. PDF sigue en A08 (D-A04-04).
