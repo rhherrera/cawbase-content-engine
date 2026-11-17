@@ -92,14 +92,29 @@ def test_static_boundaries_experiments_not_imported_and_no_protection_operations
     from cawbase_content_engine.engine import ScopedOperations
 
     names = {n.lower() for n in dir(ScopedOperations)}
-    # A06 (0.5.0) deliberately adds exactly the two text operations; nothing else of that family exists
+    # A06 (0.5.0) adds exactly the two text operations and A07 (0.6.0) exactly its DOCX operations (contract 8.1);
+    # nothing else of that family exists. Assertion widened in A07 (justified in docs/a07-implementation-report.md)
     assert {n for n in names if any(w in n for w in ("protect", "redact", "restore", "pseudonym", "mapping"))} == {
         "protect_text",
         "restore_text",
+        "submit_docx_protection",
+        "get_docx_protection_result",
+        "open_docx_protected",
+        "open_docx_restored",
     }
-    # ... and the A05 job/document code still knows nothing about protection (its contracts are untouched)
+    # ... and the A05 job/document code knows about protection ONLY at the A07 bridge points: the dispatch to the
+    # A07 pipeline, the worker's keys, the requirements key, the cleanup bridge and the A07 child modes
+    bridges = {
+        "maintenance_api.py",
+        "execute.py",
+        "worker.py",
+        "ops.py",
+        "child.py",
+        "docx_transform.py",
+        "docx_verify.py",
+    }
     for path in [*(SRC / "jobs").rglob("*.py"), *(SRC / "documents").rglob("*.py")]:
-        if path.name != "maintenance_api.py":  # the only bridge: Maintenance.run_protection_cleanup (lazy import)
+        if path.name not in bridges:
             assert "protection" not in path.read_text().lower(), path
 
 

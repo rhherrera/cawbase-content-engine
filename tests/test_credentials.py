@@ -321,7 +321,8 @@ class TestDelegation:
         # 8 from A01 (scope:read|write + six admin:*), 2 from A02 (profiles:read|write), 1 from A03 (analysis:execute),
         # 6 from A05 (files:write|read, jobs:read|cancel, results:read, data:delete),
         # 4 from A06 (text:protect|restore, contexts:read|delete)
-        assert len(ScopePermission) + len(AdminPermission) == 21
+        # 4 from A07 (docx:protect|restore, docx:protected:read, docx:restored:read)
+        assert len(ScopePermission) + len(AdminPermission) == 25
         assert {p.value for p in ScopePermission} == {
             "scope:read",
             "scope:write",
@@ -338,6 +339,10 @@ class TestDelegation:
             "text:restore",
             "contexts:read",
             "contexts:delete",
+            "docx:protect",
+            "docx:restore",
+            "docx:protected:read",
+            "docx:restored:read",
         }
         assert not [p for p in [*ScopePermission, *AdminPermission] if "*" in p.value]
         with pytest.raises(ValueError):

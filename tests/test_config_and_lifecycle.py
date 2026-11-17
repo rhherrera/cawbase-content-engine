@@ -137,7 +137,7 @@ class TestLifecycle:
         await eng.start()
         await eng.aclose()
         # runtime requires a newer schema than installed -> outdated
-        monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 5)
+        monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 6)
         with pytest.raises(SchemaIncompatibleError):
             await ContentEngine(EngineConfig(database_url=url)).start()
         monkeypatch.undo()
@@ -161,7 +161,7 @@ class TestLifecycle:
             "cawbase_content_engine.engine_state" if backend == "postgresql" else "cawbase_content_engine_engine_state"
         )
         async with adm.begin() as c:
-            await c.execute(sa.text(f"UPDATE {tbl} SET schema_level = 5"))
+            await c.execute(sa.text(f"UPDATE {tbl} SET schema_level = 6"))
         await adm.dispose()
         async with ContentEngine(EngineConfig(database_url=url)) as e:
             assert (await e.readiness()).ready

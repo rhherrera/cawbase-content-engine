@@ -98,12 +98,12 @@ class TestUpgradeFromA01:
         before_a01 = await dump_a01_tables(url, backend)
         before_objects = await inventory(url)
         # a runtime that requires level 2 refuses the level-1 schema until it is migrated
-        assert SCHEMA_LEVEL == 4  # the current head; the level-1 schema is older
+        assert SCHEMA_LEVEL == 5  # the current head; the level-1 schema is older
         with pytest.raises(SchemaIncompatibleError):
             await ContentEngine(cfg).start()
         # migrate 1 -> 2
         r2 = await upgrade(cfg)
-        assert r2.applied == ("0002", "0003", "0004") and r2.from_revision == "0001" and r2.to_level == 4
+        assert r2.applied == ("0002", "0003", "0004", "0005") and r2.from_revision == "0001" and r2.to_level == 5
         after_objects = await inventory(url)
         assert await dump_a01_tables(url, backend) == before_a01  # business data and history intact
         for name, entry in before_objects.items():  # nothing existing (A01 or foreign) altered or removed
@@ -122,7 +122,7 @@ class TestUpgradeFromA01:
             assert (await e2.authenticate_api_key(key.secret)).scope_grants["kept"]  # old key still works
             ops = await ops_for(e2, "kept", create_scope=False)
             assert (await ops.list_profiles("kept")).items == []  # no profile for an existing scope
-            assert (await e2.schema_status()).min_runtime_level == 1 and (await e2.schema_status()).schema_level == 4
+            assert (await e2.schema_status()).min_runtime_level == 1 and (await e2.schema_status()).schema_level == 5
 
     async def test_from_empty_installs_both_revisions_in_one_transaction(self, db, tmp_path):  # AC-A02-42
         backend, url = db
@@ -134,7 +134,9 @@ class TestUpgradeFromA01:
         assert not [n for n in names if "cawbase_content_engine" in n], "0001 and 0002 roll back together"
         report = await upgrade(cfg)  # the real chain
         assert (
-            report.applied == ("0001", "0002", "0003", "0004") and report.to_level == 4 and report.from_revision is None
+            report.applied == ("0001", "0002", "0003", "0004", "0005")
+            and report.to_level == 5
+            and report.from_revision is None
         )
 
     async def test_a_failure_in_a_later_revision_rolls_back_0002_too(self, db, tmp_path):  # AC-A02-42
@@ -146,7 +148,7 @@ class TestUpgradeFromA01:
             await upgrade(cfg, script_location=failing)
         names = await table_names(url)
         assert not [n for n in names if n.endswith("profiles")], "0002's tables must not survive a later failure"
-        assert (await upgrade(cfg)).applied == ("0002", "0003", "0004")
+        assert (await upgrade(cfg)).applied == ("0002", "0003", "0004", "0005")
 
 
 async def _admin(engine):
@@ -366,7 +368,7 @@ class TestCompatibilityWithA01:
         async with ContentEngine(EngineConfig(database_url=url)) as e:
             status = await e.schema_status()
             assert (
-                status.compatible and status.schema_level == 4 and status.min_runtime_level == 1
+                status.compatible and status.schema_level == 5 and status.min_runtime_level == 1
             )  # A06 raised the level to 4
             assert (await e.readiness()).ready
 
