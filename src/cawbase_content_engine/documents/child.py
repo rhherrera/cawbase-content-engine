@@ -24,6 +24,9 @@ def detect(data: bytes) -> str:
 
 def process(data: bytes, params: dict[str, Any]) -> dict[str, Any]:
     lim = Limits.from_params(params)
+    mode = params.get("mode")
+    if mode is not None:
+        return _a07(mode, data, params, lim)
     if len(data) > lim.max_file_bytes:
         return {"rejected": "structure_limit"}
     kind = detect(data)
@@ -41,6 +44,27 @@ def process(data: bytes, params: dict[str, Any]) -> dict[str, Any]:
         return {"rejected": "unsupported_format"}
     except Reject as r:
         return {"rejected": r.reason}
+
+
+def _a07(mode: str, data: bytes, params: dict[str, Any], lim: Limits) -> dict[str, Any]:
+    """A07 modes (docs/docx-protection.md): the same isolated child, the same limits, untrusted input."""
+    if len(data) > 2 * lim.max_file_bytes + 16:
+        return {"rejected": "structure_limit"}
+    a07 = params.get("a07") or {}
+    if mode in ("docx_plan", "docx_protect", "docx_restore"):
+        if detect(data) != "docx":
+            return {"rejected": "unsupported_format"}
+        from . import docx_transform as tx
+
+        if mode == "docx_restore":
+            return tx.restore(data, lim, list(a07.get("occurrences", [])))
+        return tx.protect(data, lim, list(a07.get("selections", [])), check_only=mode == "docx_plan")
+    if mode == "docx_verify":
+        from . import docx_verify
+
+        n = int.from_bytes(data[:8], "big")
+        return docx_verify.verify(data[8 : 8 + n], data[8 + n :], a07)
+    return {"rejected": "unsupported_format"}
 
 
 def main() -> None:

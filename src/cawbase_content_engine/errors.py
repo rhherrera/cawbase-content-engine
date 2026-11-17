@@ -468,6 +468,30 @@ class NewSensitiveDataError(EngineError):
     default_message = "The response contains new sensitive data."
 
 
+class AnalysisExpiringError(EngineError):
+    code = "analysis_expiring"
+    http_status = None
+    default_message = "The analysis result expires before the job deadline."
+
+
+class ContextExpiringError(EngineError):
+    code = "context_expiring"
+    http_status = None
+    default_message = "The context expires before the job deadline."
+
+
+class DerivativeBindingUnavailableError(EngineError):
+    code = "derivative_binding_unavailable"
+    http_status = None
+    default_message = "The protected document can no longer be restored."
+
+
+class DerivativeMismatchError(EngineError):
+    code = "derivative_mismatch"
+    http_status = None
+    default_message = "The file is not the protected document emitted by the engine."
+
+
 class InternalError(EngineError):
     code = "internal_error"
     http_status = 500

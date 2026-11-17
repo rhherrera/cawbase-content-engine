@@ -9,6 +9,7 @@ import sqlalchemy as sa
 
 from .a05_schema import build_a05
 from .a06_schema import build_a06
+from .a07_schema import build_a07
 from .dialect import Backend, Namespace
 from .types import UtcDateTime, big_pk, json_type
 
@@ -32,6 +33,7 @@ class Tables:
     protection_contexts: sa.Table
     protection_mappings: sa.Table
     protection_scope_usage: sa.Table
+    docx_derivatives: sa.Table
 
     def __init__(self, backend: Backend) -> None:
         ns = Namespace(backend)
@@ -136,6 +138,8 @@ class Tables:
         for _name, _table in build_a05(md, ns).items():
             setattr(self, _name, _table)
         for _name, _table in build_a06(md, ns).items():
+            setattr(self, _name, _table)
+        for _name, _table in build_a07(md, ns).items():
             setattr(self, _name, _table)
 
     def _a02_tables(self, md: sa.MetaData, ns: Namespace, fk: Callable[[str], sa.ForeignKey]) -> None:

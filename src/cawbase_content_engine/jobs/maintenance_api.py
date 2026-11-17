@@ -37,6 +37,12 @@ class Maintenance:
 
         return await pm.protection_key_usage(self._e)
 
+    async def run_docx_cleanup(self, *, batch_size: int | None = None) -> Any:
+        """A07: end the restoration bindings of contexts that are no longer alive; purge due tombstones."""
+        from ..docx_protection import maintenance as dm
+
+        return await dm.run_docx_cleanup(self._e, batch_size=batch_size)
+
     async def purge_admin_events(
         self, *, older_than: datetime, batch_size: int | None = None, dry_run: bool = True
     ) -> PurgeSummary:
