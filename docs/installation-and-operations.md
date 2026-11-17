@@ -313,7 +313,7 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 
 ## 15. A06 — Operación de claves, contextos y limpieza (especificado, en revisión; no disponible)
 
-> **ESPECIFICADO, EN REVISIÓN (A06): no implementado.** No hay código, esquema, dependencias ni versión de A06; el motor sigue en `0.4.0` / migración `0003`. Contrato completo: [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md) (1A–4A aprobadas; `E-A06-nn` propuestas; `P-A06-nn` pendientes de revisión). Todo lo siguiente es **propuesto / no disponible**.
+> **ESPECIFICADO, EN REVISIÓN (A06): no implementado.** No hay código, esquema, dependencias ni versión de A06; el motor sigue en `0.4.0` / migración `0003`. Contrato completo: [protección y restauración de texto](text-protection.md); alcance y matriz: [especificación de A06](features/A06-proteccion-y-restauracion-de-texto.md); decisiones: [A06-decisions](decisions/A06-decisions.md) (1A–4A y P-A06-01 a 06 aprobadas por el usuario; contrato en revisión 2, pendiente de su aprobación explícita; `E-A06-nn` elecciones técnicas propuestas). Todo lo siguiente es **propuesto / no disponible**.
 
 - **Extra propuesto** `protection` (`cryptography`); **no** forma parte de la instalación base ni cambia la importación base (D-33).
 - **Claves:** las suministra el host/operador (`KeyProvider`/`KeyRing`), 32 bytes aleatorios, versionadas; la activa cifra lo nuevo y las anteriores deben conservarse hasta que venzan los contextos (y backups) que las usen; `maintenance().protection_key_usage()` informa cuándo retirarlas ([§9](text-protection.md#9-criptografía-y-claves-3a)).
