@@ -12,8 +12,8 @@ Relacionado: [contrato de A06](text-protection.md) · [especificación y matriz 
 | Base | `main` = `origin/main` = `f21baaf` (merge del PR #4 de A05; `0.4.0`, migración `0003`), verificado con `git fetch` al empezar la fase de documentación |
 | Versión / migración / nivel | `0.5.0` · `0004_text_protection` · `schema_level` 4 · `min_runtime_level` 1 · extra nuevo `protection` (`cryptography`) · catálogo de permisos 17 → 21 |
 | Contrato aprobado | revisión 2, commit `17b545d`, **aprobado explícitamente por el usuario**, que precisó dos filas de la matriz (AC-A06-59 y AC-A06-62(a)); alineadas en `7fa33e3` antes de implementar |
-| Commit de evidencia (código y pruebas) | `e0d1adc` (Linux, snapshot exacto del `HEAD` con `git archive`). La prueba del mock de A03 (`test_the_a03_mock_adapter_drives_protection_and_restoration`), `tests/test_a06_docs.py` y `scripts/check_doc_links.py` se añadieron **después** y están en el commit final; la evidencia macOS es sobre el árbol final |
-| Commit final | el que añade este informe y la documentación; su hash lo informa la entrega (no puede figurar en un archivo que ese mismo commit contiene) |
+| Commit de evidencia (código y pruebas) | `e0d1adc` (Linux, snapshot exacto del `HEAD` con `git archive`). La prueba del mock de A03 (`test_the_a03_mock_adapter_drives_protection_and_restoration`, `8d4041a`), `tests/test_a06_docs.py` y `scripts/check_doc_links.py` se añadieron **después**; la evidencia macOS es sobre el árbol final, cuyo hash de código (`scripts/code_tree_hash.sh`) coincide con el de lo confirmado en Git (`0358c1dd…`) |
+| Commit final | el último de la rama (documentación y este informe); su hash lo informa la entrega (no puede figurar en un archivo que ese mismo commit contiene). Entre `e0d1adc` y el final el **código de `src/` no cambió**; solo se añadieron las dos pruebas y el comprobador de enlaces indicados |
 
 Commits de A06 sobre la base (`git log f21baaf..HEAD`):
 
@@ -23,7 +23,8 @@ Commits de A06 sobre la base (`git log f21baaf..HEAD`):
 - `7fa33e3` docs(a06): align AC-A06-59 and AC-A06-62(a) with the tests the approved contract implies
 - `9dfd9de` feat(a06): text protection and restoration (Python API, contexts, encrypted mappings) in 0.5.0
 - `e0d1adc` test(a06): AC-A06 acceptance tests with real cryptography and persistence on PostgreSQL and SQLite
-- *(commit final: este informe, la documentación permanente alineada, `tests/test_a06_docs.py`, `scripts/check_doc_links.py` y la prueba del mock de A03)*
+- `8d4041a` test(a06): drive protection and restoration with the A03 mock adapter (fixtures bound to the exact text)
+- *(commits finales: la documentación permanente alineada con este informe, `tests/test_a06_docs.py` y `scripts/check_doc_links.py`, más una corrección de esta lista; el hash del último lo informa la entrega)*
 
 Nada se ha subido (`push`) ni mezclado (`merge`): lo hace el usuario. No se reescribió el historial. `docs/STAGE_3_PLAYBOOK.md` y `.DS_Store` (ignorados por Git) no se tocaron.
 
