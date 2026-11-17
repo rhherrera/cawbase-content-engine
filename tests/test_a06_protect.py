@@ -319,3 +319,67 @@ async def test_permissions_are_separate(a06: Harness):  # AC-A06-24 (protection 
         "a", context_id=cid, kind="conversation", text=TEXT, policy=PSEUDO, analysis=INLINE
     )
     assert ok.markers and find_markers(ok.text) == ok.markers
+
+
+async def test_the_a03_mock_adapter_drives_protection_and_restoration(migrated):  # AC-A06-01, 10 (A03 mock)
+    """The deterministic MOCK of A03 (fixtures bound to the exact text) supplies the detection; everything A06 does
+    around it (binding, grouping, encryption, persistence, restoration) is real."""
+    from cawbase_content_engine import ContentEngine, EngineConfig, ScopePermission
+    from cawbase_content_engine.inference import InferenceSetup
+    from cawbase_content_engine.protection.types import ProtectionSetup
+
+    from .a03_helpers import AE, PR, fixture_for, mock, ok_output
+    from .a06_helpers import Keys
+
+    _, url = migrated
+    keys = Keys()
+
+    async def compose(adapter):
+        eng = ContentEngine(
+            EngineConfig(database_url=url),
+            inference=InferenceSetup(adapter, timeout_s=10.0),
+            protection=ProtectionSetup(keys=keys),
+        )
+        await eng.start()
+        return eng
+
+    plain = ContentEngine(EngineConfig(database_url=url))
+    await plain.start()
+    try:
+        setup_ops = await build_profile(plain, "a")
+        found = [("personal_data", NAME), ("password", PASSWORD)]
+        outcome = {"kind": "output", "output": ok_output(TEXT, findings=found, classification=False)}
+        first = await fixture_for(setup_ops, "a", outcome, text=TEXT, caps=("detection",), fid="original")
+    finally:
+        await plain.aclose()
+    eng = await compose(mock(first))
+    try:
+        ops = eng.scoped(eng.trusted_scope_context("a", A06_ALL, actor="t"))
+        cid = (await ops.create_context("a", kind="conversation")).context_id
+        res = await ops.protect_text(
+            "a", context_id=cid, kind="conversation", text=TEXT, policy=PSEUDO, analysis=INLINE
+        )
+        assert res.analysis.provenance.kind == "mock" and res.analysis.provenance.simulated is True
+        assert NAME not in res.text and PASSWORD not in res.text and len(res.markers) == 2
+        reply = f"Gracias {res.markers[0]}."  # the markers are random: the reply fixture is built now
+    finally:
+        await eng.aclose()
+    plain = ContentEngine(EngineConfig(database_url=url))
+    await plain.start()
+    try:
+        reader = plain.scoped(plain.trusted_scope_context("a", [PR, AE], actor="t"))
+        out = {"kind": "output", "output": ok_output(reply, findings=[], classification=False)}
+        second = await fixture_for(reader, "a", out, text=reply, caps=("detection",), fid="reply")
+    finally:
+        await plain.aclose()
+    eng = await compose(mock(second))
+    try:
+        ops = eng.scoped(eng.trusted_scope_context("a", A06_ALL, actor="t"))
+        back = await ops.restore_text(
+            "a", context_id=cid, kind="conversation", text=reply, analysis=INLINE, delivered_markers=res.markers
+        )
+        assert back.text == f"Gracias {NAME}." and back.outcome == "restored"
+        assert back.analysis.provenance.kind == "mock"
+    finally:
+        await eng.aclose()
+    _ = ScopePermission
