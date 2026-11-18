@@ -1,0 +1,83 @@
+{
+ "case_id": "M2",
+ "family": "M",
+ "template": "T2",
+ "pdf_sha256": "f2f74cdeb1783d45ba71bf8b180719a92efd2ffa0a0570b1ec41ebf050a70ee3",
+ "pdf_size": 39095,
+ "stored_in": "corpus",
+ "exporter": {
+  "flow": "M1/M2/M4: docx leído por AppKit (officeOpenXML) en contenedores por página + NSPrintOperation(save); M3: WKWebView.printOperation (exporters/export_m.swift)",
+  "application": "AppKit/WebKit del sistema, Swift 6.4",
+  "os": "macOS 27.0.1-26A434 arm64",
+  "source": "corpus/sources/T<n>.docx (M3: html/T3.html)",
+  "executed_by": "agent (script)",
+  "options": [
+   "A4",
+   "márgenes 25 mm",
+   "sin encabezado/pie del sistema",
+   "fuentes registradas solo para el proceso"
+  ]
+ },
+ "pdfinfo": [
+  "Title:           Untitled",
+  "Producer:        macOS Version 27.0.1 (Build 26A434) Quartz PDFContext",
+  "CreationDate:    Wed Nov 18 14:06:26 2026 -03",
+  "ModDate:         Wed Nov 18 14:06:26 2026 -03",
+  "Custom Metadata: no",
+  "Metadata Stream: no",
+  "Tagged:          no",
+  "UserProperties:  no",
+  "Suspects:        no",
+  "Form:            none",
+  "JavaScript:      no",
+  "Pages:           2",
+  "Encrypted:       no",
+  "Page size:       595 x 842 pts (A4)",
+  "Page rot:        0",
+  "File size:       39095 bytes",
+  "Optimized:       no",
+  "PDF version:     1.3"
+ ],
+ "pdffonts": [
+  {
+   "name": "AAAAAB+NotoSans-Regular",
+   "type": "TrueType",
+   "encoding": "MacRoman",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "no"
+  },
+  {
+   "name": "AAAAAE+NotoSans-Regular",
+   "type": "TrueType",
+   "encoding": "WinAnsi",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "AAAAAC+NotoSerif-Regular",
+   "type": "TrueType",
+   "encoding": "MacRoman",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "no"
+  },
+  {
+   "name": "AAAAAD+NotoSans-Bold",
+   "type": "TrueType",
+   "encoding": "MacRoman",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "no"
+  }
+ ],
+ "type0_cid_subset": false,
+ "intake_utc": "2026-11-18T17:13:46Z",
+ "intake_host": {
+  "system": "Darwin",
+  "release": "27.0.0",
+  "machine": "arm64"
+ },
+ "manifest_sha256": "6296d167e0c58f9534a69a533e6df8103100495659587b520720475eb97ce124"
+}

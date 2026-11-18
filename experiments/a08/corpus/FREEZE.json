@@ -1,0 +1,114 @@
+{
+ "protocol_docs/a08-pdf-corpus-protocol.md": "0d99ef5223b27160b5723e8f8ca1707944dac313325b3c07ae11ce0534e71df4",
+ "corpus/manifest.json": "6296d167e0c58f9534a69a533e6df8103100495659587b520720475eb97ce124",
+ "cases": {
+  "C1": {
+   "pdf_sha256": "1d38c6f1b2d093fe0a5a27eca880c56f63e9db02b2c246bbf9eb9e4269fd4659",
+   "stored_in": "corpus",
+   "oracle_sha256": "ab97adc40e202863d8cc8160f73e546695185d280c370effd5a335bf52135c13",
+   "provenance_sha256": "806e14593739baa414d47701344d65b57b7d98ee70268b58a88e8eb2c265461b",
+   "oracle_status": "ok"
+  },
+  "C2": {
+   "pdf_sha256": "ac5425e059973ce929e8fee9a70cdd8875c48473bba3e5550f49818e4275e90a",
+   "stored_in": "corpus",
+   "oracle_sha256": "1d231a7489ddcc620422188e8d195d97eb785887522fc5035f29aba82ec62d9e",
+   "provenance_sha256": "8b0589751597ba03bf49067f21b286282f45858fd08c65aaf9cc26c37133da91",
+   "oracle_status": "ok"
+  },
+  "C3": {
+   "pdf_sha256": "3f76ccf6bf20ed47edbd549ab343c92e8769a4a856f19e6d0f68d348cb252c42",
+   "stored_in": "corpus",
+   "oracle_sha256": "b5451c5c8a0b1c3042cd0f96b0fcd37fbc3106834efa853b24aeaccb60c6e474",
+   "provenance_sha256": "9e9cd1a52deadc29d136d20a37577e21c919deba8db3bc40e02c6e9484e7e369",
+   "oracle_status": "ok"
+  },
+  "C4": {
+   "pdf_sha256": "1f26b6146f54a7a063445d532b1ca24d3903c8f76965971c368ff0d152bda007",
+   "stored_in": "corpus-private (fuentes incrustadas no redistribuibles; fuera de Git)",
+   "oracle_sha256": "84a0b8ab1a264877b3da13e0323916e2545e79c9e01c4eb7a4232c62c19582eb",
+   "provenance_sha256": "c5380cbe9e089fbccdbc53612a894e5c8e3ec0aee6b0ac3330c5e6f04b48c633",
+   "oracle_status": "ok"
+  },
+  "L1": {
+   "pdf_sha256": "23399acf9328628f5db55914ab98ac8c59eb10f9ca1c9de68bb90d9a637ff7a8",
+   "stored_in": "corpus",
+   "oracle_sha256": "e82942445ebda0195fc02c9599c21f7951fd8ddf11bd5d690519b14dfc22bd33",
+   "provenance_sha256": "651832ceae1b2102bf2567197e0d7a70395e79aa6de25db8e70337afb3826f40",
+   "oracle_status": "ok"
+  },
+  "L2": {
+   "pdf_sha256": "47f9d0d2fb05f8ae295500a86f2d989b80808d6c276ce6b993186ad54b3dff65",
+   "stored_in": "corpus",
+   "oracle_sha256": "083404caa1ebf922f9c1393c778fb3d17615efb9266406b3a23a55bc21a5b07a",
+   "provenance_sha256": "54d173923ade1d409da33af632fec58900f2d1f0cbf2b606bcf8ce8360f47248",
+   "oracle_status": "ok"
+  },
+  "L3": {
+   "pdf_sha256": "0234442618c6ced77bbe0c0067887a212f1bf3dd8ac90e8a98c3525bcba3e5ff",
+   "stored_in": "corpus",
+   "oracle_sha256": "941580f1fcacb1ac135a76c239d0e5e8d4bba8d49f358429bf454208536eb3f3",
+   "provenance_sha256": "97714249bb4268ee5912b28f813ee17d84408d29f363e6fc9606c2d2533548d2",
+   "oracle_status": "ok"
+  },
+  "L4": {
+   "pdf_sha256": "6b84ff4f0875463b29f3fcf254e40debb34aad7c1927cc8d645c96d2431ca92f",
+   "stored_in": "corpus",
+   "oracle_sha256": "78f944b0ac00e0095c8e075696eb7f59ed2f0f5c593a130cd8842dc8b6f42ba4",
+   "provenance_sha256": "541a61c9f39679980b03cf7a6b6ef0a2338e6a74b96c3dc108901dce1d1c5990",
+   "oracle_status": "oracle_unavailable"
+  },
+  "M1": {
+   "pdf_sha256": "d09dca7140878ea8353521489812183e5eda98c272e482086bec5b9026fcada4",
+   "stored_in": "corpus",
+   "oracle_sha256": "be32f3c5f3e8c11c8720c37601b8804a218ab4ca3fc0701986d08080faf6ee91",
+   "provenance_sha256": "cb66060e74caf56b351ac402f8dac8eb63c45025767c89f31d517fbc07f6a5c1",
+   "oracle_status": "ok"
+  },
+  "M2": {
+   "pdf_sha256": "f2f74cdeb1783d45ba71bf8b180719a92efd2ffa0a0570b1ec41ebf050a70ee3",
+   "stored_in": "corpus",
+   "oracle_sha256": "8fc9c425e4f9d23006cb10bd747333b59694623fe1fe81b7837e8b6e0c451742",
+   "provenance_sha256": "00bd703aaf2485ff099281f4a5d72f0295586438b5f5c4e7ba699841d4890141",
+   "oracle_status": "ok"
+  },
+  "M3": {
+   "pdf_sha256": "3322326f3cae55d1c6903747fab81e703975d1278473c72acc9a9b47a2536dd6",
+   "stored_in": "corpus",
+   "oracle_sha256": "e4e367b18d334af3c8a3482d4c5a2b2a06d3c825b981ebdca03d1dcbefbfbb80",
+   "provenance_sha256": "fdf3b0d352d1cb6b2909a372c8d482f7c3ae6755d03bdf43a18326bc9150d6d4",
+   "oracle_status": "ok"
+  },
+  "M4": {
+   "pdf_sha256": "2c9e2f7828dc349de5369bb4e1b977f5e2ad6f6ef53c73c0b27f72868f0019b4",
+   "stored_in": "corpus-private (fuentes incrustadas no redistribuibles; fuera de Git)",
+   "oracle_sha256": "cb15e1b0fa89c63730077504eda7498e5d86eef109cd0b0ec4e3c7c1cfbc1a92",
+   "provenance_sha256": "f0575c46c14172c5e289a290cceb7f44c1480eb50a669b5bf2f4004070c5dd6a",
+   "oracle_status": "oracle_unavailable"
+  },
+  "W1": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "W2": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "W3": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "W4": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "G1": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "G2": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "G3": {
+   "status": "faltante (exportación pendiente del usuario)"
+  },
+  "G4": {
+   "status": "faltante (exportación pendiente del usuario)"
+  }
+ }
+}
