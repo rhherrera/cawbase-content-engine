@@ -13,7 +13,7 @@ Documentos: [protocolo (rev. 2, congelado)](a08-pdf-corpus-protocol.md) · [cont
 | Precisiones del protocolo (rev. 2), **antes** de medir | `c9c1104` |
 | Congelamiento de entradas C/L/M (PDF, procedencia, oráculo y zonas), **antes** de ejecutar el candidato | `5f1af03` (hashes en `experiments/a08/corpus/FREEZE.json`) |
 | Prototipo (primera versión completa) | `71128a5` |
-| Código de la medición informada | el commit que acompaña a este informe (ver §8) |
+| Código de la medición informada | `2cd779a` (código, resultados y este informe en el mismo commit) |
 | macOS | 27.0.1 (26A434), arm64, Python 3.13.16 |
 | Linux local | Docker `cce-a08:1` (Debian 13.x, aarch64, glibc 2.41), Python 3.13.18; LibreOffice 25.2.3.2, `qpdf` 12.2.0, Poppler 25.03.0 |
 | Bibliotecas (ambos) | pikepdf 10.18.2 (QPDF 12.4.2), pypdfium2 5.15.2 / PDFium 159.0.8149.0, pypdf 7.1.1, fontTools 4.68.0, Pillow 13.0.0, numpy 2.5.5 (`experiments/a08/uv.lock`) |
