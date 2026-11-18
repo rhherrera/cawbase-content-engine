@@ -135,3 +135,16 @@ Rama de implementación de A01: `feature/a01-product-foundation` (cerrada). Rama
 > **IMPLEMENTADO en `0.6.0` (A07; migración `0005`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 3, commit `044efaf`): [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md); evidencia y limitaciones: [informe de A07](a07-implementation-report.md).
 
 - Suites: `test_a07_pure.py` (transformador, verificador y funciones puras, sin base), `test_a07_jobs.py` y `test_a07_lifecycle.py` (flujos durables con el mock de A03, PostgreSQL y SQLite), `test_a07_migration.py`, y `test_a07_evidence.py` (solo con `CCE_A07_EVIDENCE_DIR`, usado por `scripts/a07_render_evidence.sh`). Fixtures OOXML sintéticos con oráculo por construcción en `tests/a07_fixtures.py`.
+
+## 16. A08 — Proceso (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- **Suites:**
+  - `test_a08_pure.py`: extractor, matriz, ciclo puro del corpus, controles CR/CS/CV; sin base.
+  - `test_a08_jobs.py`, `test_a08_access.py` y `test_a08_lifecycle.py`: flujos durables con el mock de A03, PostgreSQL y SQLite.
+  - `test_a08_migration.py`.
+  - `test_a08_evidence.py`: renders con PDFium y Poppler; se omite si no hay `pdftoppm`.
+- **Auxiliares:** `tests/a08_helpers.py` y `tests/a08_synth.py`, este último un constructor sintético con pikepdf que no importa `experiments/`.
+- **Corpus:** PDF nativos `L1`, `C1`, `M1`, `L5`, `C5` y `M5`, con el manifiesto 2B, en `tests/fixtures/a08/`.
+- **Dependencias de desarrollo nuevas:** `pypdfium2`, `numpy` y `pillow`, solo para la evidencia. La fuente candidata se regenera con `scripts/build_pdf_candidate_font.py`, que necesita fontTools del entorno de `experiments/a08`.

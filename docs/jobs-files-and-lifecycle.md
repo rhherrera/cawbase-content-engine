@@ -957,3 +957,12 @@ Registradas al implementar (`I-A05-nn` en [A05-decisions](decisions/A05-decision
 16. **Hora de decisión (I-A05-13).** Ver §6.1: se lee tras las esperas. Las marcas de reclamo de purga son un `UPDATE` único cuya comparación con una hora previa solo puede ser más conservadora (un reclamo vencido tarda un poco más en reutilizarse); las lecturas de solo consulta (`get_*`, descargas) usan su hora de lectura.
 17. **Conjunto de artefactos (I-A05-14).** Ver §6.5. `ReferenceExecutor` ya cumple el contrato; un ejecutor propio que lo viole falla de forma explícita y sin reintentos.
 18. **Orden de bloqueos efectivo (I-A05-17).** `claim` y `expire_deadlines` bloquean las entradas (6) antes de la fila del trabajo (8); `submit` bloquea las entradas antes de decidir sobre ellas. La evidencia del orden es el registro de las sentencias con bloqueo de cada transacción (PostgreSQL) y las carreras coordinadas con una segunda conexión; **no** hay verificación estática de todo el código y SQLite solo ofrece el orden de lectura/escritura bajo el único escritor.
+
+## 23. A08 — Cambios sobre trabajos y archivos (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- **Análisis nuevos (P-A08-04):** el `document_analysis` fija `extractors = {docx: v1, pdf: v2}`, usa la `requirements_key` `document/2` y la identidad de validación v2. El worker anuncia además la clave heredada para terminar con v1 los trabajos aceptados por `0.4.0`–`0.6.0`. Para la descarga (§3.7), la validación v2 prevalece sobre la v1.
+- **Operaciones y roles nuevos:** `pdf_protection` y `pdf_restoration`, con los roles `pdf_protected`, `pdf_protection_report`, `pdf_restored` y `pdf_restoration_report`. Los lectores genéricos no los sirven.
+- **Purga inmediata:** un `pdf_restored` descartado es elegible de inmediato (extensión de P-A07-04, D-A08-06).
+- **Matriz PDF del análisis:** la de §11.2 rige solo para los trabajos v1. Los nuevos siguen la del [contrato de A08 §5.1](pdf-protection.md#51-análisis-extractor-v2-el-documento-se-rechaza-al-validar).

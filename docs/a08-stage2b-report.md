@@ -1,5 +1,7 @@
 # A08 — Informe de la etapa 2B (PDF digital con selecciones de una línea)
 
+> **Nota posterior (etapa 3).** Este informe es evidencia histórica de la etapa 2B, medida con su criterio original (2/10); no se reinterpreta. La etapa 3 la autorizó el usuario con otro alcance y otro criterio visual, y su resultado está en el [informe de A08](a08-implementation-report.md). La hipótesis no medida del §3.1 (conservar la extensión del operador) se adoptó en la etapa 3 como E-A08-27 y se midió allí.
+
 > **Estado: etapa 2B EJECUTADA en macOS y en Linux local (Docker) sobre el corpus fijado. Resultado parcial: faltan las 4 exportaciones de Word y Google Docs.** Con el piso fijado, **el piso no se cumple: 2/10** ciclos completos (`L1`, `C1`). **Recomendación binaria: la evidencia sigue siendo insuficiente** para revisar un contrato productivo acotado (§6). No hubo bloqueos:
 >
 > - ningún residuo ni pérdida colateral en lo emitido;

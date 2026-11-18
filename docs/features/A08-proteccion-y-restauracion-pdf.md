@@ -1,12 +1,18 @@
 # A08 — Protección y restauración PDF
 
-> **Estado: ETAPA 2B EJECUTADA — piso no cumplido (2/10; 6 medidos, 4 faltantes de Word y Google Docs; sin bloqueos; recomendación: evidencia insuficiente)** ([informe 2B](../a08-stage2b-report.md), [protocolo 2B](../a08-stage2b-protocol.md) fijado antes de medir; criterios C-2B-01 a 06 aprobados por el usuario). La etapa 3 sigue detenida. La etapa 2 queda como evidencia histórica. **Etapa 2 EJECUTADA — piso no cumplido con los criterios congelados (0/20; 12 medidos, 8 faltantes de Word y Google Docs; sin bloqueos).** Informe y opciones: [a08-feasibility-report.md](../a08-feasibility-report.md). La etapa 3 espera la decisión del usuario. (Etapa 2 autorizada sobre `1afd04d`, con `Z1` como primera opción y `Z2` aprobada solo para la comprobación.) Protocolo congelado en su revisión 2. No hay código productivo, migración, dependencia del paquete ni versión nuevos; el prototipo vive en `experiments/a08/`. Nada está implementado en el motor, probado en GitHub Actions ni aceptado.
+> **Estado: ETAPA 3 IMPLEMENTADA en `0.7.0` (migración `0006`, `schema_level` 6, permisos 25 → 29). La aceptación queda pendiente de la revisión del código y la evidencia por el usuario.**
+>
+> - **Alcance.** El usuario autorizó la etapa 3 con un alcance PDF acotado y un criterio visual ([A08-decisions §2.2](../decisions/A08-decisions.md#22-etapa-3-alcance-y-criterio-visual-aprobados-por-el-usuario)).
+> - **Documentos.** Contrato implementado: [pdf-protection.md](../pdf-protection.md); evidencia y trazabilidad AC-A08-30 a 44: [informe de A08](../a08-implementation-report.md).
+> - **Ambientes.** Probada en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales. **No** ejecutada en GitHub Actions y **no** aceptada.
+> - **Etapas anteriores.** La etapa 2 (0/20) y la 2B (2/10) se conservan como evidencia histórica medida con sus criterios.
+> - **Exportadores.** Word y Google Docs quedan sin verificar.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A08; copia local ignorada por Git), más las decisiones posteriores ([A01](../decisions/A01-decisions.md) a [A07](../decisions/A07-decisions.md) y [A08](../decisions/A08-decisions.md)), que prevalecen. D-A04-04 ([A04-decisions](../decisions/A04-decisions.md)) exige la comprobación representativa antes del pipeline productivo.
 - Repositorio: `cawbase-content-engine` · rama `feature/a08-pdf-protection-restoration`, creada desde `main` en `c6590ec` (merge del PR #6 de A07; `main` = `origin/main` según las referencias locales; árbol limpio).
 - Dependencias: A01–A05 cerradas y aceptadas; A04 aceptada como investigación acotada; **A06 y A07 implementadas y mergeadas, aceptación pendiente** (ver [A08-decisions §1](../decisions/A08-decisions.md#1-fuente-base-y-herencia)). No requiere modelo real (mock de A03).
 - Documentos de A08: [contrato PDF propuesto](../pdf-protection.md) · [protocolo y corpus de D-A04-04](../a08-pdf-corpus-protocol.md) · [manifiesto del corpus](../../experiments/a08/corpus/manifest.json) · [decisiones](../decisions/A08-decisions.md).
-- Previsto para la etapa 3 (propuesto / no disponible): versión `0.7.0`, migración `0006_pdf_protection`, `schema_level` 6, permisos 25 → 29.
+- Etapa 3 (implementada): versión `0.7.0`, migración `0006_pdf_protection`, `schema_level` 6, permisos 25 → 29.
 
 ## 1. Objetivo, alcance y exclusiones
 
@@ -75,7 +81,7 @@ Cada fila: **garantía** → **caso** → **evidencia esperada**. El resultado r
 | AC-A08-22 | Propuesta de matriz y contrato productivos limitados a la evidencia; si el piso no se cumple, opciones con cobertura, coste y efecto sobre garantías | informe | `docs/a08-feasibility-report.md` |
 | AC-A08-23 | Experimentos fuera de la wheel y del sdist | `uv build` | listado de entradas |
 
-### 5.3 Etapa 3 (implementación; preliminar, se ajusta al alcance que se apruebe tras la etapa 2)
+### 5.3 Etapa 3 (implementación; resultados y trazabilidad en el [informe de A08](../a08-implementation-report.md#3-trazabilidad-ac-a08--pruebas--ambiente))
 
 | AC | Garantía | Caso | Evidencia esperada |
 |---|---|---|---|

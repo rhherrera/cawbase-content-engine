@@ -331,8 +331,18 @@ A06 cubre **solo texto**. Un `SourceMap` sigue representando **posiciones docume
 
 A07 aplica la transformación y la restitución **solo sobre DOCX** y **dentro de la matriz de extracción de A05** (sin ampliarla), con su propia matriz de transformación cruzada con las filas DX de §11 ([contrato de A07 §4](docx-protection.md#4-matriz-de-transformación-docx-d4-d5)). Este documento conserva el contrato de A04 sin cambios; el extractor de A05 y el `SourceMap` (`document-structures/1`) no cambian. PDF sigue en A08 (D-A04-04).
 
-## 23. A08 — Transformación y restauración PDF (propuesta, no implementada)
+## 23. A08 — Transformación y restauración PDF (etapa 1, histórico)
 
-> **ETAPA 1 de A08 (solo documental), pendiente de la aprobación del usuario.** Contrato propuesto: [protección y restauración PDF](pdf-protection.md); protocolo de la comprobación D-A04-04: [protocolo y corpus](a08-pdf-corpus-protocol.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md).
+> **Histórico (etapa 1 de A08).** El estado implementado está en el §24. Contrato propuesto: [protección y restauración PDF](pdf-protection.md); protocolo de la comprobación D-A04-04: [protocolo y corpus](a08-pdf-corpus-protocol.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md).
 
 Este documento conserva el contrato de A04 sin cambios. A08 propone un extractor PDF con **identidad propia** (la identidad `cce-docs-extract` 1 de DOCX no cambia) y un `SourceMap` PDF `document-structures/2`, y amplía la matriz de §12 solo con lo que acredite la comprobación D-A04-04; mientras tanto rige la matriz conservadora de A05 ([§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización)).
+
+## 24. A08 — Extractor PDF v2 (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+Para los análisis nuevos, A08 sustituye la matriz PDF conservadora de A05 por la del extractor v2 (`cce-pdf-extract` 1, `document-structures/2`; [contrato §4–§5](pdf-protection.md#4-extractor-v2-sourcemap-versionado-y-compatibilidad-d4)):
+
+- **Lo que admite:** Type0/CID `Identity-H`, object streams, `/Contents` en arreglo, estado de texto completo, `/Rotate` múltiplo de 90 y `/ActualText` idéntico a sus glifos.
+- **Lo que conserva:** los rechazos de A04.
+- **Lo que no cambia:** la identidad del extractor DOCX y la del PDF v1, que sigue congelada en `documents/pdf.py` para los trabajos aceptados antes.

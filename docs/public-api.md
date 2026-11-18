@@ -743,3 +743,24 @@ Se reutilizan `permission_denied`, `resource_not_accessible`, `validation_failed
 - Lectores genéricos: `get_job_result`/`open_job_artifact` y las rutas HTTP `result`/`source-map` sirven solo `document_analysis`/`text_analysis`; para trabajos de A07 ⇒ `resource_not_found` ([§9.2](docx-protection.md#92-clases-de-artefacto-y-lectores)).
 - `restore_text` de A06 puede devolver **como texto** el valor de un marcador emitido en un DOCX con todas sus condiciones (P-A07-01); no produce ni lee archivos.
 - Errores nuevos: `analysis_expiring`, `context_expiring`, `derivative_binding_unavailable`, `derivative_mismatch`; códigos de fallo de trabajo en [§8.5](docx-protection.md#85-códigos-de-fallo-del-trabajo-amplían-el-catálogo-cerrado-de-a05-71). Mantenimiento: `engine.maintenance().run_docx_cleanup()` y CLI `cleanup-docx`.
+
+## 16. A08 — Protección y restauración PDF (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- Métodos nuevos de `ScopedOperations` (solo Python; todos rechazan `HostTransaction`):
+  - `submit_pdf_protection` (`pdf:protect` + `results:read`; `ExistingContext` o `NewContext`);
+  - `get_pdf_protection_result`, `open_pdf_protected` y `get_pdf_derivative` (`pdf:protected:read`);
+  - `submit_pdf_restoration` (`pdf:restore`);
+  - `get_pdf_restoration_result` y `open_pdf_restored` (`pdf:restored:read`, con contexto vigente y scope activo en el instante de autorización).
+
+  Firmas y tipos: [contrato §11](pdf-protection.md#11-api-permisos-lectores-y-retención-d6).
+- Estado, cancelación y borrado de datos: los de A05 sin cambios (`operation ∈ {pdf_protection, pdf_restoration}`). `delete_job_data` **conserva** el vínculo.
+- Lectores genéricos y lectores DOCX: no sirven artefactos de A08 ⇒ `resource_not_found`.
+- **Cambio para hosts (D-A08-04):** los `document_analysis` nuevos sobre PDF usan el extractor v2 (`cce-pdf-extract` 1) y publican mapas `document-structures/2`, con separadores `synthesized_line` y `synthesized_space` y piezas con flujo, operador, rango de códigos y caja.
+  - Los análisis PDF anteriores se leen tal como se publicaron.
+  - Para proteger un PDF analizado con v1, hay que volver a analizar el archivo.
+  - La matriz PDF del análisis es la del [contrato §5.1](pdf-protection.md#51-análisis-extractor-v2-el-documento-se-rechaza-al-validar).
+- `restore_text` de A06 puede devolver como texto el valor de un marcador emitido en un PDF, con todas sus condiciones.
+- Códigos de fallo nuevos: `uncovered_content`, `zone_plan_unjustified`, `replacement_overflow`, `localization_ambiguous`, `restoration_encoding_unavailable` y `restoration_layout_unavailable`. Se suman a los de A07 que aplican.
+- Mantenimiento: `engine.maintenance().run_pdf_cleanup()` y la CLI `cleanup-pdf`.

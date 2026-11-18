@@ -1,5 +1,7 @@
 # A08 — Informe de la comprobación D-A04-04 (etapa 2)
 
+> **Nota posterior (etapa 3).** Evidencia histórica de la etapa 2 (0/20 con sus criterios congelados); no se reinterpreta. La implementación de la etapa 3 está en el [informe de A08](a08-implementation-report.md).
+
 > **Estado: etapa 2 EJECUTADA en macOS y en Linux local (Docker) sobre el corpus congelado; resultados parciales porque faltan las 8 exportaciones de Word y Google Docs.** Esto **no** es un acta, **no** autoriza la etapa 3 y **no** acredita calidad de detección (hallazgos controlados con el oráculo; el mock de A03 no interviene en el prototipo). Con los criterios congelados, **el piso no se cumple: 0/20**. Las variantes informativas, fuera del cómputo, llegan a 5/20 (6/20 con tolerancia de rasterizado), y ni con todas ellas el piso es alcanzable con el corpus fijado. **No hubo bloqueos**: ningún residuo en lo emitido, todos los rechazos de control resultaron como se esperaba y los 30 controles del verificador fueron detectados. El alcance productivo y cualquier cambio de criterio son decisión del usuario (§7). GitHub Actions no se ejecutó.
 
 > **Etapa 2B (posterior):** el usuario autorizó una etapa 2B acotada a PDF digital con selecciones de una línea, con su propio [protocolo](a08-stage2b-protocol.md), corpus, resultados e informe. Este informe no cambia: sus resultados siguen siendo la evidencia histórica de la etapa 2 y se reproducen con el código de `2cd779a`.
