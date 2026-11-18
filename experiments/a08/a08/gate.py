@@ -180,11 +180,16 @@ def _grids(paths):
     return ok_ids
 
 
-def classify(pages: list[PageModel], rules: tuple[str, ...]) -> dict:
-    """Every painted object must be admitted by a rule in `rules`; returns per-rule counts or raises uncovered_content."""
+def classify(pages: list[PageModel], rules: tuple[str, ...], pdf=None) -> dict:
+    """Every painted object must be admitted by a rule in `rules`; returns per-rule counts or raises uncovered_content.
+    Glyph boxes are INK boxes from the embedded program when available (as PDFium reports them)."""
+    from types import SimpleNamespace
+
+    from .transform import ink_box
+    stub = SimpleNamespace(pdf=pdf)
     counts: dict[str, int] = {}
     for pm in pages:
-        glyph_boxes = [qbox(g) for g in pm.glyphs]
+        glyph_boxes = [ink_box(stub, g) if pdf is not None else qbox(g) for g in pm.glyphs if not g.uni.isspace()]
         ta = [min(b[0] for b in glyph_boxes), max(b[2] for b in glyph_boxes)] if glyph_boxes else [pm.cropbox[0], pm.cropbox[2]]
         text_w = ta[1] - ta[0]
         page_area = (pm.cropbox[2] - pm.cropbox[0]) * (pm.cropbox[3] - pm.cropbox[1])
@@ -276,7 +281,7 @@ def extract(data: bytes, rules: tuple[str, ...] = ALL_RULES, max_pages: int = 10
     it = Interp(pdf)
     pages = [it.page(i, p) for i, p in enumerate(pdf.pages)]
     visibility(pages)
-    inv["rules_used"] = classify(pages, rules)
+    inv["rules_used"] = classify(pages, rules, pdf)
     for pm in pages:
         build_units(pm)
     smap = source_map(hashlib.sha256(data).hexdigest(), len(data), pages)

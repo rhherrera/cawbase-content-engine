@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import pypdfium2 as pdfium
 import pypdfium2.raw as c
+from cawbase_content_engine.protection import markers as A06
 from pypdf import PdfReader
 from pypdf.generic import (
     ArrayObject,
@@ -28,8 +29,6 @@ from pypdf.generic import (
     StreamObject,
     TextStringObject,
 )
-
-from cawbase_content_engine.protection import markers as A06
 
 DPI = 150
 DILATE = 3
@@ -402,6 +401,17 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
         raise Fail("VA", "poppler stderr: " + perr[:120])
     rd = pypdf_reader(out)
     rr = PdfReader(io.BytesIO(ref))
+    import shutil
+    if shutil.which("qpdf"):
+        with tempfile.NamedTemporaryFile(suffix=".pdf") as f:
+            f.write(out)
+            f.flush()
+            q = subprocess.run(["qpdf", "--check", f.name], capture_output=True, text=True)
+        if q.returncode != 0 or "WARNING" in (q.stdout + q.stderr):
+            raise Fail("VA", "qpdf --check")
+        report["VA_qpdf"] = "passed"
+    else:
+        report["VA_qpdf"] = "not run (qpdf CLI not installed)"
     report["VA"] = "passed"
     # VG: geometry
     if len(rd.pages) != len(rr.pages):
@@ -475,7 +485,7 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
                     raise Fail("Z2", "height/baseline")
         if mode == "protected":
             # marker grammar with whitespace kept (real or PDFium-generated): a gap inside a marker breaks it
-            spaced = "".join(ch["u"] for ch in sorted([ch for ch in dc[z["page"] - 1] if _in(_center(ch["box"]), z["rect"])], key=lambda q: q["box"][0]))
+            spaced = "".join(ch["u"] for ch in dc[z["page"] - 1] if _in(_center(ch["box"]), z["rect"]))  # PDFium reading order
             for s in ln["sels"]:
                 if s["sid"] in z["sids"] and s["substitute"] not in spaced:
                     raise Fail("VZ", "substitute grammar (exact, whitespace included)")
@@ -541,7 +551,8 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
     info = rd.trailer.get("/Info")
     if info is not None and any(k not in ("/CreationDate", "/ModDate") for k in info.get_object().keys()):
         raise Fail("VE", "descriptive /Info")
-    objs, reach, all_ids = walk(PdfReader(io.BytesIO(out)))  # fresh reader: text extraction mutates cached objects
+    fresh = PdfReader(io.BytesIO(out))  # fresh reader: text extraction mutates cached objects
+    objs, reach, all_ids = walk(fresh)
     for o in objs:
         if isinstance(o, (DictionaryObject, StreamObject)) and ("/Metadata" in o or o.get("/Type") == "/Metadata"):
             raise Fail("VE", "metadata present")
@@ -600,7 +611,7 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
                     if any(any(r.encode(e, "ignore") in d for e in ("utf-8", "utf-16-be", "utf-16-le", "latin-1") if r.encode(e, "ignore")) for r in R):
                         if o not in [cs for cs in []]:
                             # content streams are reached as page /Contents; they are covered by (1)
-                            if not _is_content(rd, o):
+                            if not _is_content(fresh, o):
                                 raise Fail("VK", "value in a stream")
             for r in R:
                 for e in ("utf-8", "utf-16-be", "utf-16-le", "latin-1"):

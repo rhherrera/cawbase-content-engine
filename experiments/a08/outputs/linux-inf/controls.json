@@ -1,0 +1,947 @@
+{
+ "band": "TB",
+ "rules": [
+  "RP3",
+  "RP5",
+  "RP7"
+ ],
+ "CA": {
+  "controls": {
+   "CA01": {
+    "description": "imagen diminuta con «74»",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RI2"
+    ]
+   },
+   "CA02": {
+    "description": "letras «GIL» con segmentos rectos",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RP1"
+    ]
+   },
+   "CA03": {
+    "description": "letras «EF» con filetes largos",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RP1",
+     "RP4"
+    ]
+   },
+   "CA04": {
+    "description": "letra «H» de imágenes uniformes",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RI1"
+    ]
+   },
+   "CA05": {
+    "description": "letra «H» de rectángulos rellenos",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RP1"
+    ]
+   },
+   "CA06": {
+    "description": "cifra «1» con bordes adicionales dentro de una tabla",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RP1"
+    ]
+   },
+   "CA07": {
+    "description": "letras «SO» con curvas pequeñas (cada una <= 6 pt)",
+    "result": "admitted (rule failure)",
+    "admitted_by": [
+     "RP2"
+    ]
+   }
+  },
+  "refuted": {
+   "RI2": [
+    "CA01"
+   ],
+   "RP1": [
+    "CA02",
+    "CA03",
+    "CA05",
+    "CA06"
+   ],
+   "RP4": [
+    "CA03"
+   ],
+   "RI1": [
+    "CA04"
+   ],
+   "RP2": [
+    "CA07"
+   ]
+  },
+  "surviving": [
+   "RP3",
+   "RP5",
+   "RP7"
+  ]
+ },
+ "CR": {
+  "CR01": {
+   "expected": "font_mapping_insufficient|unsupported_structure",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR02": {
+   "expected": "font_mapping_insufficient",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR03": {
+   "expected": "font_mapping_insufficient",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR04": {
+   "expected": "font_mapping_insufficient",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR05": {
+   "expected": "scanned_without_text",
+   "outcome": "gate:scanned_without_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR06": {
+   "expected": "hidden_text|uncovered_content",
+   "outcome": "gate:hidden_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR07": {
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR08": {
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR09": {
+   "expected": "encrypted",
+   "outcome": "gate:encrypted",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR10": {
+   "expected": "signed",
+   "outcome": "gate:signed",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR11": {
+   "expected": "incremental_update|parser_repair",
+   "outcome": "gate:incremental_update",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR12": {
+   "expected": "parser_repair",
+   "outcome": "gate:parser_repair",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR13": {
+   "expected": "forms_or_layers",
+   "outcome": "gate:forms_or_layers",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR14": {
+   "expected": "forms_or_layers",
+   "outcome": "gate:forms_or_layers",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR15": {
+   "expected": "embedded_content",
+   "outcome": "gate:embedded_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR16": {
+   "expected": "executable_action",
+   "outcome": "gate:executable_action",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR17": {
+   "expected": "unsupported_structure",
+   "outcome": "gate:unsupported_structure",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR18": {
+   "expected": "alternate_text_duplication",
+   "outcome": "gate:alternate_text_duplication",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR19": {
+   "expected": "unsupported_structure|parser_repair",
+   "outcome": "gate:unsupported_structure",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR20": {
+   "expected": "shared_object_partial|selection_not_transformable",
+   "outcome": "plan:selection_not_transformable",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR21": {
+   "expected": "hidden_text",
+   "outcome": "gate:hidden_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR22": {
+   "expected": "hidden_text",
+   "outcome": "gate:hidden_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR23": {
+   "expected": "selection_crosses_boundary|oracle_unavailable",
+   "outcome": "oracle:oracle_unavailable",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  }
+ },
+ "CS": {
+  "CS01": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.834,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.834
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.834
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS03": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8371,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8371
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8371
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS04": {
+   "outcome": "plan:selection_not_transformable",
+   "success_rt": false,
+   "plan": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_not_transformable",
+     "detail": "selection across streams or inside a Form XObject (prototype)"
+    }
+   }
+  },
+  "CS05": {
+   "outcome": "cycle",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8631,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8631
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8631
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS06": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8261,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8261
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8261
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 108 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS07a": {
+   "outcome": "plan:selection_not_transformable",
+   "success_rt": false,
+   "plan": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_not_transformable",
+     "detail": "selection across streams or inside a Form XObject (prototype)"
+    }
+   }
+  },
+  "CS07b": {
+   "outcome": "plan:selection_not_transformable",
+   "success_rt": false,
+   "plan": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_not_transformable",
+     "detail": "selection across streams or inside a Form XObject (prototype)"
+    }
+   }
+  },
+  "CS08": {
+   "outcome": "oracle:oracle_unavailable",
+   "success_rt": false,
+   "plan": null,
+   "stages": {
+    "oracle": {
+     "result": "failed",
+     "reason": "oracle_unavailable"
+    }
+   }
+  },
+  "CS09": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.843,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.843
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.843
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS10": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8585,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8585
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8585
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS11": {
+   "outcome": "cycle",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8486,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8486
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8486
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS12": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.6764,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6764
+      },
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6764
+      }
+     ],
+     "moved_glyphs": 13
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  },
+  "CS13": {
+   "outcome": "verify_restore:None",
+   "success_rt": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.7999,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.7999
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.7999
+      }
+     ],
+     "moved_glyphs": 15
+    }
+   ],
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   }
+  }
+ }
+}

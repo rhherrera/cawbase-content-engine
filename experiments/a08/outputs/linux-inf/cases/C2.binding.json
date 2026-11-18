@@ -1,0 +1,332 @@
+{
+ "occurrences": [
+  {
+   "page": 1,
+   "start": 410,
+   "end": 435,
+   "token": "M4A2CMCKYGY4EC19"
+  },
+  {
+   "page": 1,
+   "start": 442,
+   "end": 467,
+   "token": "P29PA5SZHPH2MRGC"
+  },
+  {
+   "page": 1,
+   "start": 477,
+   "end": 502,
+   "token": "DRK5K009RAHZGHH6"
+  },
+  {
+   "page": 1,
+   "start": 522,
+   "end": 547,
+   "token": "MYMBQQKM63B1D0RQ"
+  }
+ ],
+ "redactions": [],
+ "lines": [
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 245.20311478320312,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S1",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 245.20311478320312,
+     "orig_adv_page": 113.4702727515718,
+     "sub_nat_page": 129.6310428302063,
+     "value_font": "/F4",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 410,
+     "x_orig": 245.20311478320312,
+     "span_page": 113.4702727515718,
+     "substitute": "[[CCE1:M4A2CMCKYGY4EC19]]",
+     "runs": [
+      {
+       "font": "/F4",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 10,
+       "adv": 56.99807684748001
+      },
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 11,
+       "adv": 56.800166858426266
+      }
+     ],
+     "token": "M4A2CMCKYGY4EC19"
+    }
+   ],
+   "moved": [],
+   "block": [
+    939,
+    956
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 245.64292907714844,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S2",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 245.64292907714844,
+     "orig_adv_page": 26.772804501466368,
+     "sub_nat_page": 129.26820785027442,
+     "value_font": "/F6",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 438,
+     "x_orig": 245.20311478320312,
+     "span_page": 26.33299020752105,
+     "substitute": "[[CCE1:P29PA5SZHPH2MRGC]]",
+     "runs": [
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 5,
+       "adv": 26.77282351921564
+      }
+     ],
+     "token": "P29PA5SZHPH2MRGC"
+    }
+   ],
+   "moved": [],
+   "block": [
+    1021,
+    1038
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 245.75286865234375,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S3",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 245.75286865234375,
+     "orig_adv_page": 84.04572046229495,
+     "sub_nat_page": 128.68547288250505,
+     "value_font": "/F6",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 453,
+     "x_orig": 245.20311478320312,
+     "span_page": 83.49596659315432,
+     "substitute": "[[CCE1:DRK5K009RAHZGHH6]]",
+     "runs": [
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 15,
+       "adv": 84.04577535149251
+      }
+     ],
+     "token": "DRK5K009RAHZGHH6"
+    }
+   ],
+   "moved": [],
+   "block": [
+    1072,
+    1089
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 245.70889282226562,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S4",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 245.70889282226562,
+     "orig_adv_page": 123.85857116007602,
+     "sub_nat_page": 138.44903234249009,
+     "value_font": "/F6",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 488,
+     "x_orig": 245.20311478320312,
+     "span_page": 123.35279312101352,
+     "substitute": "[[CCE1:MYMBQQKM63B1D0RQ]]",
+     "runs": [
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 22,
+       "adv": 124.07856813730945
+      }
+     ],
+     "token": "MYMBQQKM63B1D0RQ"
+    }
+   ],
+   "moved": [],
+   "block": [
+    1165,
+    1182
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 245.74188232421875,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S5",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 245.74188232421875,
+     "orig_adv_page": 60.296537151444255,
+     "sub_nat_page": 51.03878717708378,
+     "value_font": "/F6",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 521,
+     "x_orig": 245.20311478320312,
+     "span_page": 59.757769610428625,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 10,
+       "adv": 60.296576665042515
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    1252,
+    1269
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 246.26963806152344,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S6",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 246.26963806152344,
+     "orig_adv_page": 164.80393764736905,
+     "sub_nat_page": 51.03878717708378,
+     "value_font": "/F6",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 539,
+     "x_orig": 245.20311478320312,
+     "span_page": 163.73741436904874,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 29,
+       "adv": 164.8040458848144
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    1309,
+    1326
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 245.43402099609375,
+   "r": 519.1020000457763,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S7",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 245.43402099609375,
+     "orig_adv_page": 37.163077815738376,
+     "sub_nat_page": 51.03878717708378,
+     "value_font": "/F6",
+     "size": 14.6599998,
+     "th": 1.0,
+     "unit_start": 587,
+     "x_orig": 245.20311478320312,
+     "span_page": 36.932171602847745,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/F6",
+       "size": 14.6599998,
+       "th": 1.0,
+       "n": 7,
+       "adv": 37.16309794453751
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    1424,
+    1441
+   ]
+  }
+ ]
+}

@@ -1,0 +1,155 @@
+/tmp/venv/lib/python3.13/site-packages/pikepdf/models/_content_stream.py:117: UserWarning: Unexpected end of stream
+  Object._parse_stream_grouped(stream, operators),
+CA refuted: {'RI2': ['CA01'], 'RP1': ['CA02', 'CA03', 'CA05', 'CA06'], 'RP4': ['CA03'], 'RI1': ['CA04'], 'RP2': ['CA07']} surviving: ('RP3', 'RP5', 'RP7')
+CR01 gate:font_mapping_insufficient OK
+CR02 gate:font_mapping_insufficient OK
+CR03 gate:font_mapping_insufficient OK
+CR04 gate:font_mapping_insufficient OK
+CR05 gate:scanned_without_text OK
+CR06 gate:hidden_text OK
+CR07 gate:uncovered_content OK
+CR08 gate:uncovered_content OK
+CR09 gate:encrypted OK
+CR10 gate:signed OK
+CR11 gate:incremental_update OK
+CR12 gate:parser_repair OK
+CR13 gate:forms_or_layers OK
+CR14 gate:forms_or_layers OK
+CR15 gate:embedded_content OK
+CR16 gate:executable_action OK
+CR17 gate:unsupported_structure OK
+CR18 gate:alternate_text_duplication OK
+CR19 gate:unsupported_structure OK
+CR20 plan:selection_not_transformable OK
+CR21 gate:hidden_text OK
+CR22 gate:hidden_text OK
+CR23 oracle:oracle_unavailable OK
+CS01 verify_restore:VZ 
+CS03 verify_restore:VZ 
+CS04 plan:selection_not_transformable 
+CS05 verify_restore:VZ 
+CS06 verify_restore:VZ 
+CS07a plan:selection_not_transformable 
+CS07b plan:selection_not_transformable 
+CS08 oracle:oracle_unavailable 
+CS09 verify_restore:VZ 
+CS10 verify_restore:VZ 
+CS11 verify_restore:VZ 
+CS12 verify_restore:None (RT ok)
+CS13 verify_restore:VZ 
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+2 extra bytes in post.stringData array
+1 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+W1 missing
+W2 missing
+W3 missing
+W4 missing
+G1 missing
+G2 missing
+G3 missing
+G4 missing
+L1 fail@plan replacement_overflow no attempt fits (Z1 and Z2): substitute taller than the zone band
+L2 fail@plan replacement_overflow no attempt fits (Z1 and Z2): substitute taller than the zone band
+L3 fail@plan selection_crosses_boundary S1 split across lines
+L4 fail@oracle oracle_unavailable 
+C1 fail@gate alternate_text_duplication /ActualText
+C2 fail@gate alternate_text_duplication /ActualText
+C3 fail@gate alternate_text_duplication /ActualText
+C4 fail@gate alternate_text_duplication /ActualText
+M1 fail@plan replacement_overflow no attempt fits (Z1 and Z2): substitute taller than the zone band
+M2 fail@plan replacement_overflow no attempt fits (Z1 and Z2): substitute taller than the zone band
+M3 fail@plan selection_crosses_boundary S1 split across lines
+M4 fail@oracle oracle_unavailable 
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+2 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+2 extra bytes in post.stringData array
+W1 missing
+W2 missing
+W3 missing
+W4 missing
+G1 missing
+G2 missing
+G3 missing
+G4 missing
+L1 SUCCESS  
+L2 SUCCESS  
+L3 fail@plan selection_crosses_boundary S1 split across lines
+L4 fail@oracle oracle_unavailable 
+C1 SUCCESS  
+C2 SUCCESS  
+C3 fail@gate uncovered_content page 2 path [70.9, 653.3, 523.9, 681.0]
+C4 fail@gate uncovered_content page 1 path [70.5, 602.7, 524.2, 603.4]
+M1 fail@verify_restore  
+M2 SUCCESS  
+M3 fail@plan selection_crosses_boundary S1 split across lines
+M4 fail@oracle oracle_unavailable 
+/tmp/venv/lib/python3.13/site-packages/pikepdf/models/_content_stream.py:117: UserWarning: Unexpected end of stream
+  Object._parse_stream_grouped(stream, operators),
+CS01 verify_restore:None (RT ok)
+CS03 verify_restore:None (RT ok)
+CS04 plan:selection_not_transformable 
+CS05 cycle 
+CS06 verify_restore:None (RT ok)
+CS07a plan:selection_not_transformable 
+CS07b plan:selection_not_transformable 
+CS08 oracle:oracle_unavailable 
+CS09 verify_restore:None (RT ok)
+CS10 verify_restore:None (RT ok)
+CS11 cycle 
+CS12 verify_restore:None (RT ok)
+CS13 verify_restore:None (RT ok)
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+CV01 detected by VZ - superposición con el texto original debajo
+CV02 detected by VT - valor fuera de la CropBox
+CV03 detected by VE - copia en /Info /Title
+CV04 detected by VE - copia en XMP dc:title
+CV05 detected by VK - copia en un título del esquema
+CV06 detected by VR - copia en /URI codificada %XX
+CV07 detected by VR - copia en /Contents de una anotación
+CV08 detected by VG - copia en un objeto huérfano
+CV09 detected by VS - copia dentro de un object stream
+CV10 detected by VT - copia como texto Tr 3 en otra posición
+CV11 detected by VB - copia con otra fuente en un Form XObject no usado
+CV12 detected by VT - carácter no seleccionado cambiado
+CV13 detected by VT - línea no seleccionada desplazada 0,5 pt
+CV14 detected by VR - color de una palabra no seleccionada
+CV15 detected by VR - trazado (borde) eliminado
+CV16 detected by VZ - sustituto dibujado como trazados (no extraíble)
+CV17 detected by VZ - fuente del sustituto con ToUnicode erróneo (texto no seleccionable como sustituto)
+CV18 detected by VT - primer carácter del valor conservado
+CV19 detected by VT - marcador con un espacio insertado por TJ
+CV20 detected by restorer derivative_markers_invalid
+CV21 detected by VT - valor restaurado en otra posición
+CV22 detected by VZ - original sin modificar presentado como protegido
+CV23 detected by VT - restaurado de otro derivado
+CV24 detected by VZ - Z2: carácter del sufijo perdido
+CV25 detected by VZ - Z2: carácter del sufijo cambiado
+CV26 detected by Z2 - Z2: sufijo desplazado 1 pt
+CV27 detected by VR - borde de celda junto a una zona (dentro de la máscara) eliminado
+CV28 detected by VR - anotación de enlace añadida/desplazada
+CV29 detected by Z2 - restauración Z2 con el sufijo en posiciones comprimidas
+CV30 detected by VZ - restauración que elimina un [REDACTED]
+Linux-7.0.14-linuxkit-aarch64-with-glibc2.41 10.18.2 159.0.8149.0@sourcebuild-toolchained 7.1.1
+qpdf version 12.2.0
+pdftotext version 25.03.0

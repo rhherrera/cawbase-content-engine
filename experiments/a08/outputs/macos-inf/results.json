@@ -1,0 +1,1437 @@
+{
+ "env": {
+  "python": "3.13.16",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "rules": [
+   "RP3",
+   "RP5",
+   "RP7"
+  ],
+  "maxrss_mb": 214.0
+ },
+ "results": [
+  {
+   "case_id": "W1",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "W2",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "W3",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "W4",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G1",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G2",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G3",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G4",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "executable_action"
+   },
+   "case_id": "L1",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "passed",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VK": "passed",
+      "VX": "passed",
+      "VP": "passed"
+     }
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "passed",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VM": "passed"
+     }
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 6,
+     "xmp_metadata": 1
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP3": 7
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "98b582f0b6aa78d1af67b11c90eae412bb1af28516216e924d3083094bbb4bfa",
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 0.9916
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.6896,
+     "sels": [
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6896
+      }
+     ],
+     "moved_glyphs": 37
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S3",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S4",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 2,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S5",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    }
+   ],
+   "removed_classes": {
+    "document_info_descriptive": 6,
+    "xmp_metadata": 1
+   },
+   "seconds": 1.86,
+   "success": true,
+   "success_rt": true
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "executable_action"
+   },
+   "case_id": "L2",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "n/a",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VK": "passed",
+      "VX": "passed",
+      "VP": "passed"
+     }
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "n/a",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VM": "passed"
+     }
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 6,
+     "xmp_metadata": 1
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": true,
+    "rules_used": {
+     "RP3": 21
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "52e7a7908f92eeea65b32a904cc04b7d330d9781501a064024cf895a5ab11651",
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S3",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S4",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S5",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S6",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S7",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    }
+   ],
+   "removed_classes": {
+    "document_info_descriptive": 6,
+    "xmp_metadata": 1
+   },
+   "seconds": 1.61,
+   "success": true,
+   "success_rt": true
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "executable_action"
+   },
+   "case_id": "L3",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_crosses_boundary",
+     "detail": "S1 split across lines"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 6,
+     "xmp_metadata": 1
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": true,
+    "rules_used": {
+     "RP5": 2,
+     "RP3": 4
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "2b6b5b96e8e18780b22c09f3e56f4a2c3760d75090336e69e53365d8dfb2e24d"
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "incremental_update"
+   },
+   "case_id": "L4",
+   "stages": {
+    "oracle": {
+     "result": "failed",
+     "reason": "oracle_unavailable",
+     "detail": [
+      [
+       "S1",
+       "pdfium_matches=0"
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C1",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "passed",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VK": "passed",
+      "VX": "passed",
+      "VP": "passed"
+     }
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "passed",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VM": "passed"
+     }
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 3
+    },
+    "links": 0,
+    "struct_tree": true,
+    "outlines": false,
+    "rules_used": {
+     "RP3": 17
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "4d45033d55f1c39fec4f2c7f97394bb3cc19aedcfd1fd70d83e500d47a31b30c",
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.6684,
+     "sels": [
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6684
+      }
+     ],
+     "moved_glyphs": 37
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S3",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 0.9959
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S4",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 2,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S5",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    }
+   ],
+   "removed_classes": {
+    "document_info_descriptive": 3
+   },
+   "seconds": 2.04,
+   "success": true,
+   "success_rt": true
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C2",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "n/a",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VK": "passed",
+      "VX": "passed",
+      "VP": "passed"
+     }
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "n/a",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VM": "passed"
+     }
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 3
+    },
+    "links": 0,
+    "struct_tree": true,
+    "outlines": false,
+    "rules_used": {
+     "RP3": 69
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "1db0fc6669603f28e1d85fe9ab62a2e13762885b6f07456fc3c09c2ff0bbc500",
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S3",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S4",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S5",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S6",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S7",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    }
+   ],
+   "removed_classes": {
+    "document_info_descriptive": 3
+   },
+   "seconds": 1.77,
+   "success": true,
+   "success_rt": true
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C3",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "uncovered_content",
+     "detail": "page 2 path [70.9, 653.3, 523.9, 681.0]"
+    }
+   }
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C4",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "uncovered_content",
+     "detail": "page 1 path [70.5, 602.7, 524.2, 603.4]"
+    }
+   }
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M1",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 262 px",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "passed",
+      "VR": {
+       "pdfium_outside_mask": [
+        {
+         "page": 1,
+         "px": 262,
+         "max_delta": 255,
+         "all_on_unchanged_glyph_ink": true
+        }
+       ],
+       "poppler": "0 px"
+      },
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VK": "passed",
+      "VX": "passed",
+      "VP": "passed"
+     }
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "passed",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VM": "passed"
+     }
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 2
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP7": 2,
+     "RP3": 24
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "778f555ceb01d72693bfe2cbaa224e62f18398c99cce74c643a6d3f2fdba909e",
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.6634,
+     "sels": [
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6634
+      }
+     ],
+     "moved_glyphs": 39
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S3",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S4",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 2,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S5",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    }
+   ],
+   "removed_classes": {
+    "document_info_descriptive": 2
+   },
+   "rt_candidate": true,
+   "seconds": 1.83,
+   "success": false,
+   "success_rt": true
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M2",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "n/a",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VK": "passed",
+      "VX": "passed",
+      "VP": "passed"
+     }
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed",
+     "checks": {
+      "VA_qpdf": "not run (qpdf CLI not installed)",
+      "VA": "passed",
+      "VG": "passed",
+      "VT": "passed",
+      "VZ": "passed",
+      "VO": "passed",
+      "Z2": "n/a",
+      "VR": "passed",
+      "VB": "passed",
+      "VN": "passed",
+      "VE": "passed",
+      "VS": "passed",
+      "VM": "passed"
+     }
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 2
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP7": 2,
+     "RP3": 104
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "de47070e814cfa8df901a9ffafaa5ee24507a4eaf0ca47c8eb644cbbe31175ec",
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S3",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S4",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S5",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S6",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    },
+    {
+     "page": 1,
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S7",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 2,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 0
+    }
+   ],
+   "removed_classes": {
+    "document_info_descriptive": 2
+   },
+   "seconds": 1.66,
+   "success": true,
+   "success_rt": true
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M3",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_crosses_boundary",
+     "detail": "S1 split across lines"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 2
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP7": 2,
+     "RP5": 1,
+     "RP3": 4
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "dd30d65c49e3de4bae0bdc98d629bbdfd112627ecda7a8b5d416872c99e70a03"
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M4",
+   "stages": {
+    "oracle": {
+     "result": "failed",
+     "reason": "oracle_unavailable",
+     "detail": [
+      [
+       "S3",
+       "pdfium_matches=0"
+      ]
+     ]
+    }
+   }
+  }
+ ]
+}

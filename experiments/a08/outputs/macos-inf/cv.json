@@ -1,0 +1,181 @@
+{
+ "CV01": {
+  "description": "superposición con el texto original debajo",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S1'] text"
+ },
+ "CV02": {
+  "description": "valor fuera de la CropBox",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV03": {
+  "description": "copia en /Info /Title",
+  "detected": true,
+  "by": "VE",
+  "detail": "descriptive /Info"
+ },
+ "CV04": {
+  "description": "copia en XMP dc:title",
+  "detected": true,
+  "by": "VE",
+  "detail": "metadata present"
+ },
+ "CV05": {
+  "description": "copia en un título del esquema",
+  "detected": true,
+  "by": "VK",
+  "detail": "value in an object string"
+ },
+ "CV06": {
+  "description": "copia en /URI codificada %XX",
+  "detected": true,
+  "by": "VR",
+  "detail": "poppler page 1: 552 px outside the mask"
+ },
+ "CV07": {
+  "description": "copia en /Contents de una anotación",
+  "detected": true,
+  "by": "VR",
+  "detail": "poppler page 1: 552 px outside the mask"
+ },
+ "CV08": {
+  "description": "copia en un objeto huérfano",
+  "detected": true,
+  "by": "VG",
+  "detail": "/MediaBox"
+ },
+ "CV09": {
+  "description": "copia dentro de un object stream",
+  "detected": true,
+  "by": "VS",
+  "detail": "2 unreachable objects"
+ },
+ "CV10": {
+  "description": "copia como texto Tr 3 en otra posición",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV11": {
+  "description": "copia con otra fuente en un Form XObject no usado",
+  "detected": true,
+  "by": "VB",
+  "detail": "non-text operators differ"
+ },
+ "CV12": {
+  "description": "carácter no seleccionado cambiado",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV13": {
+  "description": "línea no seleccionada desplazada 0,5 pt",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 char 'C' moved outside zones"
+ },
+ "CV14": {
+  "description": "color de una palabra no seleccionada",
+  "detected": true,
+  "by": "VR",
+  "detail": "poppler page 1: 3069 px outside the mask"
+ },
+ "CV15": {
+  "description": "trazado (borde) eliminado",
+  "detected": true,
+  "by": "VR",
+  "detail": "poppler page 1: 945 px outside the mask"
+ },
+ "CV16": {
+  "description": "sustituto dibujado como trazados (no extraíble)",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S3'] text"
+ },
+ "CV17": {
+  "description": "fuente del sustituto con ToUnicode erróneo (texto no seleccionable como sustituto)",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S1'] text"
+ },
+ "CV18": {
+  "description": "primer carácter del valor conservado",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV19": {
+  "description": "marcador con un espacio insertado por TJ",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV20": {
+  "description": "restauración con dos valores intercambiados",
+  "detected": true,
+  "by": "restorer:derivative_markers_invalid"
+ },
+ "CV21": {
+  "description": "valor restaurado en otra posición",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV22": {
+  "description": "original sin modificar presentado como protegido",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S1'] text"
+ },
+ "CV23": {
+  "description": "restaurado de otro derivado",
+  "detected": true,
+  "by": "VT",
+  "detail": "page 1 text outside zones differs"
+ },
+ "CV24": {
+  "description": "Z2: carácter del sufijo perdido",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S2'] text"
+ },
+ "CV25": {
+  "description": "Z2: carácter del sufijo cambiado",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S2'] text"
+ },
+ "CV26": {
+  "description": "Z2: sufijo desplazado 1 pt",
+  "detected": true,
+  "by": "Z2",
+  "detail": "zone ['S2'] char 'e' not at its expected position"
+ },
+ "CV27": {
+  "description": "borde de celda junto a una zona (dentro de la máscara) eliminado",
+  "detected": true,
+  "by": "VR",
+  "detail": "poppler page 1: 362 px outside the mask"
+ },
+ "CV28": {
+  "description": "anotación de enlace añadida/desplazada",
+  "detected": true,
+  "by": "VR",
+  "detail": "poppler page 1: 584 px outside the mask"
+ },
+ "CV29": {
+  "description": "restauración Z2 con el sufijo en posiciones comprimidas",
+  "detected": true,
+  "by": "Z2",
+  "detail": "zone ['S2'] char 'r' not at its expected position"
+ },
+ "CV30": {
+  "description": "restauración que elimina un [REDACTED]",
+  "detected": true,
+  "by": "VZ",
+  "detail": "zone ['S4'] text"
+ }
+}

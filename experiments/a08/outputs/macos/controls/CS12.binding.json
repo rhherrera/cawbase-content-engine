@@ -1,0 +1,141 @@
+{
+ "occurrences": [
+  {
+   "page": 1,
+   "start": 36,
+   "end": 61,
+   "token": "NRQDM0FKVJPSMRDV"
+  },
+  {
+   "page": 1,
+   "start": 64,
+   "end": 89,
+   "token": "HTWXMAGM61QE31YQ"
+  }
+ ],
+ "redactions": [],
+ "lines": [
+  {
+   "page": 1,
+   "kind": "Z2",
+   "f": 0.6263244844693652,
+   "x0": 105.63800048828125,
+   "r": 316.32103271484374,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S1",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 4,
+     "scale": 0.6263244844693652,
+     "x_new": 105.63800048828125,
+     "orig_adv_page": 65.68100000000003,
+     "sub_nat_page": 131.571,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 36,
+     "x_orig": 105.63799999999999,
+     "span_page": 65.68099951171877,
+     "substitute": "[[CCE1:NRQDM0FKVJPSMRDV]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 13,
+       "adv": 65.68100000000001
+      }
+     ],
+     "token": "NRQDM0FKVJPSMRDV"
+    },
+    {
+     "sid": "S2",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 4,
+     "scale": 0.6263244844693652,
+     "x_new": 195.8086860091243,
+     "orig_adv_page": 78.51799999999997,
+     "sub_nat_page": 136.114,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 52,
+     "x_orig": 182.64900000000006,
+     "span_page": 77.45099658203128,
+     "substitute": "[[CCE1:HTWXMAGM61QE31YQ]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 14,
+       "adv": 78.51800000000001
+      }
+     ],
+     "token": "HTWXMAGM61QE31YQ"
+    }
+   ],
+   "moved": [
+    {
+     "x_new": 188.0441392344001,
+     "th": 1.0
+    },
+    {
+     "x_new": 189.83542725998248,
+     "th": 1.0
+    },
+    {
+     "x_new": 193.34910761785562,
+     "th": 1.0
+    },
+    {
+     "x_new": 281.0602168881875,
+     "th": 1.0
+    },
+    {
+     "x_new": 282.90662146840316,
+     "th": 1.0
+    },
+    {
+     "x_new": 284.69790949398555,
+     "th": 1.0
+    },
+    {
+     "x_new": 288.562957887646,
+     "th": 1.0
+    },
+    {
+     "x_new": 292.80004302508127,
+     "th": 1.0
+    },
+    {
+     "x_new": 295.6454351580256,
+     "th": 1.0
+    },
+    {
+     "x_new": 299.81362460216917,
+     "th": 1.0
+    },
+    {
+     "x_new": 304.05070973960443,
+     "th": 1.0
+    },
+    {
+     "x_new": 307.9157581332649,
+     "th": 1.0
+    },
+    {
+     "x_new": 312.15284327070015,
+     "th": 1.0
+    }
+   ],
+   "block": [
+    9,
+    153
+   ]
+  }
+ ]
+}

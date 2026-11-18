@@ -15,11 +15,10 @@ from pathlib import Path
 from typing import Any
 
 import pikepdf
-from fontTools import subset as ftsubset
-from fontTools.ttLib import TTFont
-
 from cawbase_content_engine.protection import markers as A06
 from cawbase_content_engine.protection.grouping import plan_protection
+from fontTools import subset as ftsubset
+from fontTools.ttLib import TTFont
 
 from .gate import Extraction
 from .pdfmodel import Glyph, apply, minv, mmul, qbox
