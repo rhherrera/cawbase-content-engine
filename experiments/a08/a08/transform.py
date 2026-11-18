@@ -161,13 +161,19 @@ def localize(ex: Extraction, oracle: dict, sel: dict) -> tuple[int, int]:
     v = sel["value"]
     s = pm.text
     k = s.find(v)
+    in_at = False
     while k >= 0:
         gs = [gl[x["gid"]] for x in pm.segments if x["gid"] is not None and x["unit_start"] < k + len(v) and x["unit_end"] > k]
+        in_at = in_at or any(g.at_span for g in gs)
         ink = [g for g in gs if not g.uni.isspace()]
         ok = ink and all(any(b[0] - 1 <= (qbox(g)[0] + qbox(g)[2]) / 2 <= b[2] + 1 and qbox(g)[1] - 1 <= b[3] and qbox(g)[3] + 1 >= b[1] for b in boxes) for g in ink)
         if ok:
             cands.append((k, k + len(v)))
         k = s.find(v, k + 1)
+    if not cands and in_at:
+        # PDFium reports an /ActualText span's text with the span's geometry, so the oracle cannot place a value that
+        # intersects a span; the intersection itself is the reason (criterion 3)
+        raise PlanFail("selection_not_transformable", f"{sel['id']} intersects an /ActualText span")
     if len(cands) != 1:
         raise PlanFail("localization_ambiguous" if cands else "not_localizable", f"{sel['id']} candidates={len(cands)}")
     return cands[0]
@@ -413,7 +419,7 @@ def _line_plan(ex, pm, line: list[Sel], zone_kinds) -> LinePlan:
     if "Z2" not in zone_kinds:
         raise PlanFail("replacement_overflow", "Z1 only")
     x0 = line[0].zx0
-    r = line[-1].zone["r_line"]
+    r = min(se.zone["r_line"] for se in line)  # stage 2B: never beyond the most restrictive authorized limit of the line
     band = [min(se.zone["band"][0] for se in line), max(se.zone["band"][1] for se in line)]
     sel_ids = {g.gid for se in line for g in se.glyphs}
     def cx(g):
@@ -434,6 +440,8 @@ def _line_plan(ex, pm, line: list[Sel], zone_kinds) -> LinePlan:
             raise PlanFail("zone_plan_unjustified", "moved glyph in another stream or Form XObject")
         if abs(g.dirv[1]) > 1e-6 or g.dirv[0] <= 0:
             raise PlanFail("zone_plan_unjustified", "moved glyph orientation")
+        if g.at_span:
+            raise PlanFail("zone_plan_unjustified", "moved glyph inside an /ActualText span (its span would no longer match its glyphs)")
     for p in pm.painted:
         b = p.bbox
         if b[0] >= x0 - 0.01 and b[2] <= r + 0.01 and b[1] >= band[0] - 0.01 and b[3] <= band[1] + 0.01:
@@ -736,11 +744,39 @@ def _page_point(ctm, tm) -> float:
     return apply(mmul(tm, ctm), 0, 0)[0]
 
 
-def restore(derivative: bytes, binding: dict, values: dict[str, str]) -> bytes:
-    """values: token -> original value (the context, simulated). Needs neither the original nor the analysis."""
+def seal(binding: dict, derivative: bytes, key: bytes) -> dict:
+    """Authenticated binding (D-A08-05, simulated custody): SHA-256 of the exact derivative + HMAC-SHA256 over the
+    canonical binding. The key stands in for the A06 context key; it is never written to the binding or the outputs."""
+    import hashlib
+    import hmac
+    import json as _json
+    b = {k: v for k, v in binding.items() if k != "mac"}
+    b["derivative_sha256"] = hashlib.sha256(derivative).hexdigest()
+    b["mac"] = hmac.new(key, _json.dumps(b, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(), "sha256").hexdigest()
+    return b
+
+
+def check_seal(binding: dict, derivative: bytes, key: bytes) -> None:
+    import hashlib
+    import hmac
+    import json as _json
+    b = {k: v for k, v in binding.items() if k != "mac"}
+    mac = hmac.new(key, _json.dumps(b, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode(), "sha256").hexdigest()
+    if not hmac.compare_digest(mac, str(binding.get("mac", ""))):
+        raise PlanFail("binding_invalid", "binding authentication failed")
+    if hashlib.sha256(derivative).hexdigest() != b.get("derivative_sha256"):
+        raise PlanFail("derivative_mismatch", "not the exact derivative of this binding")
+
+
+def restore(derivative: bytes, binding: dict, values: dict[str, str], key: bytes | None = None) -> bytes:
+    """values: token -> original value (the context, simulated). Inputs: the derivative, the binding and the values
+    only; it never receives the original nor the analysis. With `key` (stage 2B), the binding must be authentic and
+    bound to exactly these derivative bytes before anything else is read."""
     from .gate import extract as _extract
     from .pdfmodel import load_font
 
+    if key is not None:
+        check_seal(binding, derivative, key)
     ex = _extract(derivative)
     # T5: strict markers exactly at the bound occurrences; no recognizable alteration anywhere
     found = []
@@ -778,26 +814,34 @@ def restore(derivative: bytes, binding: dict, values: dict[str, str]) -> bytes:
             if len(items) != len(draws):
                 raise PlanFail("derivative_markers_invalid", "block shape")
             sels_sorted = sorted(line["sels"], key=lambda q: q["x_orig"])
+            # Stage 2B RZ (criterion 2): on a Z2 line the redaction returns with its line to the redacted value's
+            # original start, compressed to the original span when wider (never below MIN_SCALE); any excess at
+            # MIN_SCALE shifts the rest of the line right by that amount (the verifier derives the same excess).
+            excess = {}
+            if line["kind"] == "Z2" and "RZ" in VARIANT:
+                for sl in sels_sorted:
+                    if not sl["token"]:
+                        sc = min(1.0, sl["span_page"] / sl["sub_nat_page"]) if sl["sub_nat_page"] else 1.0
+                        excess[sl["sid"]] = (max(sc, MIN_SCALE), max(0.0, MIN_SCALE * sl["sub_nat_page"] - sl["span_page"]) if sc < MIN_SCALE else 0.0)
+
+            def e_left(x_orig_point: float) -> float:
+                return sum(excess[sl["sid"]][1] for sl in sels_sorted if sl["sid"] in excess and sl["x_orig"] < x_orig_point - 1e-6)
             out = []
             for (kind, xn, it), d in zip(items, draws):
                 tm_ins = next(x for x in d if str(x.operator) == "Tm")
                 tm = [float(v) for v in tm_ins.operands]
                 x_now = _page_point(g_ctm, tm)
                 if kind == "sel":
-                    x_to = it["x_orig"]
+                    x_to = it["x_orig"] + e_left(it["x_orig"])
                     val = values[it["token"]] if it["token"] else None
                     if val is None:
                         if line["kind"] == "Z2" and "RZ" in VARIANT:
-                            # informative RZ: the redaction keeps its text but returns, with its line, to the value's
-                            # original start, compressed to the original span if needed (>= MIN_SCALE)
-                            sc = min(1.0, it["span_page"] / it["sub_nat_page"]) if it["sub_nat_page"] else 1.0
-                            if sc < MIN_SCALE:
-                                raise PlanFail("restoration_layout_unavailable", "redaction does not fit its original span")
+                            sc = excess[it["sid"]][0]
                             keep = [x for x in d if str(x.operator) not in ("Tz", "Tm")]
                             tj = keep.pop()
-                            out += keep + [_op("Tz", _n(sc * 100.0)), _op("Tm", *_tm(_shift(tm, g_ctm, it["x_orig"] - x_now))), tj]
+                            out += keep + [_op("Tz", _n(sc * 100.0)), _op("Tm", *_tm(_shift(tm, g_ctm, x_to - x_now))), tj]
                         else:
-                            out += d  # redaction: definitive, kept where the derivative drew it (frozen rule §0.4)
+                            out += d  # redaction: definitive, kept where the derivative drew it (stage-2 frozen rule §0.4)
                         continue
                     if sum(r["n"] for r in it["runs"]) != len(val):
                         raise PlanFail("derivative_markers_invalid", "runs do not match the value length")
@@ -834,10 +878,19 @@ def restore(derivative: bytes, binding: dict, values: dict[str, str]) -> bytes:
                         if sl["x_new"] < x_now:
                             D += sl["sub_nat_page"] - sl["span_page"]
                     x_to = xnat - D
+                    shift_e = e_left(x_to)
+                    x_to += shift_e
                     new_tm = _shift(tm, g_ctm, x_to - x_now)
                     keep = [x for x in d if str(x.operator) not in ("Tz", "Tm")]
                     tj = keep.pop()
                     out += keep + [_op("Tz", _n(it["th"] * 100.0)), _op("Tm", *_tm(new_tm)), tj]
+                    if shift_e > 0:  # RZ excess: the shifted glyph must still end inside the line's authorized limit
+                        tf = next(x for x in d if str(x.operator) == "Tf")
+                        gf = load_font(str(tf.operands[0]), res.Font[str(tf.operands[0])])
+                        k_page = math.hypot(*mmul(tm, g_ctm)[0:2])
+                        end = x_to + sum(gf.width(cd) for cd in gf.split(bytes(tj.operands[0]))) / 1000.0 * float(tf.operands[1]) * k_page * it["th"]
+                        if end > line["r"] + 0.01:
+                            raise PlanFail("restoration_layout_unavailable", "the redaction's excess pushes the line beyond its authorized limit")
             ops[b0:b1] = out + tail
         target.write(pikepdf.unparse_content_stream(ops))
     o = io.BytesIO()

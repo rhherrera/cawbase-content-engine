@@ -92,6 +92,8 @@ def _runs(par, runs, link_parts: list) -> None:
         r = par.add_run(text)
         if style == "b":
             r.bold = True
+        elif style == "i":
+            r.italic = True
 
 
 def _borders(table) -> None:
@@ -170,7 +172,7 @@ def _in_table(par) -> bool:
 def build(template_id: str, m: dict) -> bytes:
     t = m["templates"][template_id]
     default_font = t.get("font") == "exporter_default"
-    body_font = None if default_font else "Noto Serif"
+    body_font = None if default_font else ("Noto Sans" if t.get("font") == "sans" else "Noto Serif")
     head_font = None if default_font else "Noto Sans"
     doc = Document()
     _style_font(doc, "Normal", body_font, 11)
@@ -318,14 +320,15 @@ def _normalize_zip(data: bytes) -> bytes:
 _ = copy  # keep import list stable
 
 
-def main(out: str) -> None:
-    m = load()
+def main(out: str, manifest: str | None = None, tids: tuple[str, ...] = ("T1", "T2", "T3", "T4")) -> None:
+    m = load(Path(manifest) if manifest else None)
     o = Path(out)
     o.mkdir(parents=True, exist_ok=True)
-    for tid in ("T1", "T2", "T3", "T4"):
+    for tid in tids:
         (o / f"{tid}.docx").write_bytes(build(tid, m))
         print(tid, (o / f"{tid}.docx"))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    # stage 2: gen_docx <out>; stage 2B: gen_docx <out> corpus2b/manifest.json T5
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None, tuple(sys.argv[3:]) or ("T1", "T2", "T3", "T4"))

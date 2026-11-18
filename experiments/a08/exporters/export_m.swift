@@ -3,7 +3,8 @@
 //               printed with NSPrintOperation(jobDisposition = .save) — TextEdit's "Export as PDF"/"Save as PDF" path.
 //   M3:         the HTML read by WKWebView and printed with WKWebView.printOperation — Safari's print path.
 // Fonts are registered for this process only (CTFontManagerRegisterFontsForURL, scope .process).
-// usage: swift exporters/export_m.swift <fonts_dir> <sources_dir> <out_dir>
+// usage: swift exporters/export_m.swift <fonts_dir> <sources_dir> <out_dir> [<name.docx>=<case> ...]
+//   with no pairs: the stage-2 set (M1, M2, M4 from docx; M3 from html). Stage 2B: T5.docx=M5 (docx path, as M1).
 import AppKit
 import WebKit
 
@@ -104,12 +105,21 @@ func exportHtml(_ name: String, _ dest: URL) {
     RunLoop.main.run(until: Date(timeIntervalSinceNow: 1.0))
 }
 
-for (i, name) in [(1, "T1.docx"), (2, "T2.docx"), (4, "T4.docx")] {
-    let dest = out.appendingPathComponent("M\(i).pdf")
-    try? FileManager.default.removeItem(at: dest)
-    do { try exportDocx(name, dest) } catch { print("M\(i) failed: \(error)") }
+let pairs = args.dropFirst(4).map { $0.split(separator: "=").map(String.init) }
+if !pairs.isEmpty {
+    for p in pairs {
+        let dest = out.appendingPathComponent("\(p[1]).pdf")
+        try? FileManager.default.removeItem(at: dest)
+        do { try exportDocx(p[0], dest) } catch { print("\(p[1]) failed: \(error)") }
+    }
+} else {
+    for (i, name) in [(1, "T1.docx"), (2, "T2.docx"), (4, "T4.docx")] {
+        let dest = out.appendingPathComponent("M\(i).pdf")
+        try? FileManager.default.removeItem(at: dest)
+        do { try exportDocx(name, dest) } catch { print("M\(i) failed: \(error)") }
+    }
+    let d3 = out.appendingPathComponent("M3.pdf")
+    try? FileManager.default.removeItem(at: d3)
+    exportHtml("html/T3.html", d3)
 }
-let d3 = out.appendingPathComponent("M3.pdf")
-try? FileManager.default.removeItem(at: d3)
-exportHtml("html/T3.html", d3)
 print(ProcessInfo.processInfo.operatingSystemVersionString)

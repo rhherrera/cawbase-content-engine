@@ -19,6 +19,8 @@ def _runs(runs) -> str:
         t = html.escape(text, quote=False)
         if style == "b":
             out.append(f"<b>{t}</b>")
+        elif style == "i":
+            out.append(f"<i>{t}</i>")
         elif style.startswith("link:"):
             out.append(f'<a href="{html.escape(style[5:])}">{t}</a>')
         else:
@@ -69,7 +71,7 @@ def build(tid: str, m: dict, fonts_dir: str) -> str:
         for fam, base in (("Noto Serif", "NotoSerif"), ("Noto Sans", "NotoSans")):
             for w, st, suf in (("normal", "normal", "Regular"), ("bold", "normal", "Bold"), ("normal", "italic", "Italic")):
                 faces += f'@font-face{{font-family:"{fam} A08";src:url("{fonts_dir}/{base}-{suf}.ttf");font-weight:{w};font-style:{st}}}\n'
-    body_font = "" if default_font else 'font-family:"Noto Serif A08";'
+    body_font = "" if default_font else ('font-family:"Noto Sans A08";' if t.get("font") == "sans" else 'font-family:"Noto Serif A08";')
     head_font = "" if default_font else 'font-family:"Noto Sans A08";'
     css = f"""{faces}
 @page {{ size: A4; margin: 0 }}
@@ -111,14 +113,15 @@ a {{ color: #1F4E9A; }}
     )
 
 
-def main(out: str, fonts_dir: str) -> None:
-    m = load()
+def main(out: str, fonts_dir: str, manifest: str | None = None, tids: tuple[str, ...] = ("T1", "T2", "T3", "T4")) -> None:
+    m = load(Path(manifest) if manifest else None)
     o = Path(out)
     o.mkdir(parents=True, exist_ok=True)
-    for tid in ("T1", "T2", "T3", "T4"):
+    for tid in tids:
         (o / f"{tid}.html").write_text(build(tid, m, os.path.relpath(Path(fonts_dir).resolve(), o.resolve())), encoding="utf-8")
         print(o / f"{tid}.html")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    # stage 2: gen_html <out> <fonts>; stage 2B: gen_html <out> <fonts> corpus2b/manifest.json T5
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None, tuple(sys.argv[4:]) or ("T1", "T2", "T3", "T4"))

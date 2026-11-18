@@ -29,8 +29,14 @@ def page_chars(page) -> list[dict]:
     for i in range(tp.count_chars()):
         u = chr(c.FPDFText_GetUnicode(tp.raw, i))
         l, b, r, t = tp.get_charbox(i)
+        m = c.FS_MATRIX()
+        c.FPDFText_GetMatrix(tp.raw, i, m)
+        size = c.FPDFText_GetFontSize(tp.raw, i)
         out.append({"i": i, "u": u, "box": [l, b, r, t], "gen": bool(c.FPDFText_IsGenerated(tp.raw, i)),
-                    "size": c.FPDFText_GetFontSize(tp.raw, i)})
+                    "size": size, "loose": list(tp.get_charbox(i, loose=True)),
+                    # effective em in page units: Tf size x vertical scale of the char matrix (Tm x CTM). Stage 2 used the
+                    # bare Tf size, which is not the em when the exporter scales with Tm/cm (Chromium, Quartz).
+                    "size_eff": size * (m.c ** 2 + m.d ** 2) ** 0.5})
     tp.close()
     return out
 
@@ -139,12 +145,17 @@ def line_of(chars, value_chars):
     return [ch for ch in chars if not ch["gen"] and ch["box"][2] > ch["box"][0] and abs(_center(ch["box"])[1] - cy) < h / 2]
 
 
-def zone_for(chars, objs, page_box, value_chars, exclude: set[int]) -> dict:
-    """Z1 and line limit for Z2 (protocol §7.1 + §0.3/§0.4), from the original only."""
+def zone_for(chars, objs, page_box, value_chars, exclude: set[int], band_mode: str = "ink") -> dict:
+    """Z1 and line limit for Z2 (protocol §7.1 + §0.3/§0.4), from the original only. band_mode "ink" (stage 2) or
+    "typographic" (stage 2B, criterion 1: PDFium loose boxes of the line, i.e. font ascent/descent; then clipped, as the
+    ink band, so it never covers ink of another line). The horizontal limits are computed with that band."""
     line = line_of(chars, value_chars)
     x0 = min(ch["box"][0] for ch in value_chars)
     x_end = max(ch["box"][2] for ch in value_chars)
-    band = [min(ch["box"][1] for ch in line), max(ch["box"][3] for ch in line)]
+    if band_mode == "typographic":
+        band = [min(ch["loose"][1] for ch in line), max(ch["loose"][3] for ch in line)]
+    else:
+        band = [min(ch["box"][1] for ch in line), max(ch["box"][3] for ch in line)]
     # clip the band so it does not overlap boxes of other lines
     line_ids = {ch["i"] for ch in line}
     for ch in chars:
@@ -157,7 +168,7 @@ def zone_for(chars, objs, page_box, value_chars, exclude: set[int]) -> dict:
                 band[1] = min(band[1], b[1])
             else:
                 band[0] = max(band[0], b[3])
-    size = max(ch["size"] for ch in value_chars)
+    size = max(ch["size_eff" if band_mode == "typographic" else "size"] for ch in value_chars)
     margin = ZONE_MARGIN_EM * size
     # (a) next glyph not in this selection
     nxt = [ch["box"][0] for ch in line if ch["i"] not in exclude and ch["box"][0] >= x_end - 0.01 and not ch["u"].isspace()]
@@ -177,19 +188,20 @@ def zone_for(chars, objs, page_box, value_chars, exclude: set[int]) -> dict:
     rd = page_box[2]
     r1 = min(ra, rb, rc, rd) - margin
     rline = min(rb, rc, rd) - margin
-    return {"x0": x0, "band": band, "r_z1": max(r1, x_end), "r_line": max(rline, x_end), "font_size": size,
+    return {"x0": x0, "band": band, "band_mode": band_mode, "r_z1": max(r1, x_end), "r_line": max(rline, x_end), "font_size": size,
             "value_right": x_end, "limits": {"next_glyph": ra, "painted": rb, "text_area": rc, "crop": rd}}
 
 
-def build(case_id: str, pdf_path: Path, template: str, custom: tuple[list, list] | None = None) -> dict:
+def build(case_id: str, pdf_path: Path, template: str, custom: tuple[list, list] | None = None, band_mode: str = "ink",
+          manifest: dict | None = None) -> dict:
     """custom = (selected items, not-selected items) for controls; items carry id, value, page, contexts."""
-    m = load()
+    m = manifest or load()
     doc = pdfium.PdfDocument(str(pdf_path))
     out = {"case_id": case_id, "pdf_sha256": sha256_file(pdf_path), "template": template, "pages": len(doc),
            "tools": {"pypdfium2": pdfium.version.PYPDFIUM_INFO.version if hasattr(pdfium.version.PYPDFIUM_INFO, "version") else str(pdfium.version.PYPDFIUM_INFO),
                      "pdfium": str(pdfium.version.PDFIUM_INFO),
                      "poppler": subprocess.run(["pdftotext", "-v"], capture_output=True, text=True).stderr.splitlines()[0]},
-           "occurrences": [], "status": "ok"}
+           "occurrences": [], "status": "ok", "band_mode": band_mode}
     cache = {}
     groups = (("S", custom[0]), ("O", custom[1])) if custom else (("S", selections(m, template)), ("O", permitted(m, template)))
     for kind, items in groups:
@@ -214,7 +226,8 @@ def build(case_id: str, pdf_path: Path, template: str, custom: tuple[list, list]
                 continue
             vchars = [ch[k] for k in found[0]]
             ok, ptext, hits = poppler_agree(words, vchars)
-            rec["pdfium_chars"] = [{"i": x["i"], "u": x["u"], "box": [round(v, 3) for v in x["box"]], "size": round(x["size"], 3)} for x in vchars]
+            rec["pdfium_chars"] = [{"i": x["i"], "u": x["u"], "box": [round(v, 3) for v in x["box"]], "size": round(x["size"], 3)}
+                                   | ({"size_eff": round(x["size_eff"], 3)} if band_mode == "typographic" else {}) for x in vchars]
             rec["poppler_text"] = ptext
             lines = {round(_center(x["box"])[1] / max(x["box"][3] - x["box"][1], 1.0)) for x in vchars}
             ys = [_center(x["box"])[1] for x in vchars]
@@ -228,7 +241,7 @@ def build(case_id: str, pdf_path: Path, template: str, custom: tuple[list, list]
                 continue
             rec["status"] = "ok"
             if kind == "S" and not split:
-                rec["zone"] = zone_for(ch, objs, cb, vchars, {x["i"] for x in vchars})
+                rec["zone"] = zone_for(ch, objs, cb, vchars, {x["i"] for x in vchars}, band_mode)
             out["occurrences"].append(rec)
     if any(o["status"] != "ok" for o in out["occurrences"]):
         out["status"] = "oracle_unavailable"

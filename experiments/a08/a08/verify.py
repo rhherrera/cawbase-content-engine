@@ -32,6 +32,22 @@ from pypdf.generic import (
 
 DPI = 150
 DILATE = 3
+# Stage 2B (criterion 5): the verifier's own copies of the protocol constants; never read from the transformer or plan.
+MIN_SCALE = 0.60
+POS_TOL = 0.05  # pt
+CAND_FONT = Path(__file__).resolve().parent.parent / "fonts" / "NotoSans-Condensed.ttf"
+CAND_PS = "NotoSans-Condensed"
+_CAND_ADV: dict | None = None
+
+
+def _cand_adv() -> dict:
+    global _CAND_ADV
+    if _CAND_ADV is None:
+        from fontTools.ttLib import TTFont
+        tt = TTFont(str(CAND_FONT))
+        cm, hm, upm = tt.getBestCmap(), tt["hmtx"], tt["head"].unitsPerEm
+        _CAND_ADV = {chr(k): hm[g][0] / upm for k, g in cm.items()}
+    return _CAND_ADV
 
 
 class Fail(Exception):
@@ -55,7 +71,36 @@ def pdfium_chars(data: bytes) -> list[list[dict]]:
             if u in "\r\n" or (gen and not u.isspace()):
                 continue
             b = tp.get_charbox(k)
-            page.append({"u": " " if u.isspace() else u, "box": list(b), "gen": gen})
+            page.append({"u": " " if u.isspace() else u, "box": list(b), "gen": gen, "loose": list(tp.get_charbox(k, loose=True)),
+                         "size": c.FPDFText_GetFontSize(tp.raw, k)})
+        out.append(page)
+    return out
+
+
+def _font_name(tp, k) -> str:
+    import ctypes
+    n = c.FPDFText_GetFontInfo(tp.raw, k, None, 0, None)
+    if n <= 0:
+        return ""
+    buf = ctypes.create_string_buffer(n)
+    c.FPDFText_GetFontInfo(tp.raw, k, buf, n, None)
+    return buf.value.decode("utf-8", "replace")
+
+
+def pdfium_indexed(data: bytes) -> list[list[dict]]:
+    """Every PDFium char (index-aligned with the oracle's `i`), with tight and loose boxes, size and font name."""
+    doc = pdfium.PdfDocument(data)
+    out = []
+    for i in range(len(doc)):
+        tp = doc[i].get_textpage()
+        page = []
+        for k in range(tp.count_chars()):
+            m = c.FS_MATRIX()
+            c.FPDFText_GetMatrix(tp.raw, k, m)
+            page.append({"i": k, "u": chr(c.FPDFText_GetUnicode(tp.raw, k)), "gen": bool(c.FPDFText_IsGenerated(tp.raw, k)),
+                         "box": list(tp.get_charbox(k)), "loose": list(tp.get_charbox(k, loose=True)),
+                         # effective em in page units (Tf size x vertical scale of Tm x CTM)
+                         "size": c.FPDFText_GetFontSize(tp.raw, k) * (m.c ** 2 + m.d ** 2) ** 0.5, "font": _font_name(tp, k)})
         out.append(page)
     return out
 
@@ -319,42 +364,79 @@ def annotations(reader: PdfReader) -> list:
 
 # ---------------------------------------------------------------- the checks
 def zones_of(plan_lines: list[dict], oracle: dict) -> list[dict]:
+    """Authorized zones, from the ORIGINAL's frozen oracle only (stage 2B, criterion 5). The plan contributes which
+    selections it groups in a line and whether it claims Z1 or Z2 (both checked by `check_plan`); it never sets a limit."""
+    occs = {o["id"]: o for o in oracle["occurrences"]}
     zs = []
     for ln in plan_lines:
-        occs = {o["id"]: o for o in oracle["occurrences"]}
         sels = ln["sels"]
-        band = [min(occs[s["sid"]]["zone"]["band"][0] for s in sels), max(occs[s["sid"]]["zone"]["band"][1] for s in sels)]
+        zz = [occs[s["sid"]]["zone"] for s in sels]
         if ln["kind"] == "Z1":
-            for s in sels:
-                z = occs[s["sid"]]["zone"]
+            for s, z in zip(sels, zz):
                 zs.append({"page": ln["page"], "rect": [z["x0"], z["band"][0], z["r_z1"], z["band"][1]], "kind": "Z1", "sids": [s["sid"]]})
         else:
-            x0 = min(occs[s["sid"]]["zone"]["x0"] for s in sels)
-            zs.append({"page": ln["page"], "rect": [x0, band[0], ln["r"], band[1]], "kind": "Z2", "sids": [s["sid"] for s in sels]})
+            zs.append({"page": ln["page"], "rect": [min(z["x0"] for z in zz), min(z["band"][0] for z in zz), min(z["r_line"] for z in zz),
+                                                     max(z["band"][1] for z in zz)], "kind": "Z2", "sids": [s["sid"] for s in sels]})
     return zs
 
 
+def check_plan(plan_lines: list[dict], oracle: dict) -> None:
+    """VZP: the plan stays inside the authorized zones (never wider), groups every selection of one oracle line in one
+    plan line, and a Z2 plan only groups selections of the same line."""
+    occs = {o["id"]: o for o in oracle["occurrences"]}
+    where: dict[str, int] = {}
+    for li, ln in enumerate(plan_lines):
+        if ln["kind"] not in ("Z1", "Z2"):
+            raise Fail("VZP", "unknown zone kind")
+        for s in ln["sels"]:
+            o = occs.get(s["sid"])
+            if o is None or "zone" not in o or o["page"] != ln["page"] or s["sid"] in where:
+                raise Fail("VZP", "selection without an authorized zone")
+            where[s["sid"]] = li
+
+    def same_line(a, b):
+        za, zb = occs[a]["zone"], occs[b]["zone"]
+        return occs[a]["page"] == occs[b]["page"] and abs(za["band"][0] - zb["band"][0]) < 0.5 and abs(za["band"][1] - zb["band"][1]) < 0.5
+
+    ids = sorted(where)
+    for x in ids:
+        for y in ids:
+            if x < y and same_line(x, y) and where[x] != where[y] and "Z2" in (plan_lines[where[x]]["kind"], plan_lines[where[y]]["kind"]):
+                raise Fail("VZP", "selections of one line split across plans")
+    zones = zones_of(plan_lines, oracle)
+    for ln in plan_lines:
+        zl = [z for z in zones if z["sids"][0] in {s["sid"] for s in ln["sels"]}]
+        if ln["kind"] == "Z2":
+            if any(not same_line(ln["sels"][0]["sid"], s["sid"]) for s in ln["sels"]):
+                raise Fail("VZP", "Z2 plan over selections of different lines")
+            R = zl[0]["rect"]
+            if ln["r"] > R[2] + 0.01 or ln["x0"] < R[0] - 0.01:
+                raise Fail("VZP", "plan exceeds the authorized zone")
+            for s in ln["sels"]:
+                if not (R[0] - 0.01 <= s["x_new"] <= R[2]):
+                    raise Fail("VZP", "substitute placed outside the authorized zone")
+        else:
+            for s, z in zip(ln["sels"], zl):
+                if not (z["rect"][0] - 0.01 <= s["x_new"] <= z["rect"][2]) or ln["r"] > max(q["rect"][2] for q in zl) + 0.01:
+                    raise Fail("VZP", "plan exceeds the authorized zone")
+
+
 def expected_zone_text(z: dict, ln: dict, orig_chars: list[dict], subs: dict[str, str], oracle: dict, values=None) -> tuple[str, list]:
-    """Text expected inside a zone and, for Z2, the expected left edge of each non-selected char (from the ORIGINAL)."""
+    """Text expected inside a zone (substitutes, or restored values, in the original order of the line) and, for a
+    restored Z2 zone, the ORIGINAL position of each non-selected char. Uses no plan number."""
     occs = {o["id"]: o for o in oracle["occurrences"]}
     if z["kind"] == "Z1":
         sid = z["sids"][0]
         return (values or subs)[sid], []
     sel_boxes = {sid: occs[sid]["pdfium_chars"] for sid in z["sids"]}
-    sel_ranges = sorted(((min(c["box"][0] for c in bx), max(c["box"][2] for c in bx), sid) for sid, bx in sel_boxes.items()))
-    sl = {s["sid"]: s for s in ln["sels"]}
-    items = []
-    for a, b, sid in sel_ranges:
-        items.append(("s", a, sid))
-    x0 = ln["x0"]
     sel_list = [c["box"] for bx in sel_boxes.values() for c in bx]
+    items = [("s", min(c["box"][0] for c in bx), sid) for sid, bx in sel_boxes.items()]
 
     def is_sel(box):
         return any(max(abs(p - q) for p, q in zip(box, sb)) <= 0.01 for sb in sel_list)
 
     for ch in orig_chars:
-        cx, cy = _center(ch["box"])
-        if _in((cx, cy), z["rect"]) and not is_sel(ch["box"]) and not ch["u"].isspace():
+        if _in(_center(ch["box"]), z["rect"]) and not is_sel(ch["box"]) and not ch["u"].isspace():
             items.append(("c", ch["box"][0], ch))
     items.sort(key=lambda t: t[1])
     text, exp = [], []
@@ -362,14 +444,197 @@ def expected_zone_text(z: dict, ln: dict, orig_chars: list[dict], subs: dict[str
         if kind == "s":
             text.append((values or subs)[obj])
         else:
-            D = sum(sl[sid]["sub_nat_page"] - sl[sid]["span_page"] for a, b, sid in sel_ranges if b <= obj["box"][0] + 0.01)
-            if values is None:
-                xl = x0 + ln["f"] * (obj["box"][0] + D - x0)
-            else:
-                xl = obj["box"][0]
             text.append(obj["u"])
-            exp.append((obj["u"], xl, obj["box"]))
+            if values is not None:
+                exp.append((obj["u"], obj["box"][0], obj["box"]))
     return "".join(text), exp
+
+
+def z2_geometry(z: dict, ln: dict, orig_idx: list[dict], der_idx: list[dict], oracle: dict, subs: dict[str, str]) -> dict:
+    """Protected Z2 zone: expected geometry derived from the ORIGINAL (PDFium loose boxes = origin and advance), the frozen
+    oracle and what the derivative actually draws; the plan's factor is only cross-checked (criterion 5).
+    Model (origin coordinates): x' = a1 + f*(x - a1) + sum over substitutes k to the left of (w'_k - f*(e_k - a_k)),
+    a single f for the whole line, every glyph keeps its order, Unicode, baseline and height, and its advance scales by f."""
+    occs = {o["id"]: o for o in oracle["occurrences"]}
+    sels = []
+    for sid in z["sids"]:
+        idx = sorted(x["i"] for x in occs[sid]["pdfium_chars"])
+        first, last = orig_idx[idx[0]], orig_idx[idx[-1]]
+        nxt = next((orig_idx[k] for k in range(idx[-1] + 1, len(orig_idx)) if not orig_idx[k]["gen"]), None)
+        gap = 0.0
+        if nxt is not None and abs(nxt["loose"][1] - last["loose"][1]) < 0.5:
+            gap = nxt["loose"][0] - last["loose"][2]
+        sels.append({"sid": sid, "idx": set(idx), "a": max(occs[sid]["zone"]["x0"], first["loose"][0]), "e": last["loose"][2], "gap": abs(gap)})
+    sels.sort(key=lambda q: q["a"])
+    selected = set().union(*(q["idx"] for q in sels))
+    rect = z["rect"]
+    orig = sorted((ch for ch in orig_idx if not ch["gen"] and not ch["u"].isspace() and ch["i"] not in selected
+                   and _in(_center(ch["box"]), rect)), key=lambda q: q["loose"][0])
+    items = sorted([("s", q["a"], q) for q in sels] + [("c", ch["loose"][0], ch) for ch in orig], key=lambda t: t[1])
+    der = sorted((ch for ch in der_idx if not ch["gen"] and not ch["u"].isspace() and _in(_center(ch["box"]), rect)), key=lambda q: q["box"][0])
+    # map the derivative's chars onto the items (VZ already proved the text is the same, in the same order)
+    pos, mapped = 0, []
+    for kind, _, obj in items:
+        if kind == "s":
+            sub = "".join(subs[obj["sid"]].split())
+            seg = der[pos:pos + len(sub)]
+            if "".join(ch["u"] for ch in seg) != sub:
+                raise Fail("Z2", f"zone {z['sids']} substitute not where the line order puts it")
+            mapped.append(("s", obj, seg))
+            pos += len(sub)
+        else:
+            if pos >= len(der) or der[pos]["u"] != obj["u"]:
+                raise Fail("Z2", f"zone {z['sids']} order of the non-selected text")
+            mapped.append(("c", obj, der[pos]))
+            pos += 1
+    # substitute natural widths (frozen candidate font) and measured compression
+    adv = _cand_adv()
+    ratios = []
+    for kind, obj, seg in mapped:
+        if kind != "s":
+            continue
+        if any(CAND_PS not in ch["font"] for ch in seg):
+            raise Fail("VL", "substitute font is not the frozen candidate (legibility not measurable by this verifier)")
+        nat = sum(adv[ch["u"]] for ch in seg) * seg[0]["size"]
+        obj["w"] = seg[-1]["loose"][2] - seg[0]["loose"][0]
+        obj["a_der"] = seg[0]["loose"][0]
+        ratios.append(obj["w"] / nat)
+    # f from consecutive non-selected glyphs (within a segment), else from the substitutes
+    num = den = 0.0
+    for (k1, o1, d1), (k2, o2, d2) in zip(mapped, mapped[1:]):
+        if k1 == "c" and k2 == "c":
+            dx, dxp = o2["loose"][0] - o1["loose"][0], d2["loose"][0] - d1["loose"][0]
+            num, den = num + dx * dxp, den + dx * dx
+    f = num / den if den > 1e-9 else ratios[0]
+    if not (MIN_SCALE - 0.002 <= f <= 1.002):
+        raise Fail("VL", f"zone {z['sids']} compression {f:.3f} outside [{MIN_SCALE}, 1]")
+    if any(abs(r - f) > 0.003 for r in ratios):
+        raise Fail("Z2", f"zone {z['sids']} substitute compressed differently from its line")
+    if abs(f - ln["f"]) > 0.002:
+        raise Fail("Z2", f"zone {z['sids']} plan factor {ln['f']:.4f} differs from the measured {f:.4f}")
+    a1 = sels[0]["a"]
+    if abs(sels[0]["a_der"] - a1) > POS_TOL:
+        raise Fail("Z2", f"zone {z['sids']} substitute does not start at the zone start")
+    shift = tol = 0.0
+    worst = 0.0
+    for kind, obj, d in mapped:
+        if kind == "s":
+            pred = a1 + f * (obj["a"] - a1) + shift
+            if abs(obj["a_der"] - pred) > POS_TOL + tol:
+                raise Fail("Z2", f"zone {z['sids']} substitute not at its expected position")
+            shift += obj["w"] - f * (obj["e"] - obj["a"])
+            tol += f * obj["gap"]
+        else:
+            pred = a1 + f * (obj["loose"][0] - a1) + shift
+            err = abs(d["loose"][0] - pred)
+            worst = max(worst, err)
+            if err > POS_TOL + tol:
+                raise Fail("Z2", f"zone {z['sids']} char '{obj['u']}' not at its expected position")
+            w0, w1 = obj["loose"][2] - obj["loose"][0], d["loose"][2] - d["loose"][0]
+            if abs(w1 - f * w0) > POS_TOL:
+                raise Fail("Z2", f"zone {z['sids']} char '{obj['u']}' advance not compressed by the line factor")
+            if abs(d["box"][1] - obj["box"][1]) > POS_TOL or abs(d["box"][3] - obj["box"][3]) > POS_TOL:
+                raise Fail("Z2", "height/baseline")
+    return {"f_measured": round(f, 4), "substitute_ratios": [round(r, 4) for r in ratios], "max_residual_pt": round(worst, 4),
+            "moved_chars": sum(1 for k, _, _ in mapped if k == "c")}
+
+
+def restored_excess(z: dict, ln: dict, orig_idx: list[dict], oracle: dict) -> tuple[list[tuple[float, float]], float]:
+    """Restored Z2 line (criterion 2, RZ): each redaction returns to the redacted value's original start, compressed to
+    the value's original span when wider, never below MIN_SCALE; the excess at MIN_SCALE shifts what follows. Derived
+    from the original (loose boxes), the oracle and the frozen candidate font, never from the plan."""
+    occs = {o["id"]: o for o in oracle["occurrences"]}
+    adv = _cand_adv()
+    w1 = sum(adv[ch] for ch in A06.REDACTED)
+    out, tol = [], 0.0
+    for s in ln["sels"]:
+        if s["sid"] not in z["sids"] or s["token"]:
+            continue
+        pcs = occs[s["sid"]]["pdfium_chars"]
+        idx = sorted(x["i"] for x in pcs)
+        first, last = orig_idx[idx[0]], orig_idx[idx[-1]]
+        a = max(occs[s["sid"]]["zone"]["x0"], first["loose"][0])
+        span = last["loose"][2] - a
+        w = w1 * first["size"]
+        ex = MIN_SCALE * w - span if span / w < MIN_SCALE else 0.0
+        out.append((a, ex))
+        nxt = next((orig_idx[k] for k in range(idx[-1] + 1, len(orig_idx)) if not orig_idx[k]["gen"]), None)
+        if ex and nxt is not None and abs(nxt["loose"][1] - last["loose"][1]) < 0.5:
+            tol += abs(nxt["loose"][0] - last["loose"][2])
+    return out, tol
+
+
+def z1_legibility(z: dict, der_idx: list[dict], subs: dict[str, str]) -> float:
+    sub = "".join(subs[z["sids"][0]].split())
+    inside = sorted((ch for ch in der_idx if not ch["gen"] and not ch["u"].isspace() and _in(_center(ch["box"]), z["rect"])), key=lambda q: q["box"][0])
+    if "".join(ch["u"] for ch in inside) != sub:
+        raise Fail("VZ", f"zone {z['sids']} text")
+    if any(CAND_PS not in ch["font"] for ch in inside):
+        raise Fail("VL", "substitute font is not the frozen candidate (legibility not measurable by this verifier)")
+    adv = _cand_adv()
+    r = (inside[-1]["loose"][2] - inside[0]["loose"][0]) / (sum(adv[ch["u"]] for ch in inside) * inside[0]["size"])
+    if not (MIN_SCALE - 0.002 <= r <= 1.002):
+        raise Fail("VL", f"zone {z['sids']} compression {r:.3f} outside [{MIN_SCALE}, 1]")
+    if inside[0]["loose"][0] < z["rect"][0] - POS_TOL:
+        raise Fail("VO", f"zone {z['sids']} substitute starts before the zone")
+    return r
+
+
+def marked_content(reader: PdfReader) -> list:
+    """Marked-content property lists (inline or named) of every content stream, as strings, in order."""
+    out = []
+    for label, cs, res, page in content_streams(reader):
+        props = (res.get_object().get("/Properties") if res is not None else None) or {}
+        seq = []
+        for operands, op in cs.operations:
+            if op == b"BDC" and len(operands) > 1:
+                p = operands[1]
+                if isinstance(p, NameObject):
+                    p = props.get(p)
+                    p = p.get_object() if p is not None else None
+                if isinstance(p, DictionaryObject):
+                    seq.append((str(operands[0]), tuple(sorted((str(k), "|".join(_decoded(v))) for k, v in p.items()))))
+        out.append((label, seq))
+    return out
+
+
+def rt_diagnostic(a: np.ndarray, b: np.ndarray, diff: np.ndarray, ref_chars: list[dict], out_chars: list[dict], h: float) -> dict:
+    """Diagnostic only (criterion 4; never a success). Is every differing pixel outside the mask explained by a whole
+    glyph raster displaced by at most 1 px? For each non-space char whose extracted box did not change (+-0.01 pt), the
+    shift s in {-1,0,1}^2 that best reproduces its region (tight box + 2 px) is chosen; a differing pixel is explained
+    when it lies in such a region and |out - ref shifted by s| <= 32 there. Any unexplained pixel is reported."""
+    sc = DPI / 72.0
+    A, B = a.astype(int), b.astype(int)
+    explained = np.zeros(a.shape, dtype=bool)
+    region = np.zeros(a.shape, dtype=bool)
+    shifts: dict[str, int] = {}
+    H, W = a.shape
+    for ch in ref_chars:
+        if ch["u"].isspace() or not any(o["u"] == ch["u"] and max(abs(p - q) for p, q in zip(o["box"], ch["box"])) <= 0.01 for o in out_chars):
+            continue
+        x0, y0, x1, y1 = ch["box"]
+        # tight box + 2 px: a raster displaced by <= 1 px plus its <= 1 px anti-aliasing fringe
+        r0, r1 = max(int((h - y1) * sc) - 2, 1), min(int(np.ceil((h - y0) * sc)) + 2, H - 1)
+        c0, c1 = max(int(x0 * sc) - 2, 1), min(int(np.ceil(x1 * sc)) + 2, W - 1)
+        if r1 <= r0 or c1 <= c0 or not diff[r0:r1, c0:c1].any():
+            continue
+        best = min(((int(np.abs(B[r0:r1, c0:c1] - A[r0 - dy:r1 - dy, c0 - dx:c1 - dx]).max()), dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)))
+        _, dx, dy = best
+        explained[r0:r1, c0:c1] |= np.abs(B[r0:r1, c0:c1] - A[r0 - dy:r1 - dy, c0 - dx:c1 - dx]) <= 32
+        region[r0:r1, c0:c1] = True
+        key = f"{dx},{dy}"
+        shifts[key] = shifts.get(key, 0) + 1
+    # where glyph regions touch, a pixel may belong to two glyphs shifted differently: it is also explained when it
+    # equals (<= 32) the reference at some position <= 1 px away, inside an unchanged glyph's region
+    pix = np.zeros(a.shape, dtype=bool)
+    P = np.pad(A, 1, mode="edge")
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            pix |= np.abs(B - P[1 - dy:1 - dy + H, 1 - dx:1 - dx + W]) <= 32
+    unexplained_glyph = diff & ~explained
+    unexplained = diff & ~(explained | (pix & region))
+    return {"rt_all_explained_by_glyph_shift_le_1px": bool(not unexplained.any()), "rt_px_unexplained": int(unexplained.sum()),
+            "rt_px_unexplained_by_whole_glyph_shift": int(unexplained_glyph.sum()), "rt_glyph_shifts": shifts}
 
 
 def mask_for(zones, page: int, shape, height_pt: float) -> np.ndarray:
@@ -422,12 +687,17 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
             if (va is None) != (vb is None) or (va is not None and [float(x) for x in (va if isinstance(va, list) else [va])] != [float(x) for x in (vb if isinstance(vb, list) else [vb])]):
                 raise Fail("VG", k)
     report["VG"] = "passed"
+    # VZP: the plan never widens an authorized zone (zones come from the original's frozen oracle; criterion 5)
+    check_plan(binding["lines"], oracle)
+    report["VZP"] = "passed"
     zones = zones_of(binding["lines"], oracle)
     lines_by_sid = {s["sid"]: ln for ln in binding["lines"] for s in ln["sels"]}
     subs = {s["sid"]: s["substitute"] for ln in binding["lines"] for s in ln["sels"]}
     oc = pdfium_chars(original)
     rc = pdfium_chars(ref)
     dc = pdfium_chars(out)
+    oc_idx = pdfium_indexed(original)
+    dc_idx = pdfium_indexed(out)
     # VT: text outside zones identical. Ink characters: same Unicode, order and box (+-0.01 pt). Whitespace: compared as
     # word separation (runs of real or PDFium-generated spaces collapse to one), because PDFium decides heuristically
     # whether a space is emitted as a real or a generated character (verifier note N-1 of the report).
@@ -455,8 +725,8 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
             if x["box"] is not None and max(abs(p - q) for p, q in zip(x["box"], y["box"])) > 0.01:
                 raise Fail("VT", f"page {pi + 1} char '{x['u']}' moved outside zones")
     report["VT"] = "passed"
-    # VZ / VO / Z2 oracle
-    zt = []
+    # VZ / VO / VL / Z2 geometry
+    geometry = []
     for z in zones:
         ln = lines_by_sid[z["sids"][0]]
         vals = None
@@ -467,22 +737,33 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
         got = "".join(ch["u"] for ch in inside if not ch["u"].isspace())
         if got != "".join(exp_text.split()):
             raise Fail("VZ", f"zone {z['sids']} text")
+        # right limit: the zone's; in a restored output, also wherever the original's own ink already reached
+        r_lim = z["rect"][2]
+        if mode == "restored":
+            r_lim = max([r_lim] + [ch["box"][2] for ch in oc[z["page"] - 1] if not ch["u"].isspace() and _in(_center(ch["box"]), z["rect"])])
         for ch in inside:
             if ch["u"].isspace():
                 continue
             b, zr = ch["box"], z["rect"]
-            if mode == "protected" and b[2] > zr[2] + 0.25 or b[0] < zr[0] - 0.25 or b[1] < zr[1] - 0.25 or b[3] > zr[3] + 0.25:
+            if b[2] > r_lim + 0.25 or b[0] < zr[0] - 0.25 or b[1] < zr[1] - 0.25 or b[3] > zr[3] + 0.25:
                 raise Fail("VO", f"zone {z['sids']} overflow")
-            if ch["u"] == "�" or ord(ch["u"]) == 0:
+            if ch["u"] == "\ufffd" or ord(ch["u"]) == 0:
                 raise Fail("VZ", "notdef")
-        if exp_pos:
-            nonsel = [ch for ch in inside]
-            for u, xl, obox in exp_pos:
-                cand = [ch for ch in nonsel if ch["u"] == u and abs(ch["box"][0] - xl) <= 0.05]
-                if not cand:
-                    raise Fail("Z2", f"zone {z['sids']} char '{u}' not at its expected position")
-                if abs(cand[0]["box"][1] - obox[1]) > 0.05 or abs(cand[0]["box"][3] - obox[3]) > 0.05:
-                    raise Fail("Z2", "height/baseline")
+        if mode == "protected":
+            if z["kind"] == "Z2":
+                geometry.append({"sids": z["sids"], "kind": "Z2", **z2_geometry(z, ln, oc_idx[z["page"] - 1], dc_idx[z["page"] - 1], oracle, subs)})
+            else:
+                geometry.append({"sids": z["sids"], "kind": "Z1", "substitute_ratio": round(z1_legibility(z, dc_idx[z["page"] - 1], subs), 4)})
+        shifts, stol = (restored_excess(z, ln, oc_idx[z["page"] - 1], oracle) if exp_pos else ([], 0.0))
+        if shifts:
+            geometry.append({"sids": z["sids"], "kind": "Z2-restored", "redaction_excess_pt": [round(e, 3) for _, e in shifts]})
+        for u, xl, obox in exp_pos:  # restored Z2: every non-selected char back at its ORIGINAL position (+ RZ excess)
+            xl = xl + sum(e for a, e in shifts if a < xl)
+            cand = [ch for ch in inside if ch["u"] == u and abs(ch["box"][0] - xl) <= POS_TOL + (stol if any(e for _, e in shifts) else 0.0)]
+            if not cand:
+                raise Fail("Z2", f"zone {z['sids']} char '{u}' not at its original position")
+            if abs(cand[0]["box"][1] - obox[1]) > POS_TOL or abs(cand[0]["box"][3] - obox[3]) > POS_TOL:
+                raise Fail("Z2", "height/baseline")
         if mode == "protected":
             # marker grammar with whitespace kept (real or PDFium-generated): a gap inside a marker breaks it
             spaced = "".join(ch["u"] for ch in dc[z["page"] - 1] if _in(_center(ch["box"]), z["rect"]))  # PDFium reading order
@@ -491,8 +772,7 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
                     raise Fail("VZ", "substitute grammar (exact, whitespace included)")
             if A06.scan(got).altered:
                 raise Fail("VZ", "altered marker")
-        zt.append({"sids": z["sids"], "kind": z["kind"], "text_ok": True})
-        # Poppler: words of the zone
+    report["geometry"] = geometry
     # Poppler groups by words, not characters: the zone's expected text must appear in Poppler's text of the page
     # (whitespace removed) — verifier note N-2 of the report. Positions are checked at character level with PDFium.
     for z in zones:
@@ -521,15 +801,8 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
             if diff.any():
                 if name == "poppler":
                     raise Fail("VR", f"poppler page {pi + 1}: {int(diff.sum())} px outside the mask")
-                ink = np.zeros(a.shape, dtype=bool)
-                sc = DPI / 72.0
-                for ch in rc[pi]:
-                    if ch["u"].isspace():
-                        continue
-                    x0, y0, x1, y1 = ch["box"]
-                    ink[max(int((h - y1) * sc) - 2, 0):int(np.ceil((h - y0) * sc)) + 2, max(int(x0 * sc) - 2, 0):int(np.ceil(x1 * sc)) + 2] = True
                 vr_pdfium.append({"page": pi + 1, "px": int(diff.sum()), "max_delta": int(np.abs(a.astype(int) - b.astype(int))[diff].max()),
-                                  "all_on_unchanged_glyph_ink": bool(not (diff & ~ink).any())})
+                                  **rt_diagnostic(a, b, diff, rc[pi], dc[pi], h)})
     if vr_pdfium:
         report["VR"] = {"pdfium_outside_mask": vr_pdfium, "poppler": "0 px"}
     else:
@@ -542,6 +815,9 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
     for pi, (a, b) in enumerate(zip(render_pdfium(ref, no_text=True), render_pdfium(out, no_text=True))):
         if a.shape != b.shape or (a != b).any():
             raise Fail("VB", f"page {pi + 1} non-text render differs")
+    # marked-content properties (/ActualText, /Alt, /E, MCIDs) unchanged: an /ActualText span is never edited (criterion 3)
+    if marked_content(rd) != marked_content(rr):
+        raise Fail("VB", "marked-content properties differ (/ActualText, /Alt, /E or MCID)")
     report["VB"] = "passed"
     # VN: annotations (except E classes)
     if annotations(rd) != annotations(rr):
@@ -601,6 +877,11 @@ def verify(original: bytes, out: bytes, oracle: dict, binding: dict, policy_valu
                         tf = t.casefold()
                         if any(r.casefold() in tf for r in R):
                             raise Fail("VK", "value in an object string")
+            # (3b) marked-content properties in content streams (inline /ActualText, /Alt, /E): criterion 3
+            for label, seq in marked_content(rd):
+                for tag, props in seq:
+                    if any(any(r.casefold() in v.casefold() for r in R) for _, v in props):
+                        raise Fail("VK", f"value in marked-content properties of {label}")
             # (4) decoded data of every non-content stream and raw bytes of the whole file
             for o in objs:
                 if isinstance(o, StreamObject) and o.get("/Subtype") != "/Form" and o.get("/Type") != "/XObject":

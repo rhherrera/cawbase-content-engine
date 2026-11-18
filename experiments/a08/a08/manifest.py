@@ -10,8 +10,12 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "corpus" / "manifest.json"
 
 
-def load() -> dict:
-    return json.loads(MANIFEST.read_text(encoding="utf-8"))
+def load(path: Path | None = None) -> dict:
+    """The stage-2 manifest by default; stage 2B passes corpus2b/manifest.json (MANIFEST_2B)."""
+    return json.loads((path or MANIFEST).read_text(encoding="utf-8"))
+
+
+MANIFEST_2B = ROOT / "corpus2b" / "manifest.json"
 
 
 def sha256_file(p: Path) -> str:
