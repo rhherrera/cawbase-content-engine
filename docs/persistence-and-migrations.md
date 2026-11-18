@@ -434,3 +434,12 @@ Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
 - Tablas: `protection_contexts`, `protection_mappings` (texto cifrado, parámetros AEAD e índice de igualdad con clave; **sin** valores) y `protection_scope_usage`; `scope_id` en toda PK/FK ([contrato §10](text-protection.md#10-persistencia-y-migración-0004)).
 - Migración `0004_text_protection`: aditiva, solo hacia adelante; `schema_level` 3 → **4**; `min_runtime_level` **permanece en 1**; no altera ni migra datos de A01–A05. Un runtime `0.5.0` sobre `0003` ⇒ `schema_outdated` hasta migrar; los runtimes anteriores siguen arrancando (no conocen las tablas) — restricción de despliegue en el contrato.
 - Orden de bloqueos: rangos 11–13 tras el orden de A05 ([§11.2](text-protection.md#112-orden-común-de-bloqueos-extiende-a05-62)); hora de decisión de la base **después** de las esperas.
+
+## 12. A07 — Vínculos de restauración, migración `0005` (implementado en `0.6.0`)
+
+> **IMPLEMENTADO en `0.6.0` (A07; migración `0005`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 3, commit `044efaf`): [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md); evidencia y limitaciones: [informe de A07](a07-implementation-report.md).
+
+- Tabla nueva `docx_derivatives` (definición compartida en `persistence/a07_schema.py`, congelada en `0005`): `scope_id` en PK y FK a `scopes`; sin FK a `protection_contexts`; ocurrencias (unidad, offsets, `node_path`, token) y `binding_mac`; **sin** valores, tipos ni fragmentos ([§12](docx-protection.md#12-persistencia-y-migración-0005)).
+- `0005_docx_protection`: aditiva, solo hacia adelante; `schema_level` 4 → **5**; `min_runtime_level` **1**. Ninguna tabla de A01–A06 cambia: las operaciones y roles nuevos son valores de `jobs.operation`/`job_artifacts.kind` (sin `CHECK`).
+- Compatibilidad: `0.4.0`/`0.5.0` arrancan sobre nivel 5, no reclaman trabajos de A07 (otra `requirements_key`) y sus lectores genéricos no sirven sus artefactos; `0.6.0` sobre nivel 4 ⇒ `schema_outdated`.
+- Orden de bloqueos: rango nuevo 14 tras los de A06 ([§10.1](docx-protection.md#101-orden-común-de-bloqueos-extiende-a05-62-y-a06-112)).

@@ -70,7 +70,33 @@ class JobFailure(Exception):
 EXPECTED_ARTIFACTS: dict[str, frozenset[str]] = {
     "text_analysis": frozenset({"result"}),
     "document_analysis": frozenset({"result", "source_map"}),
+    "docx_protection": frozenset({"docx_protected", "docx_protection_report"}),
+    "docx_restoration": frozenset({"docx_restored", "docx_restoration_report"}),
 }
+# Which role each reference column of ``jobs`` points at (the operation gives the meaning of the column).
+REF_ROLES: dict[str, tuple[str, str | None]] = {
+    "text_analysis": ("result", None),
+    "document_analysis": ("result", "source_map"),
+    "docx_protection": ("docx_protection_report", "docx_protected"),
+    "docx_restoration": ("docx_restoration_report", "docx_restored"),
+}
+
+
+class PublishHook:
+    """Extra conditions of a publication (A07): jobs to lock shared at rank 8 (ascending with the job's own row),
+    later ranks to lock (``lock``), conditions decided with the SAME database instant (``decide`` returns a failure
+    code or ``None``) and writes that must commit together with T3 (``after``)."""
+
+    share_jobs: tuple[str, ...] = ()
+
+    async def lock(self, conn: AsyncConnection) -> None:
+        return None
+
+    async def decide(self, conn: AsyncConnection, now: datetime, jobs: dict[str, Any]) -> str | None:
+        return None
+
+    async def after(self, conn: AsyncConnection, now: datetime) -> None:
+        return None
 
 
 def backoff(lim: Any, attempt_no: int) -> float:
@@ -95,6 +121,9 @@ class JobWorker:
             keys.append(requirements_key(self.e, "text_analysis"))
             if self.e.documents is not None:
                 keys.append(requirements_key(self.e, "document_analysis"))
+        if self.e.storage is not None and self.e.documents is not None and self.e.protection is not None:
+            keys.append(requirements_key(self.e, "docx_protection"))
+            keys.append(requirements_key(self.e, "docx_restoration"))
         return keys
 
     async def claim(self, limit: int = 1) -> list[ClaimedJob]:
@@ -603,7 +632,7 @@ class JobWorker:
         await ctx.run(register)
         return artifact_id
 
-    async def publish(self, c: ClaimedJob, artifact_ids: dict[str, str]) -> str:
+    async def publish(self, c: ClaimedJob, artifact_ids: dict[str, str], hook: PublishHook | None = None) -> str:
         """T3 with every precondition of docs 6.5. Returns the outcome; state changes made here are committed."""
         ctx = self.ctx
 
@@ -621,11 +650,15 @@ class JobWorker:
                 return "lease_lost"
             # level 6 BEFORE the job (8): inputs are locked shared so delete_file / expiry serialize with us
             locked = await self._lock_inputs(conn, c.scope_id, peek)
-            row: Any = (
-                await conn.execute(
-                    sa.select(j).where(j.c.scope_id == c.scope_id, j.c.job_id == c.job_id).with_for_update()
-                )
-            ).first()  # 8
+            row: Any = None
+            shared: dict[str, Any] = {}
+            for jid in sorted({c.job_id, *(hook.share_jobs if hook else ())}):  # 8, ascending job_id
+                q = sa.select(j).where(j.c.scope_id == c.scope_id, j.c.job_id == jid)
+                got = (await conn.execute(q.with_for_update(read=jid != c.job_id))).first()
+                if jid == c.job_id:
+                    row = got
+                else:
+                    shared[jid] = got
             a = t.job_artifacts
             arts = (
                 await conn.execute(
@@ -635,6 +668,8 @@ class JobWorker:
                     .with_for_update()
                 )
             ).all()  # 9
+            if hook is not None:
+                await hook.lock(conn)  # ranks 12+ (A07)
             now = await jdb.db_now(conn, ctx.backend)  # decision time: after EVERY lock wait
             if not self._owner_ok(row, c, now):
                 return "lease_lost"
@@ -697,7 +732,13 @@ class JobWorker:
                     conn, t, now, ret, row, state="failed", outcome="failed", failure_code="internal_error"
                 )
                 return "failed"
+            if hook is not None:
+                code = await hook.decide(conn, now, shared)
+                if code is not None:
+                    await jdb.terminate_job(conn, t, now, ret, row, state="failed", outcome="failed", failure_code=code)
+                    return "failed"
             expires = jdb.plus(now, row.result_retention_s)
+            ref_result, ref_source = REF_ROLES[row.operation]
             for x in arts:
                 await conn.execute(
                     sa.update(a)
@@ -711,8 +752,8 @@ class JobWorker:
                     state="succeeded",
                     phase="publication",
                     terminated_at=now,
-                    result_artifact_id=artifact_ids.get("result"),
-                    source_map_artifact_id=artifact_ids.get("source_map"),
+                    result_artifact_id=artifact_ids.get(ref_result),
+                    source_map_artifact_id=artifact_ids.get(ref_source) if ref_source else None,
                     published_attempt_no=c.attempt_no,
                     data_state="available",
                     result_expires_at=expires,
@@ -733,6 +774,8 @@ class JobWorker:
             )
             await jdb.discard_artifacts(conn, t, now, ret, c.scope_id, c.job_id, keep=set(artifact_ids.values()))
             await jdb.bump(conn, t, c.scope_id, now, active_jobs=-1, running_jobs=-1)
+            if hook is not None:
+                await hook.after(conn, now)  # e.g. the A07 restoration binding: same transaction as T3
             return "succeeded"
 
         for attempt in (1, 2):

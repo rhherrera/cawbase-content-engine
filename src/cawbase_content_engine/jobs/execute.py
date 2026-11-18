@@ -29,6 +29,48 @@ def _dump(obj: Any) -> bytes:
     return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
 
 
+def source_map_bytes(file_sha256: str, size_bytes: int, fmt: str, lim: Any, units: list[dict[str, Any]]) -> bytes:
+    """The canonical ``SourceMap`` artifact (``document-structures/1``). A07 rebuilds it from a re-extraction and
+    compares it byte for byte with the published one (docs/docx-protection.md, S8)."""
+    return _dump(
+        {
+            "schema": "document-structures/1",
+            "identity": {
+                "file_sha256": file_sha256,
+                "size_bytes": size_bytes,
+                "format": fmt,
+                "extractor": {"id": EXTRACTOR_ID, "version": EXTRACTOR_VERSION, "config_sha256": config_sha(lim)},
+            },
+            "units": [{"unit_id": u["unit_id"], "segments": u["segments"]} for u in units],
+        }
+    )
+
+
+def extraction_params(lim: Any) -> dict[str, Any]:
+    return {
+        k: getattr(lim, k)
+        for k in (
+            "max_file_bytes",
+            "max_pdf_pages",
+            "max_zip_entries",
+            "max_docx_parts_processed",
+            "max_decompressed_total_bytes",
+            "max_decompressed_entry_bytes",
+            "max_compression_ratio",
+            "max_xml_depth",
+            "max_xml_nodes_total",
+            "max_table_nesting",
+            "max_pdf_objects",
+            "max_pdf_content_bytes_per_page",
+            "max_form_xobject_depth",
+            "max_text_operators_per_page",
+            "max_units_per_document",
+            "max_document_text_chars",
+            "max_extraction_output_bytes",
+        )
+    }
+
+
 async def _load(w: JobWorker, c: ClaimedJob) -> tuple[Any, dict[str, Any]]:
     t = w.ctx.t
 
@@ -78,6 +120,14 @@ async def execute_job(w: JobWorker, c: ClaimedJob) -> str:
     row, snap = await _load(w, c)
     ctx = w.ctx
     e = w.e
+    if row.operation in ("docx_protection", "docx_restoration"):  # A07: no inference, own pipeline
+        if row.requirements_key not in w.supported_keys():
+            raise JobFailure("configuration_unavailable")
+        from ..docx_protection import execute as a07
+
+        if row.operation == "docx_protection":
+            return await a07.run_protection(w, c, row, snap)
+        return await a07.run_restoration(w, c, row, snap)
     if e.inference is None:
         raise JobFailure("configuration_unavailable")
     if row.requirements_key not in w.supported_keys():
@@ -118,12 +168,12 @@ async def execute_job(w: JobWorker, c: ClaimedJob) -> str:
     return await _document(w, c, row, snap, prepared, requested, context_text)
 
 
-async def _publish_outcome(w: JobWorker, c: ClaimedJob, ids: dict[str, str]) -> str:
+async def _publish_outcome(w: JobWorker, c: ClaimedJob, ids: dict[str, str], hook: Any = None) -> str:
     """Publication with reconciliation BEFORE any repetition (docs 7.3): an unknown commit is re-read, never re-run."""
     from ..errors import DatabaseUnavailableError
 
     try:
-        outcome = await w.publish(c, ids)
+        outcome = await (w.publish(c, ids) if hook is None else w.publish(c, ids, hook))
     except DatabaseUnavailableError:  # the answer was lost: did our transaction commit?
         outcome = "unknown"
     if outcome in ("lease_lost", "unknown"):
@@ -133,7 +183,7 @@ async def _publish_outcome(w: JobWorker, c: ClaimedJob, ids: dict[str, str]) -> 
         if (
             state == "mine" and outcome == "unknown"
         ):  # still running with our possession: the same conditional publish is safe
-            outcome = await w.publish(c, ids)
+            outcome = await (w.publish(c, ids) if hook is None else w.publish(c, ids, hook))
         if outcome in ("lease_lost", "unknown"):
             raise LeaseLost
     return outcome
@@ -150,10 +200,12 @@ async def _reconcile(w: JobWorker, c: ClaimedJob, ids: dict[str, str]) -> str:
     row: Any = await w.ctx.run(fn, write=False)
     if row is None:
         return "gone"
+    from .worker import REF_ROLES
+
     if (
         row.state == "succeeded"
         and row.published_attempt_no == c.attempt_no
-        and row.result_artifact_id == ids.get("result")
+        and row.result_artifact_id == ids.get(REF_ROLES[row.operation][0])
     ):
         return "succeeded"
     if row.state == "running" and row.attempt_no == c.attempt_no and row.lease_token == c.lease_token:
@@ -219,28 +271,7 @@ async def _document(
     await w.set_phase(c, "validation")
     await _verify_isolation(w)
     data = await _read_input(w, c.scope_id, snap["input"]["file_id"], limit=lim.max_file_bytes)
-    params = {
-        k: getattr(lim, k)
-        for k in (
-            "max_file_bytes",
-            "max_pdf_pages",
-            "max_zip_entries",
-            "max_docx_parts_processed",
-            "max_decompressed_total_bytes",
-            "max_decompressed_entry_bytes",
-            "max_compression_ratio",
-            "max_xml_depth",
-            "max_xml_nodes_total",
-            "max_table_nesting",
-            "max_pdf_objects",
-            "max_pdf_content_bytes_per_page",
-            "max_form_xobject_depth",
-            "max_text_operators_per_page",
-            "max_units_per_document",
-            "max_document_text_chars",
-            "max_extraction_output_bytes",
-        )
-    }
+    params = extraction_params(lim)
     try:
         out = await docs.runner.run(data, params, timeout_s=lim.extraction_timeout_s, limits=lim)
     except TimeoutError:
@@ -290,18 +321,7 @@ async def _document(
             tg.create_task(one(u))
     manifest = _manifest(c, row, snap, units, results, out, requested)
     mdata = _dump(manifest)
-    smap = _dump(
-        {
-            "schema": "document-structures/1",
-            "identity": {
-                "file_sha256": snap["input"]["sha256"],
-                "size_bytes": snap["input"]["size_bytes"],
-                "format": out["format"],
-                "extractor": {"id": EXTRACTOR_ID, "version": EXTRACTOR_VERSION, "config_sha256": config_sha(lim)},
-            },
-            "units": [{"unit_id": u["unit_id"], "segments": u["segments"]} for u in units],
-        }
-    )
+    smap = source_map_bytes(snap["input"]["sha256"], snap["input"]["size_bytes"], out["format"], lim, units)
     if len(mdata) > lim.max_result_bytes or len(smap) > lim.max_source_map_bytes:
         raise JobFailure("limit_exceeded")
     await w.set_phase(c, "publication")

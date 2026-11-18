@@ -321,6 +321,17 @@ async def _mark_expired(ctx: fl.Ctx, n: int, touched: set[str]) -> int:
 _TERMINAL_DATA = ("abandoned", "deleted", "expired", "lost", "discarded")
 
 
+def _due(t: Any, table: sa.Table, now: datetime) -> Any:
+    """Purge eligibility. A07 (P-A07-04, an exception to D-A05-01 approved by the user): a DISCARDED artifact of
+    role ``docx_restored`` is eligible at once, whatever ``delete_after`` an older runtime recorded; every other
+    object keeps its ``delete_after``. Physical deletion still follows the sealing protocol (docs 4.3-4.4)."""
+    if table is t.job_artifacts:
+        return sa.or_(
+            table.c.delete_after <= now, sa.and_(table.c.kind == "docx_restored", table.c.state == "discarded")
+        )
+    return table.c.delete_after <= now
+
+
 async def _purge_physical(ctx: fl.Ctx, n: int, counts: dict[str, int], diag: dict[str, int], touched: set[str]) -> None:
     storage = ctx.storage if ctx.e.storage is not None else None
     if storage is None:
@@ -346,7 +357,7 @@ async def _purge_physical(ctx: fl.Ctx, n: int, counts: dict[str, int], diag: dic
             conn: AsyncConnection, table: sa.Table = table, idcol: str = idcol, extra: list[Any] = extra
         ) -> list[tuple[str, str]]:
             now = await jdb.db_now(conn, ctx.backend)
-            q = sa.select(table.c.scope_id, getattr(table.c, idcol)).where(table.c.delete_after <= now, *extra)
+            q = sa.select(table.c.scope_id, getattr(table.c, idcol)).where(_due(t, table, now), *extra)
             rows = (await conn.execute(q.order_by(getattr(table.c, idcol)).limit(n))).all()
             return [(r[0], r[1]) for r in rows]
 
@@ -368,7 +379,7 @@ async def _purge_physical(ctx: fl.Ctx, n: int, counts: dict[str, int], diag: dic
                     .where(
                         table.c.scope_id == scope_id,
                         getattr(table.c, idcol) == rid,
-                        table.c.delete_after <= now,
+                        _due(t, table, now),
                         sa.or_(table.c.purge_token.is_(None), table.c.purge_claim_expires_at <= now),
                         *extra,
                     )

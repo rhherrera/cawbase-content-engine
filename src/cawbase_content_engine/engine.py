@@ -42,6 +42,7 @@ from .operations import clients as cl
 from .operations import scopes as sc
 from .operations.analysis import AnalysisOperations
 from .operations.common import page_size
+from .operations.docx_facade import DocxOperations
 from .operations.jobs_facade import JobOperations
 from .operations.profile_facade import ProfileOperations
 from .operations.protection_facade import ProtectionOperations
@@ -341,7 +342,7 @@ class ContentEngine:
         return await self._run(lambda c: ak.authenticate(c, self._tables, text, self._token), write=False, tx=None)
 
 
-class ScopedOperations(ProfileOperations, AnalysisOperations, JobOperations, ProtectionOperations):
+class ScopedOperations(ProfileOperations, AnalysisOperations, JobOperations, ProtectionOperations, DocxOperations):
     """Operations on one scope. Every query is constrained by ``ctx.scope_id``."""
 
     def __init__(self, engine: ContentEngine, ctx: ScopeContext, tx: HostTransaction | None) -> None:

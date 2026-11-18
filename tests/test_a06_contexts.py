@@ -340,7 +340,7 @@ async def test_permission_matrix_is_separated(a06: Harness):  # AC-A06-24
 
 
 async def test_catalog_has_21_permissions_and_delegation_follows_d27(a06: Harness):  # AC-A06-25
-    assert len(ScopePermission) + len(AdminPermission) == 21 and len(ScopePermission) == 15
+    assert len(ScopePermission) + len(AdminPermission) == 25 and len(ScopePermission) == 19  # A07 adds 4 (docx:*)
     assert {p.value for p in ScopePermission} >= {"text:protect", "text:restore", "contexts:read", "contexts:delete"}
     await make_scope(a06.engine, "b")
     issuer = a06.engine.trusted_admin_context(

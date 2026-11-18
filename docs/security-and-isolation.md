@@ -353,3 +353,12 @@ Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistingu
 - **Cifrado:** AES-256-GCM con subclave HKDF por registro, AAD = scope + contexto + tipo + marcador + versión + **índice de igualdad** (autenticado con el registro), claves del host fuera de la base, fallo cerrado; **todo marcador reutilizado se verifica** (autenticación y comparación con el fragmento exacto) antes de devolverse ([§9](text-protection.md#9-criptografía-y-claves-3a)). **Sin** valores ni hashes sin clave en la base.
 - **Retención y backups:** correspondencias eliminadas al borrar o al limpiar un contexto vencido; el motor **no** borra copias de seguridad ni afirma borrado inmediato en ellas ([§8.6](text-protection.md#86-qué-se-elimina-cuándo-y-backups-2a)).
 - **Observabilidad:** sin texto, fragmentos, marcadores, claves, índices ni offsets en logs, errores o eventos ([§14](text-protection.md#14-observabilidad-y-retención)).
+
+## 14. A07 — Permisos documentales, lectores y residuos (implementado en `0.6.0`)
+
+> **IMPLEMENTADO en `0.6.0` (A07; migración `0005`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 3, commit `044efaf`): [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md); evidencia y limitaciones: [informe de A07](a07-implementation-report.md).
+
+- Catálogo **25** permisos: `docx:protect`, `docx:restore`, `docx:protected:read`, `docx:restored:read` (más los 21 anteriores). Restricción de despliegue ampliada: no emitir claves con ellos hasta actualizar todos los runtimes.
+- El DOCX restaurado es material sensible: se lee solo con `docx:restored:read`, contexto vigente y scope activo, autorizados **después** de verificar el objeto en el spool e inmediatamente antes de entregar el *stream* (P-A07-03).
+- Transformación y verificación en el proceso aislado de A05; verificador independiente (biblioteca estándar) con atribución de cada coincidencia de residuo a su ubicación exacta; fallo cerrado antes de publicar ([§6](docx-protection.md#6-verificación-antes-de-publicar-d5-e-08)).
+- El vínculo de restauración se autentica con HMAC (clave de índice del contexto de A06); sin valores en claro en base, logs, errores ni informes.

@@ -58,6 +58,20 @@ def requirements_key(engine: ContentEngine, operation: str) -> str:
     conf = inf.descriptor.configuration_id if inf else None
     if operation == "text_analysis":
         return jdb.sha256_hex("text", conf or "")
+    if operation in ("docx_protection", "docx_restoration"):  # A07: no inference; extractor + transformer
+        from ..documents.docx_transform import TRANSFORMER_ID, TRANSFORMER_VERSION
+
+        docs = engine.documents
+        profile = getattr(docs.runner, "profile", "") if docs else ""
+        return jdb.sha256_hex(
+            operation,
+            EXTRACTOR_ID,
+            EXTRACTOR_VERSION,
+            config_sha(engine.jobs_setup.limits),
+            TRANSFORMER_ID,
+            TRANSFORMER_VERSION,
+            profile,
+        )
     docs = engine.documents
     profile = getattr(docs.runner, "profile", "") if docs else ""
     lim = engine.jobs_setup.limits
@@ -505,12 +519,16 @@ async def cancel_job(engine: ContentEngine, scope_id: str, job_id: str, *, tx: A
     return await ctx.run(fn, tx=tx)  # type: ignore[no-any-return]
 
 
-async def _published_artifacts(ctx: fl.Ctx, scope_id: str, job_id: str) -> dict[str, Any]:
+async def _published_artifacts(ctx: fl.Ctx, scope_id: str, job_id: str, *, generic: bool) -> dict[str, Any]:
     async def fn(conn: AsyncConnection) -> dict[str, Any]:
         t = ctx.t
         now = await jdb.db_now(conn, ctx.backend)
         row = await _job_row(conn, t, scope_id, job_id)
         if row is None:
+            raise ResourceNotFoundError()
+        if generic and row.operation not in OPERATIONS:
+            # A07 artifacts (protected / restored DOCX and their reports) have their own readers and permissions:
+            # the generic readers never serve them, whatever ``results:read`` grants (docs/docx-protection.md 9.2)
             raise ResourceNotFoundError()
         if row.state != "succeeded":
             raise JobNotSucceededError()
@@ -525,7 +543,9 @@ async def _published_artifacts(ctx: fl.Ctx, scope_id: str, job_id: str) -> dict[
                 )
             )
         ).all()
-        return {a.kind: a for a in arts}
+        out: dict[str, Any] = {a.kind: a for a in arts}
+        out["__operation__"] = row.operation
+        return out
 
     return await ctx.run(fn, write=False)  # type: ignore[no-any-return]
 
@@ -536,10 +556,24 @@ async def open_job_artifact(engine: ContentEngine, scope_id: str, job_id: str, k
     check_job_id(job_id)
     if kind not in ("result", "source_map"):
         raise ValidationFailedError("Invalid artifact kind.", field="kind")
-    arts = await _published_artifacts(ctx, scope_id, job_id)
+    arts = await _published_artifacts(ctx, scope_id, job_id, generic=True)
     art = arts.get(kind)
     if art is None:
         raise ResourceNotFoundError()
+    return await spool_artifact(ctx, scope_id, job_id, art)
+
+
+async def published_artifact(ctx: fl.Ctx, scope_id: str, job_id: str, role: str, operation: str) -> Any:
+    """A07 readers: the published artifact of ``role`` of a succeeded, unexpired job of ``operation``."""
+    arts = await _published_artifacts(ctx, scope_id, job_id, generic=False)
+    art = arts.get(role)
+    if art is None or arts.get("__operation__") != operation:
+        raise ResourceNotFoundError()
+    return art
+
+
+async def spool_artifact(ctx: fl.Ctx, scope_id: str, job_id: str, art: Any) -> SpooledStream:
+    """Reads the whole object into the private spool verifying SHA-256 and size BEFORE anything is handed out."""
     spool = fl.spool_for(ctx)
     size = int(art.size_bytes)
     spool.reserve(size)
