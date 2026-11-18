@@ -30,7 +30,7 @@ async def dump_all(url: str, backend: str, tables) -> dict[str, list[str]]:
         async with eng.connect() as c:
             for table in tables.metadata.sorted_tables:
                 name = table.name
-                if name.removeprefix("cawbase_content_engine_") in A06_TABLES | {"docx_derivatives"}:
+                if name.removeprefix("cawbase_content_engine_") in A06_TABLES | {"docx_derivatives", "pdf_derivatives"}:
                     continue
                 full = f'"cawbase_content_engine"."{name}"' if backend == "postgresql" else name
                 rows = (await c.execute(sa.text(f"SELECT * FROM {full}"))).all()  # noqa: S608 - constant names
@@ -64,7 +64,7 @@ async def test_upgrade_from_0003_keeps_every_a01_to_a05_row_and_object(db, tmp_p
     before_objects = await inventory(url)
     assert sum(len(v) for v in before_rows.values()) > 20  # a real, populated installation
     report = await upgrade(cfg)
-    assert report.applied == ("0004", "0005") and report.from_revision == "0003" and report.to_level == 5
+    assert report.applied == ("0004", "0005", "0006") and report.from_revision == "0003" and report.to_level == 6
     after_objects = await inventory(url)
     for name, entry in before_objects.items():  # nothing that existed was altered or removed
         if name.endswith("engine_state"):
@@ -75,7 +75,9 @@ async def test_upgrade_from_0003_keeps_every_a01_to_a05_row_and_object(db, tmp_p
         == after_objects[next(n for n in after_objects if n.endswith("engine_state"))]
     )
     created = {n for n in set(after_objects) - set(before_objects) if "autoindex" not in n}
-    assert created and all(any(t in n for t in A06_TABLES | {"docx_derivatives"}) for n in created), created
+    assert created and all(
+        any(t in n for t in A06_TABLES | {"docx_derivatives", "pdf_derivatives"}) for n in created
+    ), created
     after_rows = await dump_all(url, backend, tables)
     for name, rows in before_rows.items():
         if name.endswith("engine_state"):
@@ -89,7 +91,7 @@ async def test_upgrade_from_0003_keeps_every_a01_to_a05_row_and_object(db, tmp_p
     assert await dump_all(url, backend, tables) == after_rows  # re-running changes nothing
     async with ContentEngine(cfg) as e2:
         st = await e2.schema_status()
-        assert st.compatible and st.schema_level == 5 and st.min_runtime_level == 1
+        assert st.compatible and st.schema_level == 6 and st.min_runtime_level == 1
         assert (await e2.authenticate_api_key(key.secret)).scope_grants["a"]  # old key, old grants, still work
         counts = {}
         async with e2._engine.connect() as c:  # type: ignore[union-attr]

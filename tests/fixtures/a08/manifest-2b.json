@@ -1,0 +1,663 @@
+{
+ "manifest_version": "2b-1",
+ "status": "Etapa 2B — fijado antes de cualquier medición candidata (ver docs/a08-stage2b-protocol.md). Datos; no es código.",
+ "protocol": "docs/a08-stage2b-protocol.md",
+ "policy": {
+  "default_action": "pseudonymize",
+  "actions": {
+   "government_id": "redact",
+   "financial_information": "redact",
+   "salary_compensation": "redact"
+  }
+ },
+ "substitutes": {
+  "pseudonymize": "A06 marker [[CCE1:<16 Crockford base32>]] (25 code points)",
+  "redact": "[REDACTED]",
+  "alphabet_sigma": "[]:0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+ },
+ "values": {
+  "V01": {
+   "value": "María José Núñez Ibáñez",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 23
+  },
+  "V02": {
+   "value": "ana.soler@example.test",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 22
+  },
+  "V03": {
+   "value": "Gil",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 3
+  },
+  "V04": {
+   "value": "00000000-X",
+   "type_id": "government_id",
+   "action": "redact",
+   "code_points": 10
+  },
+  "V10": {
+   "value": "+00 600 000 000",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 15
+  },
+  "V20": {
+   "value": "Joaquín Ortega Lázaro",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 21
+  },
+  "V21": {
+   "value": "Zoë Ångström-Łęcka",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 18
+  },
+  "V22": {
+   "value": "Bea",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 3
+  },
+  "V23": {
+   "value": "Teo Vidal",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 9
+  },
+  "V24": {
+   "value": "Ruth Sanz",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 9
+  },
+  "V25": {
+   "value": "X0000001",
+   "type_id": "government_id",
+   "action": "redact",
+   "code_points": 8
+  },
+  "V26": {
+   "value": "Lucía Prieto",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 12
+  },
+  "V27": {
+   "value": "Pablo Ferrer",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 12
+  },
+  "V28": {
+   "value": "350 €",
+   "type_id": "salary_compensation",
+   "action": "redact",
+   "code_points": 5
+  },
+  "V29": {
+   "value": "recepcion@example.test",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 22
+  }
+ },
+ "filler": {
+  "F1": "La cooperativa revisó la solicitud recibida durante el último trimestre y verificó que la documentación presentada cumple los requisitos generales del procedimiento. Este texto es un ejemplo sintético preparado para pruebas técnicas y no describe a ninguna persona real.",
+  "F2": "Las cifras que aparecen en este documento son ficticias. Se incluyen para comprobar cómo se conservan la tipografía, los acentos, las tablas y la paginación cuando el archivo se transforma y se restaura.",
+  "F3": "El comité técnico acordó mantener el calendario previsto, revisar los indicadores cada mes y publicar un resumen breve al cierre de cada período. Ninguna de estas decisiones afecta a los plazos ya comunicados.",
+  "F4": "Durante la jornada se presentaron tres propuestas de mejora: simplificar los formularios, unificar los criterios de archivo y ampliar el horario de atención. Las propuestas se evaluarán según su coste y su impacto en el servicio.",
+  "F5": "La biblioteca municipal organizó un taller de escritura, una exposición de fotografía antigua y una mesa redonda sobre el patrimonio local. La asistencia superó las previsiones y el ayuntamiento estudia repetir la experiencia el año próximo.",
+  "F6": "Los indicadores muestran una evolución estable: el tiempo medio de respuesta disminuyó ligeramente y la satisfacción de las personas usuarias se mantuvo en niveles similares a los del trimestre anterior."
+ },
+ "templates": {
+  "T1": {
+   "title": "Carta",
+   "pages": [
+    [
+     {
+      "type": "header",
+      "text": "Cooperativa Ficticia del Ejemplo · Expediente 2026/017"
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Estimada ",
+        ""
+       ],
+       [
+        "María José",
+        "b"
+       ],
+       [
+        " Núñez Ibáñez:",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F1"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "Según el acta de la reunión, el señor Gil revisó la documentación del trámite y confirmó que el plazo de presentación vence al final del próximo trimestre, sin cambios respecto de lo comunicado.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "Para cualquier consulta, escriba a ana.soler@example.test indicando el número de expediente que figura en el encabezado.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Documento de identidad del titular: 00000000-X.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F2"
+     }
+    ],
+    [
+     {
+      "type": "header",
+      "text": "Cooperativa Ficticia del Ejemplo · Expediente 2026/017"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F3"
+     },
+     {
+      "type": "table",
+      "borders": true,
+      "header_row": true,
+      "rows": [
+       [
+        [
+         [
+          "Concepto",
+          ""
+         ]
+        ],
+        [
+         [
+          "Dato",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Teléfono de contacto",
+          ""
+         ]
+        ],
+        [
+         [
+          "+00 600 000 000",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Horario",
+          ""
+         ]
+        ],
+        [
+         [
+          "De lunes a viernes, de 9 a 14 h",
+          ""
+         ]
+        ]
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Atentamente,",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Departamento de Atención · ana.soler@example.test",
+        ""
+       ]
+      ]
+     }
+    ]
+   ],
+   "footer": "Página {n} de {total}"
+  },
+  "T5": {
+   "title": "Ficha de registro",
+   "font": "sans",
+   "pages": [
+    [
+     {
+      "type": "header",
+      "text": "Centro Cívico Ficticio · Registro 2026/044"
+     },
+     {
+      "type": "heading",
+      "level": 1,
+      "text": "Ficha de registro de visitas (ejemplo sintético)"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F4"
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Responsable: ",
+        ""
+       ],
+       [
+        "Joaquín",
+        "i"
+       ],
+       [
+        " Ortega Lázaro, turno de mañana.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Visitante: Zoë Ångström-Łęcka, sala 2.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Llegó Bea a las 9 y firmó el libro de visitas.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Firmaron Teo Vidal y Ruth Sanz como testigos.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Documento X0000001 de Lucía Prieto, verificado.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Pablo Ferrer abonó 350 € en efectivo.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Avisos a recepcion@example.test antes de las 8.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F6"
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Recepción · recepcion@example.test",
+        ""
+       ]
+      ]
+     }
+    ]
+   ],
+   "footer": "Página {n} de {total}"
+  }
+ },
+ "occurrences": {
+  "T1": {
+   "selected": [
+    {
+     "id": "S1",
+     "value_id": "V01",
+     "page": 1,
+     "left_context": "Estimada",
+     "right_context": ":",
+     "ordinal_on_page": 1,
+     "note": "fragmentado: 'María José' en negrita"
+    },
+    {
+     "id": "S2",
+     "value_id": "V03",
+     "page": 1,
+     "left_context": "señor",
+     "right_context": "revisó",
+     "ordinal_on_page": 1,
+     "note": "corto, mitad de línea"
+    },
+    {
+     "id": "S3",
+     "value_id": "V02",
+     "page": 1,
+     "left_context": "escriba a",
+     "right_context": "indicando",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S4",
+     "value_id": "V04",
+     "page": 1,
+     "left_context": "titular:",
+     "right_context": ".",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S5",
+     "value_id": "V10",
+     "page": 2,
+     "left_context": "Teléfono de contacto",
+     "right_context": "Horario",
+     "ordinal_on_page": 1,
+     "note": "celda"
+    }
+   ],
+   "not_selected": [
+    {
+     "id": "O1",
+     "value_id": "V02",
+     "page": 2,
+     "left_context": "Atención ·",
+     "right_context": "",
+     "ordinal_on_page": 1
+    }
+   ]
+  },
+  "T5": {
+   "selected": [
+    {
+     "id": "S1",
+     "value_id": "V20",
+     "page": 1,
+     "left_context": "Responsable:",
+     "right_context": ", turno",
+     "ordinal_on_page": 1,
+     "note": "fragmentado entre operadores: 'Joaquín' en cursiva"
+    },
+    {
+     "id": "S2",
+     "value_id": "V21",
+     "page": 1,
+     "left_context": "Visitante:",
+     "right_context": ", sala",
+     "ordinal_on_page": 1,
+     "note": "Unicode: ë, Å, ö, Ł, ę"
+    },
+    {
+     "id": "S3",
+     "value_id": "V22",
+     "page": 1,
+     "left_context": "Llegó",
+     "right_context": "a las",
+     "ordinal_on_page": 1,
+     "note": "corto (3), mitad de línea"
+    },
+    {
+     "id": "S4",
+     "value_id": "V23",
+     "page": 1,
+     "left_context": "Firmaron",
+     "right_context": "y Ruth",
+     "ordinal_on_page": 1,
+     "note": "dos seudonimizaciones en la misma línea (1/2)"
+    },
+    {
+     "id": "S5",
+     "value_id": "V24",
+     "page": 1,
+     "left_context": "Vidal y",
+     "right_context": "como",
+     "ordinal_on_page": 1,
+     "note": "dos seudonimizaciones en la misma línea (2/2)"
+    },
+    {
+     "id": "S6",
+     "value_id": "V25",
+     "page": 1,
+     "left_context": "Documento",
+     "right_context": "de Lucía",
+     "ordinal_on_page": 1,
+     "note": "redacción y luego seudonimización (1/2)"
+    },
+    {
+     "id": "S7",
+     "value_id": "V26",
+     "page": 1,
+     "left_context": "X0000001 de",
+     "right_context": ", verificado",
+     "ordinal_on_page": 1,
+     "note": "redacción y luego seudonimización (2/2)"
+    },
+    {
+     "id": "S8",
+     "value_id": "V27",
+     "page": 1,
+     "left_context": "",
+     "right_context": "abonó",
+     "ordinal_on_page": 1,
+     "note": "seudonimización y luego redacción (1/2)"
+    },
+    {
+     "id": "S9",
+     "value_id": "V28",
+     "page": 1,
+     "left_context": "abonó",
+     "right_context": "en efectivo",
+     "ordinal_on_page": 1,
+     "note": "seudonimización y luego redacción (2/2); corto"
+    },
+    {
+     "id": "S10",
+     "value_id": "V29",
+     "page": 1,
+     "left_context": "Avisos a",
+     "right_context": "antes",
+     "ordinal_on_page": 1,
+     "note": "correo; su ocurrencia idéntica O1 no se selecciona"
+    }
+   ],
+   "not_selected": [
+    {
+     "id": "O1",
+     "value_id": "V29",
+     "page": 1,
+     "left_context": "Recepción ·",
+     "right_context": "",
+     "ordinal_on_page": 1,
+     "note": "ocurrencia idéntica fuera de la selección"
+    }
+   ]
+  }
+ },
+ "families": {
+  "W": {
+   "name": "Microsoft Word",
+   "source": "docx"
+  },
+  "G": {
+   "name": "Google Docs",
+   "source": "docx (importado y convertido)"
+  },
+  "L": {
+   "name": "LibreOffice Writer",
+   "source": "docx -> odt"
+  },
+  "C": {
+   "name": "Impresión de Chromium",
+   "source": "html"
+  },
+  "M": {
+   "name": "Exportación PDF de macOS",
+   "source": "rtf (M1, M2, M4) / html (M3)"
+  }
+ },
+ "cases": [
+  {
+   "case_id": "W1",
+   "family": "W",
+   "template": "T1",
+   "reuse": "corpus/sources/T1.docx",
+   "stage2_pdf": null
+  },
+  {
+   "case_id": "W5",
+   "family": "W",
+   "template": "T5",
+   "reuse": null,
+   "stage2_pdf": null
+  },
+  {
+   "case_id": "G1",
+   "family": "G",
+   "template": "T1",
+   "reuse": "corpus/sources/T1.docx",
+   "stage2_pdf": null
+  },
+  {
+   "case_id": "G5",
+   "family": "G",
+   "template": "T5",
+   "reuse": null,
+   "stage2_pdf": null
+  },
+  {
+   "case_id": "L1",
+   "family": "L",
+   "template": "T1",
+   "reuse": "corpus/sources/T1.docx",
+   "stage2_pdf": "corpus/L1/L1.pdf"
+  },
+  {
+   "case_id": "L5",
+   "family": "L",
+   "template": "T5",
+   "reuse": null,
+   "stage2_pdf": null
+  },
+  {
+   "case_id": "C1",
+   "family": "C",
+   "template": "T1",
+   "reuse": "corpus/sources/html/T1.html",
+   "stage2_pdf": "corpus/C1/C1.pdf"
+  },
+  {
+   "case_id": "C5",
+   "family": "C",
+   "template": "T5",
+   "reuse": null,
+   "stage2_pdf": null
+  },
+  {
+   "case_id": "M1",
+   "family": "M",
+   "template": "T1",
+   "reuse": "corpus/sources/T1.docx (AppKit)",
+   "stage2_pdf": "corpus/M1/M1.pdf"
+  },
+  {
+   "case_id": "M5",
+   "family": "M",
+   "template": "T5",
+   "reuse": null,
+   "stage2_pdf": null
+  }
+ ],
+ "fonts": {
+  "T1": "Noto Serif (cuerpo) / Noto Sans (títulos, tablas), OFL-1.1 — igual que en la etapa 2",
+  "T5": "Noto Sans (cuerpo y títulos), OFL-1.1",
+  "substitute_candidate": [
+   "Noto Sans Condensed Regular (OFL-1.1)"
+  ]
+ },
+ "page": {
+  "size": "A4",
+  "margins_mm": {
+   "top": 25,
+   "bottom": 25,
+   "left": 25,
+   "right": 25
+  },
+  "body_size_pt": 11,
+  "line_spacing": 1.15
+ },
+ "template_choice": "Plantilla reutilizada: T1 en las cinco familias (la plantilla de la etapa 2 cuyas selecciones son todas de una línea y que ejercita Z2 dentro de un párrafo justificado; T2 no se reutiliza para que la plantilla repetida sea la misma en todas las familias; T3 y T4 quedan fuera por el criterio 6). Plantilla nueva: T5 en las cinco familias. Elegidas y registradas antes de ejecutar el candidato sobre cualquier PDF de la etapa 2B."
+}

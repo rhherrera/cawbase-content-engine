@@ -214,7 +214,9 @@ class TestPermissionsAndIsolation:
         await make_scope(engine, "a")
         _, issued = await issue(engine, "svc", scopes={"a": ["analysis:execute"]})
         assert issued.info.grants.scopes["a"] == frozenset({ScopePermission.ANALYSIS_EXECUTE})
-        assert len(ScopePermission) + len(AdminPermission) == 25  # 11 before A05 + 6 of A05 + 4 of A06 + 4 of A07
+        assert (
+            len(ScopePermission) + len(AdminPermission) == 29
+        )  # 11 before A05 + 6 of A05 + 4 of A06 + 4 of A07 + 4 of A08
 
     async def test_delegation_cannot_exceed_issuer(self, engine):  # AC-A03-04
         await make_scope(engine, "a")
@@ -762,11 +764,11 @@ class TestPersistenceAndObservability:
         from cawbase_content_engine.constants import RUNTIME_LEVEL, SCHEMA_LEVEL
 
         assert (SCHEMA_LEVEL, RUNTIME_LEVEL) == (
-            5,
+            6,
             1,
-        )  # A03 added no schema; the level is the head's (A06 = 0004), runtime level unchanged
+        )  # A03 added no schema; the level is the head's (A08 = 0006), runtime level unchanged
         st = await engine.schema_status()
-        assert st.compatible and st.schema_level == 5 and st.min_runtime_level == 1
+        assert st.compatible and st.schema_level == 6 and st.min_runtime_level == 1
 
 
 class TestCompatibilityOfTheNewPermission:

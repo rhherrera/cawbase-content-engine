@@ -101,7 +101,7 @@ async def test_permissions_are_separate(eng):
         await only_exec.get_job_result("a", acc.job.job_id)
     with pytest.raises(PermissionDeniedError):
         await only_exec.cancel_job("a", acc.job.job_id)
-    assert set(SP) - set(FULL) == {  # A05's FULL set lacks scope:* and the permissions A06 and A07 added
+    assert set(SP) - set(FULL) == {  # A05's FULL set lacks scope:* and the permissions A06, A07 and A08 added
         SP.SCOPE_READ,
         SP.SCOPE_WRITE,
         SP.TEXT_PROTECT,
@@ -112,6 +112,10 @@ async def test_permissions_are_separate(eng):
         SP.DOCX_RESTORE,
         SP.DOCX_PROTECTED_READ,
         SP.DOCX_RESTORED_READ,
+        SP.PDF_PROTECT,
+        SP.PDF_RESTORE,
+        SP.PDF_PROTECTED_READ,
+        SP.PDF_RESTORED_READ,
     }
 
 
