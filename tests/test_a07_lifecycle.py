@@ -463,7 +463,13 @@ async def test_retry_reuses_markers_and_publishes_once(world, monkeypatch):  # A
     monkeypatch.setattr(dex, "_child", flaky)
     data = DOC.build()
     base = await setup_scope(world)
-    eng = await world.engine(await mock_for(base, picks(data)))
+    # This test exercises the injected retryable failure, the retry, marker reuse and a single publication; it is
+    # NOT a lease-loss test. A five-child attempt on a slow runner can go 3 s without a committed heartbeat
+    # (observed once in GitHub Actions with SQLite: the lease expired before the failure was decided, so the
+    # attempt ended `lease_lost`, the fail-safe path). Only here the lease gets a margin; backoff stays fast.
+    eng = await world.engine(
+        await mock_for(base, picks(data)), limits=fast_limits(lease_ttl_s=30.0, heartbeat_interval_s=1.0)
+    )
     _f, aid = await analyse(eng, data)
     o = ops(eng)
     acc = await o.submit_docx_protection(
