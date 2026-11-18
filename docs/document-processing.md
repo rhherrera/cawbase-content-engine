@@ -330,3 +330,9 @@ A06 cubre **solo texto**. Un `SourceMap` sigue representando **posiciones docume
 > **IMPLEMENTADO en `0.6.0` (A07); aceptación pendiente de la revisión del usuario.** Evidencia: [informe de A07](a07-implementation-report.md). Contrato: [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md).
 
 A07 aplica la transformación y la restitución **solo sobre DOCX** y **dentro de la matriz de extracción de A05** (sin ampliarla), con su propia matriz de transformación cruzada con las filas DX de §11 ([contrato de A07 §4](docx-protection.md#4-matriz-de-transformación-docx-d4-d5)). Este documento conserva el contrato de A04 sin cambios; el extractor de A05 y el `SourceMap` (`document-structures/1`) no cambian. PDF sigue en A08 (D-A04-04).
+
+## 23. A08 — Transformación y restauración PDF (propuesta, no implementada)
+
+> **ETAPA 1 de A08 (solo documental), pendiente de la aprobación del usuario.** Contrato propuesto: [protección y restauración PDF](pdf-protection.md); protocolo de la comprobación D-A04-04: [protocolo y corpus](a08-pdf-corpus-protocol.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md).
+
+Este documento conserva el contrato de A04 sin cambios. A08 propone un extractor PDF con **identidad propia** (la identidad `cce-docs-extract` 1 de DOCX no cambia) y un `SourceMap` PDF `document-structures/2`, y amplía la matriz de §12 solo con lo que acredite la comprobación D-A04-04; mientras tanto rige la matriz conservadora de A05 ([§11.2](jobs-files-and-lifecycle.md#112-matriz-de-soporte-a05-solo-extracción-y-localización)).
