@@ -327,7 +327,8 @@ def _due(t: Any, table: sa.Table, now: datetime) -> Any:
     object keeps its ``delete_after``. Physical deletion still follows the sealing protocol (docs 4.3-4.4)."""
     if table is t.job_artifacts:
         return sa.or_(
-            table.c.delete_after <= now, sa.and_(table.c.kind == "docx_restored", table.c.state == "discarded")
+            table.c.delete_after <= now,
+            sa.and_(table.c.kind.in_(("docx_restored", "pdf_restored")), table.c.state == "discarded"),
         )
     return table.c.delete_after <= now
 

@@ -25,6 +25,8 @@ def detect(data: bytes) -> str:
 def process(data: bytes, params: dict[str, Any]) -> dict[str, Any]:
     lim = Limits.from_params(params)
     mode = params.get("mode")
+    if mode is not None and str(mode).startswith("pdf_"):
+        return _a08(str(mode), data, params, lim)
     if mode is not None:
         return _a07(mode, data, params, lim)
     if len(data) > lim.max_file_bytes:
@@ -32,7 +34,11 @@ def process(data: bytes, params: dict[str, Any]) -> dict[str, Any]:
     kind = detect(data)
     try:
         if kind == "pdf":
-            from . import pdf
+            if params.get("pdf_extractor") == "v2":  # A08 extractor (docs/pdf-protection.md section 4)
+                from . import pdf_extract
+
+                return pdf_extract.extract(data, lim)
+            from . import pdf  # A05 extractor, frozen for jobs accepted before A08
 
             return pdf.extract(data, lim)
         if kind == "docx":
@@ -64,6 +70,32 @@ def _a07(mode: str, data: bytes, params: dict[str, Any], lim: Limits) -> dict[st
 
         n = int.from_bytes(data[:8], "big")
         return docx_verify.verify(data[8 : 8 + n], data[8 + n :], a07)
+    return {"rejected": "unsupported_format"}
+
+
+def _a08(mode: str, data: bytes, params: dict[str, Any], lim: Limits) -> dict[str, Any]:
+    """A08 modes (docs/pdf-protection.md): the same isolated child, the same limits, untrusted input."""
+    if len(data) > 2 * lim.max_file_bytes + 16:
+        return {"rejected": "structure_limit"}
+    a08 = params.get("a08") or {}
+    if mode in ("pdf_plan", "pdf_protect", "pdf_restore"):
+        if detect(data) != "pdf":
+            return {"rejected": "unsupported_format"}
+        from . import pdf_transform as tx
+
+        try:
+            if mode == "pdf_restore":
+                return tx.restore(data, lim, list(a08.get("layout", [])), dict(a08.get("values", {})))
+            return tx.protect(data, lim, list(a08.get("selections", [])), check_only=mode == "pdf_plan")
+        except Reject as r:
+            return {"rejected": r.reason}
+        except tx.Failure as f:
+            return {"failure": f.code}
+    if mode == "pdf_verify":
+        from . import pdf_verify
+
+        n = int.from_bytes(data[:8], "big")
+        return pdf_verify.verify(str(a08.get("mode")), data[8 : 8 + n], data[8 + n :], a08)
     return {"rejected": "unsupported_format"}
 
 

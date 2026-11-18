@@ -24,8 +24,14 @@ DEFAULT_RETENTION_S = 30 * 86400
 
 
 async def run_docx_cleanup(engine: ContentEngine, *, batch_size: int | None = None) -> DocxCleanupSummary:
+    ended, purged = await run_binding_cleanup(engine, "docx_derivatives", batch_size=batch_size)
+    return DocxCleanupSummary(bindings_ended=ended, tombstones_purged=purged)
+
+
+async def run_binding_cleanup(engine: ContentEngine, table: str, *, batch_size: int | None = None) -> tuple[int, int]:
+    """Shared by A07 (``docx_derivatives``) and A08 (``pdf_derivatives``): same rules, same lock order."""
     t = engine.tables
-    d, c = t.docx_derivatives, t.protection_contexts
+    d, c = getattr(t, table), t.protection_contexts
     n = int(batch_size or DEFAULT_BATCH)
     setup = engine.protection
     retention = int(getattr(setup, "metadata_retention_s", DEFAULT_RETENTION_S) or DEFAULT_RETENTION_S)
@@ -93,7 +99,7 @@ async def run_docx_cleanup(engine: ContentEngine, *, batch_size: int | None = No
         return len(ids)
 
     purged = await engine._run(purge, write=True, tx=None)
-    return DocxCleanupSummary(bindings_ended=ended, tombstones_purged=purged)
+    return ended, purged
 
 
 _ = Any

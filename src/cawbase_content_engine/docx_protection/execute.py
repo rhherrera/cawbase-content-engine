@@ -440,6 +440,8 @@ async def run_protection(w: JobWorker, c: ClaimedJob, row: Any, snap: dict[str, 
 
 
 class _ProtectionHook(PublishHook):
+    TABLE = "docx_derivatives"  # A08 reuses this hook over ``pdf_derivatives``
+
     def __init__(
         self,
         w: JobWorker,
@@ -480,7 +482,7 @@ class _ProtectionHook(PublishHook):
         return None
 
     async def after(self, conn: AsyncConnection, now: datetime) -> None:
-        d = self.w.ctx.t.docx_derivatives
+        d = getattr(self.w.ctx.t, self.TABLE)
         await conn.execute(sa.insert(d).values(**self.row, created_at=now))  # 14: with T3, never without it
 
 
@@ -620,6 +622,8 @@ async def run_restoration(w: JobWorker, c: ClaimedJob, row: Any, snap: dict[str,
 
 
 class _RestorationHook(PublishHook):
+    TABLE = "docx_derivatives"  # A08 reuses this hook over ``pdf_derivatives``
+
     def __init__(self, w: JobWorker, c: ClaimedJob, ctx_id: str, kind: str, did: str) -> None:
         self.w, self.c, self.ctx_id, self.kind, self.did = w, c, ctx_id, kind, did
         self.crow: Any = None
@@ -627,7 +631,7 @@ class _RestorationHook(PublishHook):
 
     async def lock(self, conn: AsyncConnection) -> None:
         self.crow = await pops._context_row(conn, self.w.e, self.c.scope_id, self.ctx_id, "share")  # 12
-        d = self.w.ctx.t.docx_derivatives
+        d = getattr(self.w.ctx.t, self.TABLE)
         self.brow = (
             await conn.execute(
                 sa.select(d)

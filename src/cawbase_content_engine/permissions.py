@@ -1,4 +1,4 @@
-"""Permission catalog (25: 8 A01, 2 A02, 1 A03, 6 A05, 4 A06, 4 A07) and the delegation rules (D-27)."""
+"""Permission catalog (29: 8 A01, 2 A02, 1 A03, 6 A05, 4 A06, 4 A07, 4 A08) and the delegation rules (D-27)."""
 
 from __future__ import annotations
 
@@ -25,6 +25,10 @@ class ScopePermission(StrEnum):
     DOCX_RESTORE = "docx:restore"
     DOCX_PROTECTED_READ = "docx:protected:read"
     DOCX_RESTORED_READ = "docx:restored:read"
+    PDF_PROTECT = "pdf:protect"
+    PDF_RESTORE = "pdf:restore"
+    PDF_PROTECTED_READ = "pdf:protected:read"
+    PDF_RESTORED_READ = "pdf:restored:read"
 
 
 class AdminPermission(StrEnum):

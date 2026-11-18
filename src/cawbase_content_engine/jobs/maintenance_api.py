@@ -43,6 +43,12 @@ class Maintenance:
 
         return await dm.run_docx_cleanup(self._e, batch_size=batch_size)
 
+    async def run_pdf_cleanup(self, *, batch_size: int | None = None) -> Any:
+        """A08: end the restoration bindings of PDF derivatives whose context is no longer alive; purge tombstones."""
+        from ..pdf_protection import maintenance as pm
+
+        return await pm.run_pdf_cleanup(self._e, batch_size=batch_size)
+
     async def purge_admin_events(
         self, *, older_than: datetime, batch_size: int | None = None, dry_run: bool = True
     ) -> PurgeSummary:

@@ -35,4 +35,27 @@ def config_sha(lim: JobsLimits) -> str:
 
 
 def validation_identity(file_sha256_hex: str, lim: JobsLimits) -> str:
+    """A05 identity (extractor v1 for every format): validations recorded before A08 and legacy jobs."""
     return sha256_hex(file_sha256_hex, VALIDATOR_ID, VALIDATOR_VERSION, config_sha(lim))
+
+
+VALIDATOR_VERSION_2 = "2"
+
+
+def validation_identity_v2(file_sha256_hex: str, lim: JobsLimits) -> str:
+    """A08 identity (docs/pdf-protection.md 4.2): the validation of a new ``document_analysis`` also depends on the PDF
+    extractor v2, so a file refused by the v1 extractor can be validated again (and a v1 result is never reused)."""
+    from ..documents.pdf_extract import config_sha as pdf_config_sha
+
+    return sha256_hex(file_sha256_hex, VALIDATOR_ID, VALIDATOR_VERSION_2, config_sha(lim), pdf_config_sha(lim))
+
+
+def docx_identity(lim: JobsLimits) -> dict[str, str]:
+    return {"id": EXTRACTOR_ID, "version": EXTRACTOR_VERSION, "config_sha256": config_sha(lim)}
+
+
+def extractor_set(lim: JobsLimits) -> dict[str, dict[str, str]]:
+    """Extractors pinned by a new ``document_analysis`` (P-A08-04): DOCX keeps its identity, PDF has its own."""
+    from ..documents.pdf_extract import identity as pdf_identity
+
+    return {"docx": docx_identity(lim), "pdf": pdf_identity(lim)}
