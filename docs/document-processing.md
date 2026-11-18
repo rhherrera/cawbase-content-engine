@@ -325,8 +325,8 @@ Derivadas de la ejecución sobre **documentos sintéticos** ([informe](a04-feasi
 
 A06 cubre **solo texto**. Un `SourceMap` sigue representando **posiciones documentales** (A04/A05) y A06 no lo consume; la aplicación de sustituciones a DOCX/PDF y la restitución sobre archivos son de A07/A08 (D-A04-04 se conserva). Las reglas de unión de intervalos y de marcadores de A06 serán la base reutilizable de esas features.
 
-## 22. A07 — Transformación y restauración DOCX (especificado; no disponible)
+## 22. A07 — Transformación y restauración DOCX (implementado en `0.6.0`)
 
-> **ESPECIFICADO (revisión 3), pendiente de la aprobación del usuario; no implementado.** Contrato propuesto: [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md).
+> **IMPLEMENTADO en `0.6.0` (A07); aceptación pendiente de la revisión del usuario.** Evidencia: [informe de A07](a07-implementation-report.md). Contrato: [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md).
 
-A07 propone aplicar la transformación y la restitución **solo sobre DOCX** y **dentro de la matriz de extracción de A05** (sin ampliarla), con su propia matriz de transformación cruzada con las filas DX de §11 ([contrato de A07 §4](docx-protection.md#4-matriz-de-transformación-docx-d4-d5)). Este documento conserva el contrato de A04 sin cambios; el extractor de A05 y el `SourceMap` (`document-structures/1`) no cambian. PDF sigue en A08 (D-A04-04).
+A07 aplica la transformación y la restitución **solo sobre DOCX** y **dentro de la matriz de extracción de A05** (sin ampliarla), con su propia matriz de transformación cruzada con las filas DX de §11 ([contrato de A07 §4](docx-protection.md#4-matriz-de-transformación-docx-d4-d5)). Este documento conserva el contrato de A04 sin cambios; el extractor de A05 y el `SourceMap` (`document-structures/1`) no cambian. PDF sigue en A08 (D-A04-04).

@@ -322,3 +322,12 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 - **Limpieza:** `maintenance().run_protection_cleanup()` y CLI `cleanup-protection`; explícita, repetible, por lotes, sin claves ni contenido; cadencia recomendada ≤ 1 h (valor por medir).
 - **Despliegue:** migrar (`0004`) → actualizar todos los runtimes → configurar `ProtectionSetup` y claves → emitir claves con los permisos nuevos. Sin `ProtectionSetup`, A06 ⇒ `protection_not_configured`.
 - **Retención:** contexto 7 días fijos por defecto (configurable, máximo 30 d por defecto); metadatos 30 días tras el fin de vida; **backups fuera del alcance del motor**.
+
+## 16. A07 — Operación de la protección DOCX (implementado en `0.6.0`)
+
+> **IMPLEMENTADO en `0.6.0` (A07; migración `0005`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 3, commit `044efaf`): [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md); evidencia y limitaciones: [informe de A07](a07-implementation-report.md).
+
+- Requisitos: extras `documents` y `protection`, `StorageSetup`, `DocumentSetup` (aislamiento) y `ProtectionSetup`; sin uno de ellos ⇒ `*_not_configured`. El worker de referencia ejecuta también los trabajos de A07.
+- Orden de despliegue: migrar (`0005`) → actualizar todos los runtimes → emitir claves con `docx:*`.
+- Limpieza: `run_cleanup` de A05 purga artefactos (un `docx_restored` descartado es elegible de inmediato, P-A07-04, aplicado por la limpieza de `0.6.0`); `cleanup-docx` marca `ended` los vínculos de contextos terminados y purga sus lápidas.
+- Evidencia de apertura y render: `bash scripts/a07_render_evidence.sh OUT` (LibreOffice + Poppler en Docker).

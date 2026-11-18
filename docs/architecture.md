@@ -145,3 +145,10 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 - Componente: `protection/` (importación perezosa; `cryptography` solo en el extra), capa Python del mismo núcleo, **sin** adaptador HTTP ni operaciones en la cola. Flujo: autorización → fuente de análisis vinculada al texto exacto (sin transacción abierta) → **una transacción de decisión** (scope → [trabajo] → contexto → correspondencias, hora de la base tras las esperas) → cifrado/descifrado con claves del host → `COMMIT` → entrega del texto ([contrato §0](text-protection.md#0-resumen)).
 - **Ownership:** el host posee el `KeyProvider` y el `AsyncEngine` inyectado; el motor no los cierra. Dirección de dependencias sin cambios: el núcleo no importa `protection`.
+
+## 13. A07 — Protección y restauración DOCX (implementado en `0.6.0`)
+
+> **IMPLEMENTADO en `0.6.0` (A07; migración `0005`); aceptación pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker); **no** ejecutado en GitHub Actions. Contrato (aprobado por el usuario en su revisión 3, commit `044efaf`): [protección y restauración DOCX](docx-protection.md); alcance y matriz: [especificación de A07](features/A07-proteccion-y-restauracion-docx.md); decisiones: [A07-decisions](decisions/A07-decisions.md); evidencia y limitaciones: [informe de A07](a07-implementation-report.md).
+
+- Subpaquete `docx_protection/` (importación perezosa) sobre el sistema de trabajos de A05 y las funciones de A06 (`obtain_tokens`, `decrypt_tokens`, `insert_context`, `context_index_key`); modos nuevos del proceso aislado: `documents/docx_transform.py` (lxml) y `documents/docx_verify.py` (biblioteca estándar).
+- La publicación de A05 admite un *hook* (`PublishHook`) para bloquear rangos posteriores, decidir con la misma hora y escribir el vínculo en la misma transacción que T3.
