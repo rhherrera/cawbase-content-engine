@@ -1,8 +1,75 @@
 # A08 — Protocolo de la comprobación D-A04-04 y corpus PDF
 
-> **Estado: REVISIÓN 1 — PROPUESTA DE CONGELAMIENTO, pendiente de la aprobación del usuario (etapa 1 de A08).** Este documento fija, **antes de ejecutar nada**, el corpus, el oráculo, las zonas seguras, las máscaras, las verificaciones y el criterio de avance de la comprobación representativa exigida por [D-A04-04](decisions/A04-decisions.md). No existe todavía código experimental, corpus exportado ni medición: todo lo que sigue es **especificado**, no ejecutado. Contrato propuesto: [protección y restauración PDF](pdf-protection.md). Alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md). Decisiones: [A08-decisions](decisions/A08-decisions.md). Manifiesto de datos: [`experiments/a08/corpus/manifest.json`](../experiments/a08/corpus/manifest.json).
+> **Estado: REVISIÓN 2 — CONGELADA para la etapa 2.** La revisión 1 (`1afd04d`) fue aprobada por el usuario para la etapa 2, con `Z1` como primera opción y **P-A08-01 (`Z2`) aprobada solo para la comprobación experimental** (su incorporación al producto se decide tras la evidencia). La revisión 2 añade las **precisiones del usuario** ([§0](#0-precisiones-de-la-revisión-2-prevalecen-sobre-el-resto-del-documento)), registradas en un commit documental **anterior** a la primera medición candidata. Lo demás del documento sigue vigente donde §0 no lo modifica. Contrato propuesto: [protección y restauración PDF](pdf-protection.md). Alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md). Decisiones: [A08-decisions](decisions/A08-decisions.md). Manifiesto de datos: [`experiments/a08/corpus/manifest.json`](../experiments/a08/corpus/manifest.json). Instructivo de Word y Google Docs: [`experiments/a08/corpus/EXPORT-W-G.md`](../experiments/a08/corpus/EXPORT-W-G.md).
 
 **Regla de congelamiento.** Una vez aprobada esta revisión, el primer commit de la etapa 2 registra el SHA-256 de este documento y del manifiesto, y el SHA-256 de cada PDF del corpus, del oráculo geométrico y de las zonas **antes** de ejecutar el recorrido candidato. Cualquier cambio de corpus, oráculo, zonas, máscaras, umbrales, reglas o denominador **posterior a la primera medición** exige una nueva revisión de este documento aprobada explícitamente por el usuario **y** una nueva medición completa; la medición anterior se conserva como evidencia y no se reemplaza. No se ajustan reglas para convertir un fallo en éxito.
+
+## 0. Precisiones de la revisión 2 (prevalecen sobre el resto del documento)
+
+### 0.1 Exportación macOS y fuentes efectivas
+
+- **`M1`, `M2`, `M4`**: el **mismo `.docx`** de las demás familias, leído por AppKit (`NSAttributedString`, tipo `officeOpenXML`, como lo abre TextEdit) y maquetado como el modo «ajustar a la página» de TextEdit (un `NSTextContainer` por página A4 compartiendo un `NSLayoutManager`; el salto de página del `.docx` llega como avance de página y pasa al contenedor siguiente), impreso con `NSPrintOperation` (`jobDisposition = save`). Sustituye al RTF de la revisión 1. El camino de TextEdit **no** reproduce encabezados ni pies del `.docx`: en `M1`, `M2` y `M4` no hay encabezado ni pie (no hay valores en ellos). `M3`: el HTML de `C3` con `WKWebView.printOperation`. Programa: `experiments/a08/exporters/export_m.swift`.
+- El generador del `.docx` fija la fuente **también en cada tramo** (`w:rFonts`), porque AppKit no aplica las fuentes de estilo; Word, Google Docs y Writer muestran lo mismo.
+- **T4, «fuente predeterminada»**: para las familias que parten del `.docx` son las fuentes del **tema** del documento base de `python-docx` (Cambria en el cuerpo, Calibri en títulos) tal como las resuelve cada exportador (Writer: Caladea/Carlito; macOS: sustitución del sistema); para Chromium, la predeterminada del navegador. Los PDF cuyas fuentes incrustadas no son redistribuibles (`C4` y `M4`, Times de Apple) van a `corpus-private/` (fuera de Git) con hash, procedencia y receta en Git.
+
+### 0.2 Localización de los hallazgos controlados
+
+Sustituye a §6.3: cada `S` se traduce a `(unit_id, start, end)` buscando el **valor exacto** en el texto de la unidad del extractor evaluado y eligiendo la ocurrencia cuyas piezas tienen el centro geométrico dentro de las cajas del oráculo geométrico de esa `S` (tolerancia 1 pt). Cero o más de una candidata ⇒ **no localizable** (etapa `localize`). Los contextos del oráculo de autoría se siguen usando solo para construir el oráculo geométrico (§6.2).
+
+### 0.3 Zona `Z1`: límite derecho
+
+Sustituye a la definición de «derecha» de §7.1: `R` es el mínimo, a la derecha del inicio del valor y dentro de la banda de su línea, de (a) el borde izquierdo del siguiente glifo que **no pertenece a la misma selección** (PDFium), (b) el borde izquierdo de cualquier trazado pintado o imagen que corte la banda (p. ej. un borde de celda) y el borde derecho de cualquier trazado pintado o imagen que **contenga** el inicio del valor (p. ej. un recuadro), (c) el borde derecho del área de texto de la página (máximo borde derecho de todos los glifos de la página) y (d) la `CropBox`; menos un margen de `0,3 ×` el tamaño de la fuente del valor. Los trazados y las imágenes salen de los objetos de página de PDFium del **original**. Se calcula y se congela antes de transformar.
+
+### 0.4 Zona `Z2` verificable (P-A08-01, solo experimental)
+
+- **Plan por línea.** `Z2` se plantea por **línea** (banda de §7.1), nunca por selección aislada: si alguna selección de la línea no cabe en su `Z1` con los criterios de §0.5, **todas** las selecciones de esa línea se planifican juntas. La **zona de línea** va desde el inicio de la primera selección hasta `R` de la última (§0.3, con (a) referido a glifos **posteriores a la última selección**).
+- **Qué se mueve.** Solo los glifos **no seleccionados** de la misma línea situados **después** del inicio de la primera selección y antes de `R`: conservan contenido (Unicode), orden, fuente, tamaño, color, modo de render y línea base; se **desplazan** y se **comprimen** horizontalmente con un factor uniforme `f`. Los sustitutos de la línea se comprimen con el mismo `f`. Disposición: sustitutos y tramos no seleccionados se colocan en orden y **contiguos según su avance original** (los huecos originales entre ellos también se escalan por `f`), empezando en el inicio de la primera selección.
+- **Qué se conserva** (y se verifica como fuera de zona aunque caiga dentro de la máscara): todo glifo anterior a la primera selección; todas las demás líneas; todo trazado, imagen y relleno (bordes, filetes, sombreados); todas las anotaciones (`/Rect`, acción y destino); el estado gráfico fuera de los operadores de texto reescritos.
+- **Plan no justificable ⇒ el documento falla** (`replacement_overflow` si `f < 0,60`; `zone_plan_unjustified` en los demás casos): un enlace (`Link`) cuyo `/Rect` corta la región de glifos que se moverían; un trazado o imagen pintado **dentro** de esa región (entre glifos de la línea); glifos de la región en escritura no horizontal o con distinta orientación; glifos de la región dentro de un Form XObject; una selección de la línea que cruza a otra línea.
+- **Varias selecciones en la misma línea** (incluida una redacción junto a una seudonimización): las zonas `Z1` no se solapan por construcción (§0.3 (a)); si alguna no cabe, el plan de línea `Z2` las reúne y una sola `f` se aplica a todos los sustitutos y tramos. **Zonas superpuestas** de líneas distintas no existen (bandas recortadas, §7.1); si dos bandas se solapan geométricamente ⇒ `zone_plan_unjustified`.
+- **Oráculo de `Z2`** (calculado del original y del plan, antes de transformar): secuencia esperada de la zona de línea = sustitutos y caracteres no seleccionados en su orden; para cada carácter no seleccionado, su posición esperada (`x' = x₀ + f·(x − x₀) + Δ`, con `Δ` el desplazamiento acumulado por los sustitutos), su altura y su línea base. Verificación con PDFium: el texto de la zona es exactamente el esperado (marcador exacto incluido), cada carácter no seleccionado está en su posición esperada (±0,05 pt) con su altura y línea base originales (±0,01 pt), y `f ≥ 0,60`; con Poppler, el texto de la zona es el esperado.
+- **Restauración en `Z2`**: devuelve los valores y la escala y posición **originales** de los caracteres no seleccionados (±0,05 pt frente al original), con las redacciones `[REDACTED]` intactas en su posición del derivado.
+
+### 0.5 Orden de intentos y criterios de encaje (fijados antes de medir)
+
+Para cada selección (o plan de línea), se prueba en este orden y se usa el **primero** que encaja: **(1)** fuente original en `Z1`; **(2)** fuente candidata en `Z1`; **(3)** fuente original en `Z2`; **(4)** fuente candidata en `Z2`. La **fuente original es elegible** solo si cubre todo `Σ` (§7.3); si no, se omiten (1) y (3). **Encaje en `Z1`**: el mayor `s ≤ 1` con `ancho(sustituto)·s ≤ ancho(Z1)` cumple `s ≥ 0,60`. **Encaje en `Z2`**: `f = min(1, ancho(zona de línea) / ancho natural del contenido reubicado)` cumple `f ≥ 0,60`. Así la candidata se usa también cuando la original tiene los glifos pero el sustituto no cabe de forma legible (D-A08-02). El informe separa los **éxitos que solo usan `Z1`** de los que **dependen de `Z2`**, con renders de cada zona, el intento usado y el factor `s` o `f` aplicado (al sustituto y al sufijo).
+
+### 0.6 Conservación de lo ajeno a la transformación (verificaciones nuevas)
+
+- **VB — pintura no textual**: (i) con `pypdf`, la secuencia de operadores **fuera** de los objetos de texto (`BT`…`ET`) de cada flujo es idéntica en original, protegido y restaurado, y la secuencia de `BT`/`ET` y de contenido marcado (`BDC`/`BMC`/`EMC`) también; (ii) con PDFium, el render de cada página **sin sus objetos de texto** es idéntico píxel a píxel en toda la página (también dentro de la máscara). Así un borde o filete dentro de la máscara no puede perderse.
+- **VN — anotaciones**: salvo las clases `E` eliminadas, mismas anotaciones por página con igual subtipo, `/Rect`, acción y destino.
+
+### 0.7 Recursos decorativos y trazados: reglas candidatas y controles adversarios
+
+P-A08-03 (lista del host) **queda pendiente**: no se usa. Reglas **candidatas** evaluadas: `RI1` imagen uniforme; `RI2` imagen diminuta (≤ 16 × 16 muestras y ≤ 6 × 6 pt); `RP1` trazado de solo segmentos rectos con ≤ 8 segmentos por subtrayecto; `RP2` trazado con curvas de caja ≤ 6 × 6 pt; `RP3` **rejilla rectangular completa** (≥ 2 horizontales y ≥ 2 verticales finas, ≤ 2 pt de grosor, cada horizontal de lado a lado de la rejilla y cada vertical de arriba abajo; las celdas resultantes contienen texto extraído o están vacías); `RP4` **filete separador** (un único segmento o rectángulo fino ≤ 2 pt, horizontal o vertical, de longitud ≥ 50 % del ancho del área de texto); `RP5` **relleno de fondo** (rectángulo relleno, sin trazo, que contiene por completo al menos un glifo extraído y a ningún otro trazado ni imagen); `RP6` **recorte** (`W n`, no pinta); `RP7` **relleno blanco del área de página** (rectángulo blanco que contiene el área de texto).
+
+**Controles adversarios `CA`** (una imagen o un conjunto de trazados que **representan texto**): `CA01` imagen de 16 × 16 muestras con dos dígitos legibles a 6 pt; `CA02` letras «GIL» con segmentos rectos (≤ 8 por subtrayecto); `CA03` letras «EF» con filetes largos y finos no alineados en rejilla; `CA04` letras de píxeles hechas con muchas imágenes uniformes de 2 × 2 pt; `CA05` letras de píxeles hechas con rectángulos rellenos; `CA06` cifras dentro de una «tabla» cuyas celdas pintan los trazos de las cifras como bordes adicionales; `CA07` letras de curvas pequeñas (≤ 6 pt). **Orden de ejecución**: primero los `CA`; toda regla que **admita** algún `CA` se registra como **refutada** y se **excluye** del alcance recomendado y de la compuerta de los casos nativos; luego se ejecutan los nativos con las reglas **no refutadas**. Superar los `CA` no prueba que una regla sea segura; solo que no fue refutada por esos controles.
+
+### 0.8 Controles negativos nuevos
+
+| ID | Alteración | Debe detectarlo |
+|---|---|---|
+| CV24 | `Z2`: un carácter del sufijo perdido | VZ (texto de la zona) |
+| CV25 | `Z2`: un carácter del sufijo cambiado | VZ |
+| CV26 | `Z2`: sufijo desplazado 1 pt respecto de su posición esperada | oráculo `Z2` (posiciones) |
+| CV27 | Borde de celda dentro de la máscara eliminado | VB (i) y (ii) |
+| CV28 | `/Rect` de un enlace desplazado | VN |
+| CV29 | Restauración `Z2` con el sufijo en las posiciones comprimidas | VM (posiciones originales) |
+| CV30 | Restauración que reemplaza o elimina un `[REDACTED]` | VM (redacciones intactas) |
+| CS12 | Dos seudonimizaciones en la misma línea | ciclo completo (positivo) |
+| CS13 | Redacción y seudonimización contiguas en la misma línea | ciclo completo (positivo) |
+
+### 0.9 Identidad del extractor (registro del usuario)
+
+El prototipo usa la identidad **propia de PDF** (`cce-pdf-extract`, versión `1`, `document-structures/2`); **DOCX conserva** exactamente su identidad y su huella actuales (`cce-docs-extract` `1` y el mismo `config_sha256`). La política completa de compatibilidad de trabajos en cola y mapas (P-A08-04), P-A08-05 a 07 y la dependencia del verificador en producción quedan para la revisión del contrato productivo; el prototipo puede evaluarlas e informar qué condicionan.
+
+### 0.10 Exportaciones pendientes y denominador
+
+Los `.docx` de Word y Google Docs y su instructivo están en [`experiments/a08/corpus/EXPORT-W-G.md`](../experiments/a08/corpus/EXPORT-W-G.md). Mientras falten, `W1`–`W4` y `G1`–`G4` cuentan como **faltantes**; el denominador sigue siendo 20, el piso 16/20 y 3/4 por familia, con el requisito Type0/CID nativo y los bloqueos. Cada entrada se **congela** (hash, oráculo y zonas, en un commit) **antes** de ejecutar el candidato sobre ella; si al terminar faltan exportaciones, se entregan los resultados parciales y el estado exacto del piso.
+
+### 0.11 Desarrollo y medición
+
+El prototipo se desarrolla y depura contra los controles y el corpus congelado **sin cambiar ningún criterio** de este protocolo; la medición informada es la ejecución completa final con el código de un commit identificado. Cualquier cambio de criterio sigue la regla de congelamiento.
 
 ## 1. Qué mide y qué no
 

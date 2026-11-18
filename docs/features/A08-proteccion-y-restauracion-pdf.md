@@ -1,6 +1,6 @@
 # A08 — Protección y restauración PDF
 
-> **Estado: ETAPA 1 (solo documental), revisión 1 — pendiente de la aprobación del usuario del contrato experimental y del protocolo fijado.** No hay código experimental ni productivo, corpus exportado, medición, migración, dependencia ni versión nuevos. Todo lo que este documento describe está **especificado**; nada está implementado, probado ni aceptado.
+> **Estado: ETAPA 2 en curso** (autorizada por el usuario sobre `1afd04d`, con `Z1` como primera opción y `Z2` aprobada solo para la comprobación). Protocolo congelado en su revisión 2. No hay código productivo, migración, dependencia del paquete ni versión nuevos; el prototipo vive en `experiments/a08/`. Nada está implementado en el motor, probado en GitHub Actions ni aceptado.
 
 - Fuente: `STAGE_3_PLAYBOOK.md` revisión 6 (§6 A08; copia local ignorada por Git), más las decisiones posteriores ([A01](../decisions/A01-decisions.md) a [A07](../decisions/A07-decisions.md) y [A08](../decisions/A08-decisions.md)), que prevalecen. D-A04-04 ([A04-decisions](../decisions/A04-decisions.md)) exige la comprobación representativa antes del pipeline productivo.
 - Repositorio: `cawbase-content-engine` · rama `feature/a08-pdf-protection-restoration`, creada desde `main` en `c6590ec` (merge del PR #6 de A07; `main` = `origin/main` según las referencias locales; árbol limpio).

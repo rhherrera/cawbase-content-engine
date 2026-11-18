@@ -1,0 +1,6 @@
+.venv/
+.ruff_cache/
+__pycache__/
+corpus-private/
+work/
+fonts/*.ttf
