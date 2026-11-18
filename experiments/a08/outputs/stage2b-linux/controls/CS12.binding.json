@@ -1,0 +1,143 @@
+{
+ "occurrences": [
+  {
+   "page": 1,
+   "start": 36,
+   "end": 61,
+   "token": "DSVS3HJSRKQJW302"
+  },
+  {
+   "page": 1,
+   "start": 64,
+   "end": 89,
+   "token": "WF9CSRR44PZH2P2F"
+  }
+ ],
+ "redactions": [],
+ "lines": [
+  {
+   "page": 1,
+   "kind": "Z2",
+   "f": 0.6633534001858967,
+   "x0": 105.63800048828125,
+   "r": 316.32103271484374,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S1",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 4,
+     "scale": 0.6633534001858967,
+     "x_new": 105.63800048828125,
+     "orig_adv_page": 65.68100000000003,
+     "sub_nat_page": 123.563,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 36,
+     "x_orig": 105.63799999999999,
+     "span_page": 65.68099951171877,
+     "substitute": "[[CCE1:DSVS3HJSRKQJW302]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 13,
+       "adv": 65.68100000000001
+      }
+     ],
+     "token": "DSVS3HJSRKQJW302"
+    },
+    {
+     "sid": "S2",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 4,
+     "scale": 0.6633534001858967,
+     "x_new": 195.82753104487693,
+     "orig_adv_page": 78.51799999999997,
+     "sub_nat_page": 125.345,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 52,
+     "x_orig": 182.64900000000006,
+     "span_page": 77.45099658203128,
+     "substitute": "[[CCE1:WF9CSRR44PZH2P2F]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 14,
+       "adv": 78.51800000000001
+      }
+     ],
+     "token": "WF9CSRR44PZH2P2F"
+    }
+   ],
+   "moved": [
+    {
+     "x_new": 187.6039366754512,
+     "th": 1.0
+    },
+    {
+     "x_new": 189.50112739998286,
+     "th": 1.0
+    },
+    {
+     "x_new": 193.22253997502577,
+     "th": 1.0
+    },
+    {
+     "x_new": 278.9755629911782,
+     "th": 1.0
+    },
+    {
+     "x_new": 280.9311288149262,
+     "th": 1.0
+    },
+    {
+     "x_new": 282.8283195394579,
+     "th": 1.0
+    },
+    {
+     "x_new": 286.92187337200505,
+     "th": 1.0
+    },
+    {
+     "x_new": 291.40945912426264,
+     "th": 1.0
+    },
+    {
+     "x_new": 294.42307362130714,
+     "th": 1.0
+    },
+    {
+     "x_new": 298.83769049954424,
+     "th": 1.0
+    },
+    {
+     "x_new": 303.3252762518018,
+     "th": 1.0
+    },
+    {
+     "x_new": 307.418830084349,
+     "th": 1.0
+    },
+    {
+     "x_new": 311.9064158366066,
+     "th": 1.0
+    }
+   ],
+   "block": [
+    9,
+    153
+   ]
+  }
+ ],
+ "derivative_sha256": "f3d6b3f41cf51e44fff68c7320e01e3b148572fb01d45725a2c47492613f5b79",
+ "mac": "b1e5aba7cbb0f7b2a32d41b334f94a619f142f5384f4d9ae81a79af7d27bfaf4"
+}

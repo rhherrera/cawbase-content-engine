@@ -1,0 +1,1402 @@
+{
+ "rules": [
+  "RP3",
+  "RP5",
+  "RP7"
+ ],
+ "CA": {
+  "CA01": {
+   "description": "imagen diminuta con «74»",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CA02": {
+   "description": "letras «GIL» con segmentos rectos",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CA03": {
+   "description": "letras «EF» con filetes largos",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CA04": {
+   "description": "letra «H» de imágenes uniformes",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CA05": {
+   "description": "letra «H» de rectángulos rellenos",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CA06": {
+   "description": "cifra «1» con bordes adicionales dentro de una tabla",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CA07": {
+   "description": "letras «SO» con curvas pequeñas (cada una <= 6 pt)",
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  }
+ },
+ "CR": {
+  "CR01": {
+   "expected": "font_mapping_insufficient|unsupported_structure",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR02": {
+   "expected": "font_mapping_insufficient",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR03": {
+   "expected": "font_mapping_insufficient",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR04": {
+   "expected": "font_mapping_insufficient",
+   "outcome": "gate:font_mapping_insufficient",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR05": {
+   "expected": "scanned_without_text",
+   "outcome": "gate:scanned_without_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR06": {
+   "expected": "hidden_text|uncovered_content",
+   "outcome": "gate:hidden_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR07": {
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR08": {
+   "expected": "uncovered_content",
+   "outcome": "gate:uncovered_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR09": {
+   "expected": "encrypted",
+   "outcome": "gate:encrypted",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR10": {
+   "expected": "signed",
+   "outcome": "gate:signed",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR11": {
+   "expected": "incremental_update|parser_repair",
+   "outcome": "gate:incremental_update",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR12": {
+   "expected": "parser_repair",
+   "outcome": "gate:parser_repair",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR13": {
+   "expected": "forms_or_layers",
+   "outcome": "gate:forms_or_layers",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR14": {
+   "expected": "forms_or_layers",
+   "outcome": "gate:forms_or_layers",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR15": {
+   "expected": "embedded_content",
+   "outcome": "gate:embedded_content",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR16": {
+   "expected": "executable_action",
+   "outcome": "gate:executable_action",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR17": {
+   "expected": "unsupported_structure",
+   "outcome": "gate:unsupported_structure",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR18": {
+   "expected": "alternate_text_duplication",
+   "outcome": "gate:alternate_text_duplication",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR19": {
+   "expected": "unsupported_structure|parser_repair",
+   "outcome": "gate:unsupported_structure",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR20": {
+   "expected": "shared_object_partial|selection_not_transformable",
+   "outcome": "plan:selection_not_transformable",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR21": {
+   "expected": "hidden_text",
+   "outcome": "gate:hidden_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR22": {
+   "expected": "hidden_text",
+   "outcome": "gate:hidden_text",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR23": {
+   "expected": "selection_crosses_boundary|oracle_unavailable",
+   "outcome": "oracle:oracle_unavailable",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR27": {
+   "expected": "alternate_text_duplication",
+   "outcome": "gate:alternate_text_duplication",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR28": {
+   "expected": "selection_not_transformable",
+   "outcome": "plan:selection_not_transformable",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR29": {
+   "expected": "selection_not_transformable",
+   "outcome": "plan:selection_not_transformable",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR30": {
+   "expected": "derivative_mismatch",
+   "outcome": "restore:derivative_mismatch",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  },
+  "CR31": {
+   "expected": "binding_invalid",
+   "outcome": "restore:binding_invalid",
+   "as_expected": true,
+   "accepted_indebidamente": false
+  }
+ },
+ "CS": {
+  "CS01": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8459,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8459
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8459
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8459,
+     "substitute_ratios": [
+      0.8459,
+      0.8459
+     ],
+     "max_residual_pt": 0.0001,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS03": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8419,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8419
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8419
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8419,
+     "substitute_ratios": [
+      0.8419,
+      0.8419
+     ],
+     "max_residual_pt": 0.0001,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS04": {
+   "outcome": "plan:selection_not_transformable",
+   "rt_diagnostic_only": false,
+   "plan": null,
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_not_transformable",
+     "detail": "selection across streams or inside a Form XObject (prototype)"
+    }
+   },
+   "geometry": null
+  },
+  "CS05": {
+   "outcome": "cycle",
+   "rt_diagnostic_only": false,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8575,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8575
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8575
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8575,
+     "substitute_ratios": [
+      0.8575,
+      0.8575
+     ],
+     "max_residual_pt": 0.4888,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS06": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8106,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8106
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8106
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 108 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8106,
+     "substitute_ratios": [
+      0.8106,
+      0.8106
+     ],
+     "max_residual_pt": 0.3242,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS07a": {
+   "outcome": "plan:selection_not_transformable",
+   "rt_diagnostic_only": false,
+   "plan": null,
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_not_transformable",
+     "detail": "selection across streams or inside a Form XObject (prototype)"
+    }
+   },
+   "geometry": null
+  },
+  "CS07b": {
+   "outcome": "plan:selection_not_transformable",
+   "rt_diagnostic_only": false,
+   "plan": null,
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_not_transformable",
+     "detail": "selection across streams or inside a Form XObject (prototype)"
+    }
+   },
+   "geometry": null
+  },
+  "CS08": {
+   "outcome": "oracle:oracle_unavailable",
+   "rt_diagnostic_only": false,
+   "plan": null,
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "failed",
+     "reason": "oracle_unavailable"
+    }
+   },
+   "geometry": null
+  },
+  "CS09": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8349,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8349
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8349
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8349,
+     "substitute_ratios": [
+      0.8349,
+      0.8349
+     ],
+     "max_residual_pt": 0.0001,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS10": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8285,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8285
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8285
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8285,
+     "substitute_ratios": [
+      0.8285,
+      0.8285
+     ],
+     "max_residual_pt": 0.0001,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS11": {
+   "outcome": "cycle",
+   "rt_diagnostic_only": false,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8536,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8536
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8536
+      }
+     ],
+     "moved_glyphs": 27
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8536,
+     "substitute_ratios": [
+      0.8536,
+      0.8536
+     ],
+     "max_residual_pt": 0.0001,
+     "moved_chars": 23
+    }
+   ]
+  },
+  "CS12": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.6634,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6634
+      },
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6634
+      }
+     ],
+     "moved_glyphs": 13
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.6634,
+     "substitute_ratios": [
+      0.6634,
+      0.6634
+     ],
+     "max_residual_pt": 0.0,
+     "moved_chars": 10
+    }
+   ]
+  },
+  "CS13": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.8185,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8185
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.8185
+      }
+     ],
+     "moved_glyphs": 15
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.8185,
+     "substitute_ratios": [
+      0.8185,
+      0.8185
+     ],
+     "max_residual_pt": 0.0,
+     "moved_chars": 12
+    }
+   ]
+  },
+  "CS14": {
+   "outcome": "cycle",
+   "rt_diagnostic_only": false,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.7705,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.7705
+      },
+      {
+       "sid": "S2",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.7705
+      }
+     ],
+     "moved_glyphs": 15
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "passed"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.7705,
+     "substitute_ratios": [
+      0.7705,
+      0.7705
+     ],
+     "max_residual_pt": 0.0,
+     "moved_chars": 12
+    }
+   ]
+  },
+  "CS15": {
+   "outcome": "plan:zone_plan_unjustified",
+   "rt_diagnostic_only": false,
+   "plan": null,
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "zone_plan_unjustified",
+     "detail": "moved glyph inside an /ActualText span (its span would no longer match its glyphs)"
+    }
+   },
+   "geometry": null
+  },
+  "CS16": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": false,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 0.6921,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6921
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 0.6921
+      }
+     ],
+     "moved_glyphs": 18
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "failed",
+     "reason": "restoration_layout_unavailable",
+     "detail": "the redaction's excess pushes the line beyond its authorized limit"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 0.6921,
+     "substitute_ratios": [
+      0.6921,
+      0.6921
+     ],
+     "max_residual_pt": 0.0,
+     "moved_chars": 14
+    }
+   ]
+  },
+  "CS17": {
+   "outcome": "verify:VR",
+   "rt_diagnostic_only": true,
+   "plan": [
+    {
+     "page": 1,
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      {
+       "sid": "S1",
+       "action": "pseudonymize",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 1.0
+      },
+      {
+       "sid": "S2",
+       "action": "redact",
+       "font": "candidate",
+       "attempt": 4,
+       "scale": 1.0
+      }
+     ],
+     "moved_glyphs": 19
+    }
+   ],
+   "blocker": null,
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "localize": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "passed"
+    },
+    "remove": {
+     "result": "passed"
+    },
+    "substitute": {
+     "result": "passed"
+    },
+    "write": {
+     "result": "passed"
+    },
+    "reopen": {
+     "result": "passed"
+    },
+    "verify": {
+     "result": "failed",
+     "check": "VR",
+     "detail": "pdfium: page 1 439 px"
+    },
+    "restore": {
+     "result": "passed"
+    },
+    "verify_restore": {
+     "result": "passed"
+    }
+   },
+   "geometry": [
+    {
+     "sids": [
+      "S1",
+      "S2"
+     ],
+     "kind": "Z2",
+     "f_measured": 1.0,
+     "substitute_ratios": [
+      1.0,
+      1.0
+     ],
+     "max_residual_pt": 0.0,
+     "moved_chars": 15
+    }
+   ]
+  }
+ },
+ "summary": {
+  "negatives": 35,
+  "as_expected": 35,
+  "accepted_indebidamente": [],
+  "cs_blockers": []
+ }
+}

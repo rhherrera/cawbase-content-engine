@@ -1,0 +1,135 @@
+/Users/rodrigo/repos/cawbase-content-engine/experiments/a08/.venv/lib/python3.13/site-packages/pikepdf/models/_content_stream.py:117: UserWarning: Unexpected end of stream
+  Object._parse_stream_grouped(stream, operators),
+CA01 gate:uncovered_content
+CA02 gate:uncovered_content
+CA03 gate:uncovered_content
+CA04 gate:uncovered_content
+CA05 gate:uncovered_content
+CA06 gate:uncovered_content
+CA07 gate:uncovered_content
+CR01 gate:font_mapping_insufficient OK
+CR02 gate:font_mapping_insufficient OK
+CR03 gate:font_mapping_insufficient OK
+CR04 gate:font_mapping_insufficient OK
+CR05 gate:scanned_without_text OK
+CR06 gate:hidden_text OK
+CR07 gate:uncovered_content OK
+CR08 gate:uncovered_content OK
+CR09 gate:encrypted OK
+CR10 gate:signed OK
+CR11 gate:incremental_update OK
+CR12 gate:parser_repair OK
+CR13 gate:forms_or_layers OK
+CR14 gate:forms_or_layers OK
+CR15 gate:embedded_content OK
+CR16 gate:executable_action OK
+CR17 gate:unsupported_structure OK
+CR18 gate:alternate_text_duplication OK
+CR19 gate:unsupported_structure OK
+CR20 plan:selection_not_transformable OK
+CR21 gate:hidden_text OK
+CR22 gate:hidden_text OK
+CR23 oracle:oracle_unavailable OK
+CR27 gate:alternate_text_duplication OK
+CR28 plan:selection_not_transformable OK
+CR29 plan:selection_not_transformable OK
+CR30 restore:derivative_mismatch OK
+CR31 restore:binding_invalid OK
+CS01 verify:VR (RT diagnostic) 
+CS03 verify:VR (RT diagnostic) 
+CS04 plan:selection_not_transformable  
+CS05 cycle  
+CS06 verify:VR (RT diagnostic) 
+CS07a plan:selection_not_transformable  
+CS07b plan:selection_not_transformable  
+CS08 oracle:oracle_unavailable  
+CS09 verify:VR (RT diagnostic) 
+CS10 verify:VR (RT diagnostic) 
+CS11 cycle  
+CS12 verify:VR (RT diagnostic) 
+CS13 verify:VR (RT diagnostic) 
+CS14 cycle  
+CS15 plan:zone_plan_unjustified  
+CS16 verify:VR  
+CS17 verify:VR (RT diagnostic) 
+summary {'negatives': 35, 'as_expected': 35, 'accepted_indebidamente': [], 'cs_blockers': []}
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+2 extra bytes in post.stringData array
+W1 missing
+W5 missing
+G1 missing
+G5 missing
+L1 SUCCESS   
+L5 fail@verify VR pdfium: page 1 1281 px 
+C1 SUCCESS   
+C5 fail@plan zone_plan_unjustified moved glyph inside an /ActualText span (its span would no longer match its glyphs) 
+M1 fail@verify VR pdfium: page 1 262 px 
+M5 fail@verify VR pdfium: page 1 1460 px 
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+'modified' timestamp seems very low; regarding as unix timestamp
+CV01 detected by VZ - superposición con el texto original debajo
+CV02 detected by VT - valor fuera de la CropBox
+CV03 detected by VE - copia en /Info /Title
+CV04 detected by VE - copia en XMP dc:title
+CV05 detected by VK - copia en un título del esquema
+CV06 detected by VR - copia en /URI codificada %XX
+CV07 detected by VR - copia en /Contents de una anotación
+CV08 detected by VG - copia en un objeto huérfano
+CV09 detected by VS - copia dentro de un object stream
+CV10 detected by VT - copia como texto Tr 3 en otra posición
+CV11 detected by VB - copia con otra fuente en un Form XObject no usado
+CV12 detected by VT - carácter no seleccionado cambiado
+CV13 detected by VT - línea no seleccionada desplazada 0,5 pt
+CV14 detected by VR - color de una palabra no seleccionada
+CV15 detected by VR - trazado (borde) eliminado
+CV16 detected by VZ - sustituto dibujado como trazados (no extraíble)
+CV17 detected by VZ - fuente del sustituto con ToUnicode erróneo (texto no seleccionable como sustituto)
+CV18 detected by VT - primer carácter del valor conservado
+CV19 detected by VT - marcador con un espacio insertado por TJ
+CV20 detected by restorer derivative_markers_invalid
+CV21 detected by VT - valor restaurado en otra posición
+CV22 detected by VZ - original sin modificar presentado como protegido
+CV23 detected by VT - restaurado de otro derivado
+CV24 detected by VZ - Z2: carácter del sufijo perdido
+CV25 detected by VZ - Z2: carácter del sufijo cambiado
+CV26 detected by Z2 - Z2: sufijo desplazado 1 pt
+CV27 detected by VR - borde de celda junto a una zona (dentro de la máscara) eliminado
+CV28 detected by VR - anotación de enlace añadida/desplazada
+CV29 detected by Z2 - restauración Z2 con el sufijo en posiciones comprimidas
+CV30 detected by VZ - restauración que elimina un [REDACTED]
+CV31 detected by VZP - el plan amplía su zona Z2 más allá del límite autorizado para ocultar una alteración
+CV32 NOT DETECTED Z2: sufijo desplazado 1 pt con el avance del plan falseado para ocultarlo
+CV33 detected by VB - valor seleccionado copiado en un /ActualText (tramo vacío) del derivado
+   VK marked-content scan alone: detects
+CV34 detected by VT - /ActualText distinto de sus glifos añadido a texto no seleccionado
+CV35 detected by Z2 - Z2: factor del plan falseado (derivado sin cambios)
+detected 34 / 35
+stage2b-macos 2/10 {'W': 0, 'G': 0, 'L': 1, 'C': 1, 'M': 0} type0: True blockers: [] neg accepted: [] cv missed: ['CV32'] missing: ['G1', 'G5', 'W1', 'W5'] RT-only: ['L5', 'M1', 'M5'] floor not met
+   W1 missing export export_unavailable []  
+   W5 missing export export_unavailable []  
+   G1 missing export export_unavailable []  
+   G5 missing export export_unavailable []  
+   L1 OK   [('Z1', 1.0), ('Z2', 0.6811), ('Z1', 1.0), ('Z1', 1.0), ('Z1', 1.0)]  
+   L5 -- verify VR [('Z1', 1.0), ('Z1', 1.0), ('Z2', 1.0), ('Z2', 1.0), ('Z2', 1.0), ('Z2', 1.0), ('Z1', 1.0)] RT-diag 
+   C1 OK   [('Z1', 1.0), ('Z2', 0.6738), ('Z1', 1.0), ('Z1', 1.0), ('Z1', 1.0)]  
+   C5 -- plan zone_plan_unjustified []  
+   M1 -- verify VR [('Z1', 1.0), ('Z2', 0.6664), ('Z1', 1.0), ('Z1', 1.0), ('Z1', 1.0)] RT-diag 
+   M5 -- verify VR [('Z1', 1.0), ('Z1', 1.0), ('Z2', 1.0), ('Z2', 1.0), ('Z2', 1.0), ('Z2', 1.0), ('Z1', 1.0)] RT-diag 
+L1 5 zones
+L5 7 zones
+C1 5 zones
+M1 5 zones
+M5 7 zones
