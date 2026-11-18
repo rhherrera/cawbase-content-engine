@@ -450,6 +450,16 @@ def expected_zone_text(z: dict, ln: dict, orig_chars: list[dict], subs: dict[str
     return "".join(text), exp
 
 
+def _tc_gap(orig_idx: list[dict], idx: list[int]) -> float:
+    """Character spacing (Tc) bound for a selection: the gap between its last two glyphs (origin of the last minus the
+    advance end of the one before), measured inside the value. The restorer and transformer count Tc in the value's
+    advance and PDFium's loose box does not; an inter-word gap is NOT tolerated (stage-2B measurement run 1, CV32)."""
+    ink = [orig_idx[k] for k in idx if not orig_idx[k]["u"].isspace()]
+    if len(ink) < 2 or abs(ink[-1]["loose"][1] - ink[-2]["loose"][1]) > 0.5:
+        return 0.0
+    return abs(ink[-1]["loose"][0] - ink[-2]["loose"][2])
+
+
 def z2_geometry(z: dict, ln: dict, orig_idx: list[dict], der_idx: list[dict], oracle: dict, subs: dict[str, str]) -> dict:
     """Protected Z2 zone: expected geometry derived from the ORIGINAL (PDFium loose boxes = origin and advance), the frozen
     oracle and what the derivative actually draws; the plan's factor is only cross-checked (criterion 5).
@@ -460,11 +470,7 @@ def z2_geometry(z: dict, ln: dict, orig_idx: list[dict], der_idx: list[dict], or
     for sid in z["sids"]:
         idx = sorted(x["i"] for x in occs[sid]["pdfium_chars"])
         first, last = orig_idx[idx[0]], orig_idx[idx[-1]]
-        nxt = next((orig_idx[k] for k in range(idx[-1] + 1, len(orig_idx)) if not orig_idx[k]["gen"]), None)
-        gap = 0.0
-        if nxt is not None and abs(nxt["loose"][1] - last["loose"][1]) < 0.5:
-            gap = nxt["loose"][0] - last["loose"][2]
-        sels.append({"sid": sid, "idx": set(idx), "a": max(occs[sid]["zone"]["x0"], first["loose"][0]), "e": last["loose"][2], "gap": abs(gap)})
+        sels.append({"sid": sid, "idx": set(idx), "a": max(occs[sid]["zone"]["x0"], first["loose"][0]), "e": last["loose"][2], "gap": _tc_gap(orig_idx, idx)})
     sels.sort(key=lambda q: q["a"])
     selected = set().union(*(q["idx"] for q in sels))
     rect = z["rect"]
@@ -558,9 +564,8 @@ def restored_excess(z: dict, ln: dict, orig_idx: list[dict], oracle: dict) -> tu
         w = w1 * first["size"]
         ex = MIN_SCALE * w - span if span / w < MIN_SCALE else 0.0
         out.append((a, ex))
-        nxt = next((orig_idx[k] for k in range(idx[-1] + 1, len(orig_idx)) if not orig_idx[k]["gen"]), None)
-        if ex and nxt is not None and abs(nxt["loose"][1] - last["loose"][1]) < 0.5:
-            tol += abs(nxt["loose"][0] - last["loose"][2])
+        if ex:
+            tol += _tc_gap(orig_idx, idx)
     return out, tol
 
 
