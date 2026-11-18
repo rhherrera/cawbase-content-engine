@@ -13,7 +13,7 @@ Relacionado: [contrato de A07](docx-protection.md) · [especificación y matriz 
 | Versión / migración / nivel | `0.6.0` · `0005_docx_protection` · `schema_level` 5 · `min_runtime_level` 1 · sin extra nuevo (exige `documents` y `protection`) · catálogo 21 → **25** |
 | Contrato aprobado | revisión 3, commit `044efaf`, **aprobado explícitamente por el usuario** (aprobación registrada en `df64895`) |
 | Commit de evidencia (código y pruebas) | **`8af64a1`** (las corridas de Linux usan `git archive` de ese SHA); la regresión completa de macOS se ejecutó sobre `ae00ed4` (mismo código de `src/`; `8af64a1` solo añade pruebas, evidencia y un script) y las pruebas añadidas en `8af64a1` se ejecutaron aparte en macOS |
-| Commit final | el último de la rama (este informe y la documentación); desde `8af64a1` solo cambia documentación |
+| Commit final | el último de la rama; desde `8af64a1` cambian la documentación y el margen de lease de una prueba (`2d04c4c`, §4.2) |
 
 Commits de A07 sobre la base (`git log 5bcf4b6..HEAD`):
 
@@ -116,7 +116,7 @@ Estados: **verificado** (prueba que lo demuestra, en los ambientes indicados) ·
 | 59 | parcial | life `test_retry_reuses_markers_and_publishes_once` (un vínculo, dos artefactos publicados) | inyección alrededor del `COMMIT` de publicación |
 | 60 | sin evidencia | — | espera de bloqueo controlada con `pg_stat_activity` |
 | 61 | parcial | life `test_context_deleted_before_publication_...` y `test_concurrent_protection_and_context_deletion` · PG+SQ | vencimiento y deshabilitación del scope en mitad del intento |
-| 62 | parcial | life `test_retry_reuses_markers_and_publishes_once` (reintento tras fallo, marcadores reutilizados) | pérdida de lease |
+| 62 | parcial | life `test_retry_reuses_markers_and_publishes_once` (reintento tras fallo, marcadores reutilizados; con margen de lease desde `2d04c4c`, §4.2) | prueba de pérdida de lease (el ajuste del margen no la acredita) |
 | 63 | sin evidencia | — (protocolo de A05, sus suites) | inyección en cada frontera para trabajos de A07 |
 | 64 | verificado | life `test_context_deleted_before_publication_and_immediate_purge` | — |
 | 65 | verificado | jobs `test_submission_checks_and_idempotency` | dos primeras concurrentes |
@@ -176,6 +176,33 @@ Omisiones en macOS (15): pruebas que exigen Linux (contenedor de aislamiento de 
 | Piso de SQLite (`scripts/sqlite_floor_validate.sh`) | SQLite 3.38.5: 1486 passed, 23 skipped; 3.37.2: `start()` rechazado como se espera ([resumen](evidence/a07-sqlite-floor-summary.txt)) |
 
 Las omisiones (24) son las mismas familias que en macOS sin LibreOffice/evidencia de A07 y pruebas que dependen del entorno (contenedor de aislamiento dentro del contenedor, generación de evidencia); ninguna corresponde a un criterio de A07 marcado como verificado.
+
+### 4.2 Revisión de los dos fallos de GitHub Actions sobre `c4faa40` (informados por el usuario)
+
+El agente **no tuvo acceso a los logs** de Actions (`gh` no está instalado en este equipo): lo de abajo parte de lo que el usuario informó y de lo que se reprodujo localmente.
+
+**1. `test_retry_reuses_markers_and_publishes_once[sqlite]`: `state="running"`, `outcome_code="lease_lost"` en el primer intento (se esperaba `retry_wait`).**
+
+- **Qué demuestra el log informado:** el worker ya no tenía la posesión cuando quiso decidir el fallo inyectado (o en una comprobación de posesión anterior): o `LeaseLost`, o `_finish_failure` encontró el lease vencido y devolvió `lease_lost`, dejando el trabajo `running` para que lo recupere otra reclamación (camino seguro de A05 §6.3: un dueño sin posesión no decide ni publica).
+- **Qué se reprodujo:** el síntoma exacto (`running` / `lease_lost`) aparece si las renovaciones se interrumpen más que `lease_ttl_s` (3 s en `fast_limits()`): experimento ad hoc, no commiteado, que bloquea el *event loop* 3,5 s antes de lanzar el fallo inyectado. **No** se reprodujo el fallo de CI: 5 corridas bajo carga de CPU (10 procesos ocupados en 8 núcleos) y 4 corridas instrumentadas pasaron; la mayor separación entre renovaciones fue 0,65 s, cada renovación tardó ≤ 0,014 s y con `PYTHONASYNCIODEBUG=1` no hubo ninguna llamada que bloqueara el *event loop* más de 100 ms. La causa en el runner (escrituras lentas de SQLite, planificación) **no se pudo determinar**.
+- **Defecto del worker:** no se encontró; el comportamiento observado es el previsto ante un lease vencido.
+- **Cambio (`2d04c4c`):** solo esa prueba usa `lease_ttl_s=30` (heartbeat 1 s; el backoff rápido y todas las aserciones se conservan). Sigue ejercitando el fallo inyectado en `docx_verify`, el reintento, la reutilización de marcadores (`reused_markers` = filas previas, `new_markers` = 0) y una sola publicación (un vínculo, dos artefactos publicados). Corrida dirigida: **3 de 3** en SQLite y PostgreSQL 17 (macOS). **Este ajuste no acredita una prueba de pérdida de lease**: AC-A07-62 sigue **parcial**.
+
+**2. `test_installed_import_cost_meets_the_decided_references`: 320,7 ms warm frente al máximo de 300 ms.**
+
+- **Comparación** de wheels limpios de la base `5bcf4b6` (0.5.0) y de HEAD (0.6.0), el mismo Python 3.13.18 (`python:3.13-bookworm`), dependencias **idénticas** (las 7 resueltas para la base, congeladas y usadas como restricción para HEAD; comprobado con `uv pip freeze`) y **mediciones intercaladas** (6 rondas base/HEAD alternadas, 15 procesos *warm* por ronda con `scripts/measure_import.py`):
+
+| Plataforma | Base: medianas por ronda (ms) | HEAD: medianas por ronda (ms) | Mediana de rondas base → HEAD |
+|---|---|---|---|
+| Linux **x86_64** (Docker `--platform linux/amd64`, **emulado** en Apple silicon) | 408,0 · 407,7 · 416,4 · 409,2 · 458,4 · 416,7 | 411,6 · 417,2 · 411,4 · 405,1 · 418,5 · 419,2 | 412,8 → 414,4 (+1,6) |
+| Linux aarch64 (Docker nativo) | 202,9 · 199,4 · 192,6 · 193,2 · 193,4 · 194,0 | 195,6 · 200,3 · 194,6 · 196,0 · 194,3 · 191,9 | 193,7 → 195,1 (+1,4) |
+
+- **Qué agrega A07 al camino de importación:** exactamente dos módulos, `operations/docx_facade.py` y `persistence/a07_schema.py` (452 → 454 módulos), con **≈ 0,10 ms y ≈ 0,07 ms** de tiempo propio (media de 15 `-X importtime`, aarch64). No importa `lxml`, `cryptography`, `pikepdf` ni el subpaquete `docx_protection`.
+- **Conclusión:** la comparación **no identifica una regresión reproducible** atribuible a A07 (diferencias de ~1,5 ms, dentro del ruido entre rondas); no se aplicó ninguna corrección. Los 320,7 ms de Actions no se explican por A07 con esta evidencia.
+- **Diferencias con el runner de Actions (declaradas):** el x86_64 de esta comparación es **emulado** (sus valores absolutos no son comparables con el umbral; solo vale la comparación relativa) y el runner `ubuntu-latest` es x86_64 nativo con otro kernel, disco y carga. No se tuvo acceso a un Linux x86_64 nativo.
+- **Check original** (umbral 300 ms, 15 muestras, configuración de CI sin cambios): `uv run pytest -m dist -q -rs` en macOS sobre HEAD: **10 passed**; en Linux aarch64 (Docker, `8af64a1`): mediana *warm* 195,9 ms (§4.1).
+
+**Checks de CI a repetir:** el trabajo de pruebas con SQLite (ya con `2d04c4c`) y el trabajo `distribution` (sin cambios de código: hay que volver a ejecutarlo para obtener una medición nueva en el runner; si vuelve a superar 300 ms, conviene medir base y HEAD en el mismo runner).
 
 ## 5. Apertura sin reparación e inspección visual (LibreOffice en Linux)
 
