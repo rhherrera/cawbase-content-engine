@@ -1,0 +1,91 @@
+{
+ "case_id": "C1",
+ "family": "C",
+ "template": "T1",
+ "pdf_sha256": "1d38c6f1b2d093fe0a5a27eca880c56f63e9db02b2c246bbf9eb9e4269fd4659",
+ "pdf_size": 40564,
+ "stored_in": "corpus",
+ "exporter": {
+  "flow": "Chrome headless --print-to-pdf (exporters/export_c.sh)",
+  "application": "Google Chrome 157.0.8103.79 ",
+  "os": "macOS 27.0.1-26A434 arm64",
+  "source": "corpus/sources/html/T<n>.html",
+  "executed_by": "agent (script)",
+  "options": [
+   "--headless",
+   "--disable-gpu",
+   "--no-pdf-header-footer",
+   "--run-all-compositor-stages-before-draw",
+   "perfil temporal vacío",
+   "file://"
+  ]
+ },
+ "pdfinfo": [
+  "Title:           Corpus A08 T1 (sintético)",
+  "Creator:         Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "Producer:        Skia/PDF m157",
+  "CreationDate:    Wed Nov 18 14:04:17 2026 -03",
+  "ModDate:         Wed Nov 18 14:04:17 2026 -03",
+  "Custom Metadata: no",
+  "Metadata Stream: no",
+  "Tagged:          yes",
+  "UserProperties:  no",
+  "Suspects:        no",
+  "Form:            none",
+  "JavaScript:      no",
+  "Pages:           2",
+  "Encrypted:       no",
+  "Page size:       594.96 x 841.92 pts (A4)",
+  "Page rot:        0",
+  "File size:       40564 bytes",
+  "Optimized:       no",
+  "PDF version:     1.4"
+ ],
+ "pdffonts": [
+  {
+   "name": "AAAAAA+NotoSerif-Regular",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "BAAAAA+NotoSerif-Bold",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "CAAAAA+NotoSans-Regular",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "DAAAAA+NotoSans-Bold",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  }
+ ],
+ "type0_cid_subset": true,
+ "intake_utc": "2026-11-18T17:13:44Z",
+ "intake_host": {
+  "system": "Darwin",
+  "release": "27.0.0",
+  "machine": "arm64"
+ },
+ "manifest_sha256": "571fd2a88a8dfedec6523950362ffa369f2070b1c3dca2cf06058ca2bd139753",
+ "reused_from_stage2": {
+  "pdf": "corpus/C1/C1.pdf",
+  "stage2_freeze_commit": "5f1af03"
+ },
+ "intake_2b_utc": "2026-11-18T20:13:45Z"
+}

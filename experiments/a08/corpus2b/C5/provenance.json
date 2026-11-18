@@ -1,0 +1,78 @@
+{
+ "case_id": "C5",
+ "family": "C",
+ "template": "T5",
+ "pdf_sha256": "95068d7cb9ae73cc57a234550360d65769967f9054268cf606c988911897c84b",
+ "pdf_size": 29688,
+ "stored_in": "corpus2b",
+ "exporter": {
+  "flow": "Chrome headless --print-to-pdf (exporters/export_2b.sh)",
+  "application": "Google Chrome 157.0.8103.79",
+  "os": "macOS 27.0.1-26A434 arm64",
+  "source": "corpus2b/sources/html/T5.html",
+  "executed_by": "agent (script)",
+  "options": [
+   "--headless",
+   "--disable-gpu",
+   "--no-pdf-header-footer",
+   "--run-all-compositor-stages-before-draw",
+   "perfil temporal vacío",
+   "file://"
+  ]
+ },
+ "pdfinfo": [
+  "Title:           Corpus A08 T5 (sintético)",
+  "Creator:         Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "Producer:        Skia/PDF m157",
+  "CreationDate:    Wed Nov 18 16:51:41 2026 -03",
+  "ModDate:         Wed Nov 18 16:51:41 2026 -03",
+  "Custom Metadata: no",
+  "Metadata Stream: no",
+  "Tagged:          yes",
+  "UserProperties:  no",
+  "Suspects:        no",
+  "Form:            none",
+  "JavaScript:      no",
+  "Pages:           1",
+  "Encrypted:       no",
+  "Page size:       594.96 x 841.92 pts (A4)",
+  "Page rot:        0",
+  "File size:       29688 bytes",
+  "Optimized:       no",
+  "PDF version:     1.4"
+ ],
+ "pdffonts": [
+  {
+   "name": "AAAAAA+NotoSans-Bold",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "BAAAAA+NotoSans-Regular",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "CAAAAA+NotoSans-Italic",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  }
+ ],
+ "type0_cid_subset": true,
+ "intake_utc": "2026-11-18T20:13:46Z",
+ "intake_host": {
+  "system": "Darwin",
+  "release": "27.0.0",
+  "machine": "arm64"
+ },
+ "manifest_sha256": "571fd2a88a8dfedec6523950362ffa369f2070b1c3dca2cf06058ca2bd139753"
+}

@@ -1,0 +1,54 @@
+{
+ "stage": "2B",
+ "manifest_sha256": "571fd2a88a8dfedec6523950362ffa369f2070b1c3dca2cf06058ca2bd139753",
+ "cases": {
+  "L1": {
+   "pdf": "corpus/L1/L1.pdf",
+   "pdf_sha256": "23399acf9328628f5db55914ab98ac8c59eb10f9ca1c9de68bb90d9a637ff7a8",
+   "oracle_sha256": "ab4939b2c0df241f91aee349c9a1024c4844ec8e1b81277d5a9ebc9404ff6c30",
+   "provenance_sha256": "d90d72996067a3b7beda6eaf6de8836e96d25c66cc4d4775b18401d88bb1b8f2",
+   "oracle_status": "ok",
+   "frozen_utc": "2026-11-18T20:13:45Z"
+  },
+  "C1": {
+   "pdf": "corpus/C1/C1.pdf",
+   "pdf_sha256": "1d38c6f1b2d093fe0a5a27eca880c56f63e9db02b2c246bbf9eb9e4269fd4659",
+   "oracle_sha256": "8fa4c9ca64a73a2f79980330ec12c99ffee988293160d8c5abf803df13570c00",
+   "provenance_sha256": "19eaeb3081418db72f01e304465f5ce73a1488a79d48647170b3a7b0a7553ec9",
+   "oracle_status": "ok",
+   "frozen_utc": "2026-11-18T20:13:45Z"
+  },
+  "M1": {
+   "pdf": "corpus/M1/M1.pdf",
+   "pdf_sha256": "d09dca7140878ea8353521489812183e5eda98c272e482086bec5b9026fcada4",
+   "oracle_sha256": "1df4b1cfe9ecda4c003a6266e7e4aa4eb0b7808801e85b515796b4b0de8a633b",
+   "provenance_sha256": "045242fba767ecce6680c69d7fba095fb5d105d16bde8ec2c6080b2e18f855f1",
+   "oracle_status": "ok",
+   "frozen_utc": "2026-11-18T20:13:45Z"
+  },
+  "L5": {
+   "pdf": "corpus2b/L5/L5.pdf",
+   "pdf_sha256": "6ef0a5567503b561ed8e760f74ced85c58a42aa243e7529fbfe5cf9293f8d3b2",
+   "oracle_sha256": "a9187eb4aad194b544f9a54d8679e0ffa948be5bf9912698f8036cf57d610439",
+   "provenance_sha256": "dd83c54f75caaaf7783d2535ad19525932a905a9f49105d99fbf10034dcdfa39",
+   "oracle_status": "ok",
+   "frozen_utc": "2026-11-18T20:13:46Z"
+  },
+  "C5": {
+   "pdf": "corpus2b/C5/C5.pdf",
+   "pdf_sha256": "95068d7cb9ae73cc57a234550360d65769967f9054268cf606c988911897c84b",
+   "oracle_sha256": "839232be875914e99b667a6fb1bbe357a1b7cc7b8b7c2c1834ee4c1315f5c959",
+   "provenance_sha256": "3d975f939876a408d4565b41e4567e05e99f7580dee7df484376123d4f9814cc",
+   "oracle_status": "ok",
+   "frozen_utc": "2026-11-18T20:13:46Z"
+  },
+  "M5": {
+   "pdf": "corpus2b/M5/M5.pdf",
+   "pdf_sha256": "12ba72686def66a03849688abaa4199d91004583279a3092feb3894a58c131f8",
+   "oracle_sha256": "4946991bf78aca120788e613177f0766680ffa60d822bdc3dd2e1029ffbf06ca",
+   "provenance_sha256": "e97ab9f3d12263266ae8738f0d1cb7237e2e09202c7371ef22e305be586adcfc",
+   "oracle_status": "ok",
+   "frozen_utc": "2026-11-18T20:13:46Z"
+  }
+ }
+}
