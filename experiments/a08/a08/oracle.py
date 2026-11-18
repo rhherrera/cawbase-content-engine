@@ -181,7 +181,8 @@ def zone_for(chars, objs, page_box, value_chars, exclude: set[int]) -> dict:
             "value_right": x_end, "limits": {"next_glyph": ra, "painted": rb, "text_area": rc, "crop": rd}}
 
 
-def build(case_id: str, pdf_path: Path, template: str) -> dict:
+def build(case_id: str, pdf_path: Path, template: str, custom: tuple[list, list] | None = None) -> dict:
+    """custom = (selected items, not-selected items) for controls; items carry id, value, page, contexts."""
     m = load()
     doc = pdfium.PdfDocument(str(pdf_path))
     out = {"case_id": case_id, "pdf_sha256": sha256_file(pdf_path), "template": template, "pages": len(doc),
@@ -190,10 +191,11 @@ def build(case_id: str, pdf_path: Path, template: str) -> dict:
                      "poppler": subprocess.run(["pdftotext", "-v"], capture_output=True, text=True).stderr.splitlines()[0]},
            "occurrences": [], "status": "ok"}
     cache = {}
-    for kind, items in (("S", selections(m, template)), ("O", permitted(m, template))):
+    groups = (("S", custom[0]), ("O", custom[1])) if custom else (("S", selections(m, template)), ("O", permitted(m, template)))
+    for kind, items in groups:
         for it in items:
             pno = it["page"]
-            rec = {"id": it["id"], "kind": kind, "value_id": it["value_id"], "value": it["value"], "page": pno}
+            rec = {"id": it["id"], "kind": kind, "value_id": it.get("value_id", ""), "value": it["value"], "page": pno}
             if pno > len(doc):
                 rec.update(status="oracle_unavailable", reason="page_missing")
                 out["occurrences"].append(rec)
@@ -242,3 +244,41 @@ def main(case_id: str, pdf: str, template: str, out: str) -> None:
 
 if __name__ == "__main__":
     main(*sys.argv[1:5])
+
+
+# ---------------------------------------------------------------- informative variant TB (NOT counted; report option)
+def informative_tb(case_id: str, pdf_path: Path, frozen: dict) -> dict:
+    """Same oracle and zones, but each zone band is the TYPOGRAPHIC line box: union of PDFium loose char boxes of the
+    line (font ascent/descent), clipped so it never covers ink of another line. Option for the user, not the protocol."""
+    import copy
+    doc = pdfium.PdfDocument(str(pdf_path))
+    out = copy.deepcopy(frozen)
+    out["variant"] = "TB (banda tipográfica; informativa, fuera del cómputo)"
+    for o in out["occurrences"]:
+        if o.get("kind") != "S" or "zone" not in o:
+            continue
+        page = doc[o["page"] - 1]
+        tp = page.get_textpage()
+        chars = page_chars(page)
+        loose = {i: tp.get_charbox(i, loose=True) for i in range(tp.count_chars())}
+        vchars = [ch for ch in chars if ch["i"] in {x["i"] for x in o["pdfium_chars"]}]
+        line = line_of(chars, vchars)
+        ids = {ch["i"] for ch in line}
+        band = [min(loose[ch["i"]][1] for ch in line), max(loose[ch["i"]][3] for ch in line)]
+        x0, r = o["zone"]["x0"], o["zone"]["r_line"]
+        for ch in chars:
+            if ch["i"] in ids or ch["gen"] or ch["box"][2] <= ch["box"][0]:
+                continue
+            b = ch["box"]
+            if b[0] < r and b[2] > x0 and b[1] < band[1] and b[3] > band[0]:
+                if (b[1] + b[3]) / 2 > (band[0] + band[1]) / 2:
+                    band[1] = min(band[1], b[1])
+                else:
+                    band[0] = max(band[0], b[3])
+        o["zone"]["band"] = band
+        tp.close()
+    return out
+
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--tb":
+    pass

@@ -4,3 +4,5 @@ __pycache__/
 corpus-private/
 work/
 fonts/*.ttf
+outputs/dev*/
+outputs/cv-base/

@@ -110,5 +110,43 @@
   "G4": {
    "status": "faltante (exportación pendiente del usuario)"
   }
+ },
+ "informative": {
+  "C1": {
+   "oracle_TB_sha256": "36f75dacce763bf1f9405268b41cc039104d76efe2995e9d7ec8604fe7bf9bd8"
+  },
+  "C2": {
+   "oracle_TB_sha256": "f99357538b16b82b7a4dfe8e399d55fd7c9fe6d74e41156db214268a20fdd117"
+  },
+  "C3": {
+   "oracle_TB_sha256": "9b07a1b4aa37255cf11d3684c40884cd650ab16aa734fc9b73a2bac72e1a7431"
+  },
+  "C4": {
+   "oracle_TB_sha256": "59453fccbbd2797fc04fb29c47dd82463ca638fa063b054f401961df74094a53"
+  },
+  "L1": {
+   "oracle_TB_sha256": "adea869686995f409fc5e913c115ccd575658421c48675a05a362ab0d98ba487"
+  },
+  "L2": {
+   "oracle_TB_sha256": "938c2d1db91398e1468b2aaff0c9c882dc95bf3dfa5a09787753d9cee5de4e31"
+  },
+  "L3": {
+   "oracle_TB_sha256": "1655c0dc79bd5d12b6c737207265ceab8c95da53c4c3b5e6964087c444739956"
+  },
+  "L4": {
+   "oracle_TB_sha256": "430f289e75129105829ef0ca5c799684b7beae3f30524b4858307974d14befd5"
+  },
+  "M1": {
+   "oracle_TB_sha256": "5a9360d7d38314a3288cc830a9015efbb640d9767ce74258b7e5065ad4400004"
+  },
+  "M2": {
+   "oracle_TB_sha256": "8adbaa85371ad57703e44d76ba1d879294d5630836078571096fc808530bf7c7"
+  },
+  "M3": {
+   "oracle_TB_sha256": "9591594e8b6b7bb15e6eb23c72e71abde7dbb08d0c9581b353d9f95d8bac5b40"
+  },
+  "M4": {
+   "oracle_TB_sha256": "401e6de7424b57810d865c929f8504c1d25d4f0a5e734302cd3fa62667e84e8d"
+  }
  }
 }
