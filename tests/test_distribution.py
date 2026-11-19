@@ -219,7 +219,11 @@ def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # 
     assert not ({"fastapi", "uvicorn", "starlette", "asyncpg"} & pkgs), pkgs
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002", "0003", "0004", "0005", "0006"] and out["again"] is True and out["scope"] == "a"
+    assert (
+        out["applied"] == ["0001", "0002", "0003", "0004", "0005", "0006"]
+        and out["again"] is True
+        and out["scope"] == "a"
+    )
     assert "site-packages" in out["installed_from"] and str(ROOT) not in out["installed_from"]
 
 
