@@ -122,6 +122,7 @@ Del encargo de la etapa 3, que este registro conserva y no reinterpreta.
 | E-A08-28 | Comprobación previa del plan con un token de relleno del glifo más estrecho, antes de crear correspondencias (condición necesaria) | contrato §12 |
 | E-A08-29 | El restaurador reparte el kerning interno para que cada valor ocupe exactamente su avance original | contrato §9.2 |
 | E-A08-30 | Barrido de residuos: sustitutos enmascarados (A07 §6.3.1), bytes del archivo con cuerpos de flujo enmascarados, y comentarios y cadenas no textuales de los flujos de contenido incluidos | contrato §10.4 |
+| E-A08-31 | Valores de 1–2 caracteres: se buscan **sin longitud mínima** en las superficies de texto decodificado (cadenas del grafo como texto PDF y URL, `/URI` y destinos con nombre, comentarios y cadenas de los flujos de contenido, contenido marcado, texto de página); las superficies binarias conservan el mínimo de 3. Corrige el bloqueo informado por el usuario sobre `cd51b91` (un valor corto en un `/URI` se aprobaba) | contrato §10.4 |
 
 ## 4. Propuestas pendientes de revisión (`P-A08-nn`)
 

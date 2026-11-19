@@ -423,3 +423,62 @@ async def test_an_earlier_runtime_does_not_claim_new_jobs(world):  # AC-A08-32, 
         and requirements_key(eng, "pdf_restoration") not in old_keys
     )
     assert key in eng.job_worker("w").supported_keys()
+
+
+# ---- a short value copied in a link destination (contract 10.4, no minimum length) --------------------------
+async def _short(world: World, uri: str, key: str):
+    from .a08_helpers import units
+
+    data = S.build(
+        [
+            " ".join(
+                [
+                    S.line(72, 780, "Pagina de control sintetico con texto suficiente para una linea entera."),
+                    S.line(72, 740, "Firma de Bo en la sede central del acto."),
+                    S.line(72, 700, "Otra linea de texto ajeno."),
+                ]
+            )
+        ],
+        annots=[[S.link([72, 695, 200, 712], uri)]],  # the link is on another line (never over the moved region)
+    )
+    t = units(data)[0]["text"]
+    a = t.index("Bo")
+    base = await setup_scope(world)
+    eng = await world.engine(await mock_for(base, {t: [("personal_data", a, a + 2)]}))
+    fid, aid = await analyse(eng, data, key="f-" + key)
+    o = ops(eng, FULL)
+    acc = await o.submit_pdf_protection(
+        "a", analysis_job_id=aid, policy=POLICY, context=NewContext(), idempotency_key=key
+    )
+    await run(eng, acc.job.job_id)
+    return eng, o, acc
+
+
+async def test_worker_refuses_a_short_value_left_in_a_link_and_publishes_nothing(world):
+    eng, o, acc = await _short(world, "https://example.test/perfil/Bo", "lnk")
+    info = await o.get_job("a", acc.job.job_id)
+    assert info.state == "failed" and info.failure_code == "residue_detected"
+    async with eng._engine.begin() as c:
+        arts = eng.tables.job_artifacts
+        rows = (await c.execute(sa.select(arts.c.state).where(arts.c.job_id == acc.job.job_id))).all()
+        assert all(r.state != "published" for r in rows)
+        d = eng.tables.pdf_derivatives
+        assert (await c.execute(sa.select(sa.func.count()).select_from(d))).scalar_one() == 0
+    from cawbase_content_engine.errors import JobNotSucceededError
+
+    with pytest.raises(JobNotSucceededError):  # nothing is served for the refused job
+        await o.open_pdf_protected("a", acc.job.job_id)
+
+
+async def test_a_short_value_is_protected_and_restored_when_no_copy_remains(world):  # the clean control
+    eng, o, acc = await _short(world, "https://example.test/doc", "clean")
+    info = await o.get_job("a", acc.job.job_id)
+    assert info.state == "succeeded", (info.failure_code, info.last_error_code)
+    res = await o.get_pdf_protection_result("a", acc.job.job_id)
+    der = await read_all(await o.open_pdf_protected("a", acc.job.job_id))
+    from .a08_helpers import page_texts
+
+    assert "Bo" not in page_texts(der)[0]
+    racc, rout = await restore_case(eng, o, der, res.derivative_id, acc.context_id)
+    assert rout.state == "succeeded"
+    assert "Firma de Bo" in page_texts(await read_all(await o.open_pdf_restored("a", racc.job.job_id)))[0]

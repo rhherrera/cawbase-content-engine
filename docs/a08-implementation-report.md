@@ -175,6 +175,7 @@ La del [contrato §5](pdf-protection.md#5-matriz-pdf-de-la-etapa-3-d3-c6) (anál
 | 5 | Heurística de raster de PDFium al cortar un operador (2 px en L5) | Extensión completa de los operadores (E-A08-27) | renders (PDFium) |
 | 6 | Falsos positivos de residuos aleatorios: «bea» dentro de un token, de datos comprimidos o del `/ID` hexadecimal | Atribución al sustituto y barrido sintáctico con flujos y cadenas hexadecimales enmascarados (E-A08-30) | bucles de robustez |
 | 7 | Alineación de dos intérpretes: ancho natural con `Tz`, avance de los desplazados sin `Tc`/`Tw` y CTM del bloque cuando la selección empieza en el primer código | Corregido en el verificador y en el restaurador | controles sintéticos (CS) |
+| 8 | **Bloqueo informado por el usuario sobre `cd51b91`:** un valor seleccionado de 1–2 caracteres desaparecía del texto visible, pero el verificador aprobaba el derivado aunque el valor quedara en el `/URI` de un enlace, porque varias comprobaciones de `_residues` filtraban por longitud | Superficies de texto decodificado sin longitud mínima; superficies binarias con el mínimo de 3 (E-A08-31) | pure `test_short_value_left_on_a_text_surface_is_a_residue`, `test_one_character_value_in_a_link_is_a_residue` y `test_verifier_finds_a_short_value_copied_into_a_content_stream`; acc `test_worker_refuses_a_short_value_left_in_a_link_and_publishes_nothing` (`residue_detected`, sin artefactos publicados ni vínculo) y el control limpio `test_a_short_value_is_protected_and_restored_when_no_copy_remains` · PG+SQ |
 
 ## 7. Limitaciones efectivas
 
@@ -184,7 +185,7 @@ Son las del [contrato §15](pdf-protection.md#15-limitaciones-declaradas). Desta
 2. **Word y Google Docs sin verificar.** La familia `C` falla con valores cortos cuando hay ligaduras con `/ActualText` en la región `Z2` (C5, Q-A08-18).
 3. **Formas no admitidas.** Sin selecciones de varias líneas, en Form XObjects, de derecha a izquierda ni verticales.
 4. **Fallo cerrado en la restauración.** Puede fallar cerrada en una línea `Z2` sin sitio para el exceso RZ (`restoration_layout_unavailable`) o cuando un carácter no tiene código único en su fuente (`restoration_encoding_unavailable`).
-5. **Falsos positivos posibles del barrido** (fallo cerrado): valores de 3 caracteres en flujos decodificados no textuales (por ejemplo, programas de fuente), o decodificados con otras fuentes.
+5. **Falsos positivos posibles del barrido** (fallo cerrado): un valor corto que aparezca como subcadena en una cadena de texto conservada (fecha de `/Info`, `/URI`), y valores de 3 caracteres en flujos decodificados no textuales (por ejemplo, programas de fuente) o decodificados con otras fuentes. Las superficies binarias no se barren para valores de 1–2 caracteres (E-A08-31).
 6. **Texto extraído con blancos añadidos.** El texto del derivado y del restaurado contiene espacios y saltos de línea añadidos por los trozos de extensión completa; el orden del texto con tinta es el del original.
 7. **Información que revelan.** El layout revela la longitud del valor (puntos de código por tramo y avance), y los marcadores, su posición e igualdad (P-A08-07, A06 §6.4).
 8. **Render sin control de runtime.** El render no se controla en ejecución: es evidencia de aceptación (§4.3), y la estructura, la geometría y los residuos se verifican antes de publicar.

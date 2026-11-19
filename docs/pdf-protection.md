@@ -320,6 +320,7 @@ Una caja ampliada por sí sola no explica nada. **Resultado medido:** 0 px en PD
 ### 10.4 Barrido de residuos y ocurrencias permitidas
 
 - **Valores y representaciones:** los valores seleccionados se buscan en sus representaciones exacta, NFC, NFD, *casefold* y con blancos colapsados.
+- **Sin longitud mínima en las superficies de texto** [E-31]: en el texto de las páginas, en las cadenas del grafo de objetos decodificadas como texto PDF (y como URL), incluidos `/URI` y destinos con nombre de los enlaces, en los comentarios y las cadenas de los flujos de contenido y en las cadenas de las listas de propiedades de contenido marcado, un valor de 1 o 2 caracteres se busca igual que uno largo. Las superficies **binarias** (flujos no textuales decodificados, como programas de fuente; códigos decodificados con otras fuentes; bytes de sintaxis) conservan el mínimo de 3 bytes o caracteres, porque ahí una coincidencia de 1 o 2 es azar y no texto.
 - **Ocurrencias permitidas:** las del texto del original que no solapan una selección, y solo esas. Su posición queda verificada por VT.
 - **Dónde se busca:**
   - el texto del derivado, con los sustitutos emitidos enmascarados (una coincidencia **dentro** de un sustituto se le atribuye a él, como en A07 §6.3.1);
@@ -398,7 +399,7 @@ Registrador `cawbase_content_engine.pdf`:
 3. **Recursos sin cobertura.** Las imágenes, curvas, sombreados y patrones hacen fallar la protección: los documentos con logotipos o fotografías no se protegen (P-A08-03 pendiente).
 4. **Restauración.** Puede fallar cerrada en una línea `Z2` sin sitio para el exceso RZ, o cuando un carácter no tiene código único en su fuente.
 5. **Tintas desconocidas.** Sin un programa TrueType legible, la banda se recorta con cajas tipográficas (más zonas `Z2` o `replacement_overflow`), y el operador se corta con números (sin la extensión completa).
-6. **Falsos positivos del barrido.** El barrido de flujos decodificados (por ejemplo programas de fuente) puede dar falsos positivos con valores cortos (fallo cerrado), y la decodificación cruzada con valores de 3 caracteres también.
+6. **Falsos positivos del barrido** (fallo cerrado). Un valor corto falla si aparece como subcadena en cualquier cadena de texto que se conserve, por ejemplo una fecha de `/Info` o un `/URI` (un valor de 1 carácter como «x» coincide con `example.test`). El barrido de flujos no textuales decodificados y la decodificación cruzada pueden dar falsos positivos con valores de 3 caracteres. Las superficies binarias no se barren para valores de 1–2 caracteres; un valor así solo podría quedar ahí si estuviera en un programa de fuente o en datos de imagen, que nunca se admiten (PB-01).
 7. **Blancos añadidos.** El texto extraído del derivado y del restaurado contiene blancos y saltos de línea añadidos. El orden de lectura del texto con tinta es el del original.
 8. **Formato de la salida.** Pierde la linealización y la conformidad PDF/A o PDF/UA; las fuentes originales se conservan.
 9. **Exportadores sin verificar.** Word y Google Docs no se han medido.

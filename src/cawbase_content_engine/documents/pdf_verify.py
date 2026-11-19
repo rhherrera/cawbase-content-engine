@@ -135,7 +135,7 @@ _ESC = {ord("n"): b"\n", ord("r"): b"\r", ord("t"): b"\t", ord("b"): b"\b", ord(
 _NUM = re.compile(rb"[+-]?(?:\d+\.?\d*|\.\d+)")
 
 
-def lex(data: bytes, sink: list[bytes] | None = None) -> list[tuple[list[Any], str]]:
+def lex(data: bytes, sink: list[tuple[str, bytes]] | None = None) -> list[tuple[list[Any], str]]:
     """Tokenizes a content stream into (operands, operator); strings stay raw ``bytes``. Malformed -> ``VA``."""
     ops: list[tuple[list[Any], str]] = []
     stack: list[list[Any]] = [[]]
@@ -150,7 +150,7 @@ def lex(data: bytes, sink: list[bytes] | None = None) -> list[tuple[list[Any], s
             while i < n and data[i] not in b"\r\n":
                 i += 1
             if sink is not None:
-                sink.append(data[j:i])
+                sink.append(("comment", data[j:i]))
         elif c == 0x2F:  # /name
             j = i + 1
             while j < n and data[j] not in _WSP and data[j] not in _DEL:
@@ -260,7 +260,7 @@ def lex(data: bytes, sink: list[bytes] | None = None) -> list[tuple[list[Any], s
                     end += 2
                 ops.append(([{"data": data[start:end]}], "INLINE IMAGE"))
                 if sink is not None:
-                    sink.append(data[j:end])
+                    sink.append(("image", data[j:end]))
                 stack = [[]]
                 kinds = ["top"]
                 i = end + 2
@@ -279,16 +279,16 @@ def lex(data: bytes, sink: list[bytes] | None = None) -> list[tuple[list[Any], s
     return ops
 
 
-def _strings(operands: Any) -> list[bytes]:
-    """Every string inside the operands of a NON-show operator (they are never text a reader extracts)."""
-    out: list[bytes] = []
+def _strings(operands: Any) -> list[tuple[str, bytes]]:
+    """Every string (and name) inside the operands of a NON-show operator (never text a reader extracts)."""
+    out: list[tuple[str, bytes]] = []
     stack = [operands]
     while stack:
         x = stack.pop()
         if isinstance(x, bytes):
-            out.append(x)
+            out.append(("string", x))
         elif isinstance(x, Name):
-            out.append(str(x).encode("utf-8", "surrogateescape"))
+            out.append(("name", str(x).encode("utf-8", "surrogateescape")))
         elif isinstance(x, list):
             stack.extend(x)
         elif isinstance(x, dict):
@@ -557,7 +557,8 @@ class VPage:
     painted: list[tuple[str, tuple[float, float, float, float], dict[str, Any]]] = field(default_factory=list)
     nontext: list[Any] = field(default_factory=list)
     props: list[Any] = field(default_factory=list)
-    hidden: list[bytes] = field(default_factory=list)  # comments, non-show strings, inline image data
+    hidden: list[tuple[str, bytes]] = field(default_factory=list)  # comments, non-show strings/names, inline images
+    prop_texts: list[str] = field(default_factory=list)  # decoded TEXT strings of marked-content property lists
     text: str = ""
     segs: list[tuple[int, int, int | None]] = field(default_factory=list)  # (start, end, glyph index | None)
 
@@ -764,6 +765,7 @@ class Interp:
                 at = None
                 if isinstance(props, (dict, DictionaryObject)):
                     vp.props.append((str(a[0]), _props(props)))
+                    vp.prop_texts.extend(t for v in props.values() for t in _text_strings(v))
                     if "/MCID" in props:
                         mcid = int(props["/MCID"])
                     if "/ActualText" in props:
@@ -1124,6 +1126,28 @@ def _decoded(o: Any) -> list[str]:
         out.append(str(o))
     out += [urllib.parse.unquote(x) for x in list(out)]
     return out
+
+
+def _text_strings(o: Any) -> list[str]:
+    """A PDF STRING decoded as text (UTF-16 with BOM, UTF-8 with BOM, PDFDocEncoding/Latin-1), plus its
+    URL-decoded form; names, numbers and other objects give nothing. Used for values of any length."""
+    from pypdf.generic import ByteStringObject, TextStringObject
+
+    o = o.get_object() if hasattr(o, "get_object") else o
+    out: list[str] = []
+    if isinstance(o, TextStringObject):
+        out.append(str(o))
+        out.append(_text_of(bytes(o.get_original_bytes())))
+    elif isinstance(o, (bytes, ByteStringObject)):
+        out.append(_text_of(bytes(o)))
+    out += [urllib.parse.unquote(x) for x in list(out)]
+    return out
+
+
+def _hit_any_length(texts: list[str], values: list[str]) -> bool:
+    """Substring of any representation of any value, WITHOUT a minimum length, in decoded text."""
+    folded = [t.casefold() for t in texts]
+    return any(r.casefold() in t for t in folded for v in values for r in reps(v))
 
 
 def reps(v: str) -> set[str]:
@@ -1594,7 +1618,7 @@ def _residues(
     rd: Any, op: list[VPage], dp: list[VPage], sels: list[dict[str, Any]], info: dict[int, Any], raw_file: bytes
 ) -> dict[str, Any]:
     """VK, VX, VP: no selected value anywhere but its permitted occurrences (identical, not selected, in place)."""
-    from pypdf.generic import ArrayObject, DictionaryObject, StreamObject
+    from pypdf.generic import ArrayObject, DictionaryObject, NameObject, StreamObject
 
     values = sorted({s["value"] for s in sels})
     perm: dict[tuple[int, str], int] = {}
@@ -1657,6 +1681,21 @@ def _residues(
             if isinstance(o, (DictionaryObject, StreamObject))
             else (list(o) if isinstance(o, ArrayObject) else [o])
         )
+        # text surfaces (strings, link URIs, destination names): every value, whatever its length (contract 10.4)
+        texts: list[str] = []
+        if isinstance(o, (DictionaryObject, StreamObject)):
+            for k in o:
+                v = o.raw_get(k)
+                texts += _text_strings(v)
+                if str(k) in ("/Dest", "/D") and isinstance(v, NameObject):
+                    texts.append(str(v)[1:])
+        elif isinstance(o, ArrayObject):
+            for v in o:
+                texts += _text_strings(v)
+        else:
+            texts += _text_strings(o)
+        if _hit_any_length(texts, values):
+            raise Fail("residue_detected", "VK")
         keys = [str(k) for k in o] if isinstance(o, (DictionaryObject, StreamObject)) else []
         for it in items + keys:
             for t in _decoded(it) if not isinstance(it, str) else [it, urllib.parse.unquote(it)]:
@@ -1677,7 +1716,12 @@ def _residues(
                         if len(bb) >= 3 and bb in d:
                             raise Fail("residue_detected", "VK")
     for vp in dp:
-        for blob in vp.hidden:
+        # comments and strings of the content streams are text: any length; names and image data are binary-like
+        texts = [_text_of(b) for kind, b in vp.hidden if kind in ("comment", "string")]
+        texts += [b.decode("utf-8", "replace") for kind, b in vp.hidden if kind == "comment"]
+        if _hit_any_length(texts + vp.prop_texts, values):
+            raise Fail("residue_detected", "VK")
+        for _kind, blob in vp.hidden:
             for v in values:
                 for r in reps(v):
                     for enc in ("utf-8", "utf-16-be", "utf-16-le", "latin-1"):

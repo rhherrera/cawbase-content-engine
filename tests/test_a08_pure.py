@@ -586,3 +586,79 @@ def test_report_and_child_outputs_never_carry_values(good):
     assert "Gil" not in json.dumps(r["verify"]) and "00000000" not in json.dumps(r["verify"])
     lay = json.dumps(r["protect"]["layout"])
     assert "Gil" not in lay and "00000000-X" not in lay
+
+
+# ---- short values (1-2 characters) on the decoded text surfaces of contract 10.4 --------------------------
+SHORT_LINE = "Firma de Bo en la sede central del acto."
+
+
+def short_doc(uri: str = "https://example.test/doc", **kw: object) -> bytes:
+    body = [S.line(72, 780, HEAD), S.line(72, 740, SHORT_LINE), S.line(72, 700, "Otra linea de texto ajeno.")]
+    extra = kw.pop("extra", "")
+    if extra:
+        body.append(str(extra))
+    return S.build([" ".join(body)], annots=[[S.link([72, 695, 200, 712], uri)]], **kw)  # type: ignore[arg-type]
+
+
+def _dest_hook(pdf: pikepdf.Pdf) -> None:
+    pdf.pages[0].Annots[0].A = pikepdf.Dictionary(S=pikepdf.Name.GoTo, D=pikepdf.Name("/Bo"))
+
+
+@pytest.mark.parametrize(
+    ("surface", "data_fn"),
+    [
+        ("link /URI", lambda: short_doc("https://example.test/perfil/Bo")),
+        ("link /URI, percent-encoded", lambda: short_doc("https://example.test/perfil/%42o")),
+        ("named destination of a link", lambda: short_doc(hook=_dest_hook)),
+        ("kept /Info date string", lambda: short_doc(info={"CreationDate": "D:2026 Bo"})),
+    ],
+)
+def test_short_value_left_on_a_text_surface_is_a_residue(surface, data_fn):  # contract 10.4, no minimum length
+    r = S.cycle(data_fn(), [(0, "Bo", 0, "pseudonymize")])
+    assert (r["stage"], r["reason"]) == ("verify", "residue_detected"), (surface, r["stage"], r["reason"])
+
+
+def test_one_character_value_in_a_link_is_a_residue():
+    data = S.build(
+        [" ".join([S.line(72, 780, HEAD), S.line(72, 740, "Grupo Q del acto central.")])],
+        annots=[[S.link([72, 600, 200, 612], "https://example.test/grupo/Q")]],
+    )
+    r = S.cycle(data, [(0, "Q", 0, "pseudonymize")])
+    assert (r["stage"], r["reason"]) == ("verify", "residue_detected")
+
+
+def _inject(der: bytes, src: bytes) -> bytes:
+    import io
+
+    p = pikepdf.open(io.BytesIO(der))
+    st = p.pages[0].obj.Contents
+    st.write(src + b"\n" + st.read_bytes())
+    buf = io.BytesIO()
+    p.save(buf, compress_streams=True)
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize(
+    ("surface", "src"),
+    [
+        ("content-stream comment", b"% nota Bo"),
+        ("/ActualText of an empty marked span", b"/Span <</ActualText (Bo)>> BDC EMC"),
+        ("string operand of a non-text operator", b"/Span <</Lang (Bo)>> BDC EMC"),
+    ],
+)
+def test_verifier_finds_a_short_value_copied_into_a_content_stream(surface, src):  # transformer fault, 10.4
+    data = short_doc()
+    r = S.cycle(data, [(0, "Bo", 0, "pseudonymize")])
+    assert r["stage"] == "cycle", r["reason"]
+    v = S.verify_protect(data, _inject(r["derivative"], src), r["sels"], r["protect"]["layout"])
+    assert not v["ok"], (surface, v)
+    if surface == "content-stream comment":
+        assert v["failure"] == "residue_detected", v
+
+
+def test_short_value_is_protected_when_no_copy_remains():  # the clean control
+    r = S.cycle(short_doc(), [(0, "Bo", 0, "pseudonymize")])
+    assert r["stage"] == "cycle", (r["stage"], r["reason"])
+    der = S.extract(r["derivative"])["units"][0]["text"]
+    assert "Bo" not in der and A06.STRICT.search(der)
+    assert "Bo" in S.extract(r["restored"])["units"][0]["text"]
