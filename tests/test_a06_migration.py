@@ -85,7 +85,8 @@ async def test_upgrade_from_0003_keeps_every_a01_to_a05_row_and_object(db, tmp_p
         assert after_rows[name] == rows, f"data changed in {name}"
     state_before = before_rows[next(n for n in before_rows if n.endswith("engine_state"))][0]
     state_after = after_rows[next(n for n in after_rows if n.endswith("engine_state"))][0]
-    assert state_before != state_after and "5" in state_after  # only the level (and its bookkeeping) moved
+    # only the level (and its bookkeeping) moved: (id, schema_level, min_runtime_level, ...) of the head (A08: 6)
+    assert state_before != state_after and state_after.startswith("(1, 6, 1, ")
     again = await upgrade(cfg)
     assert again.already_current and again.applied == ()
     assert await dump_all(url, backend, tables) == after_rows  # re-running changes nothing
