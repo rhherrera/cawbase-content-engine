@@ -89,6 +89,16 @@ def test_wheel_and_sdist_contents(artifacts):
         "migrations/versions/0003_jobs_files.py",
         "migrations/versions/0004_text_protection.py",
         "migrations/versions/0005_docx_protection.py",
+        "migrations/versions/0006_pdf_protection.py",
+        "pdf_protection/execute.py",
+        "persistence/a08_schema.py",
+        "documents/pdf_extract.py",
+        "documents/pdf_transform.py",
+        "documents/pdf_verify.py",
+        "documents/ttf_ink.py",
+        "documents/data/cce-candidate.ttf",
+        "documents/data/cce-candidate.json",
+        "documents/data/OFL.txt",
         "docx_protection/execute.py",
         "persistence/a07_schema.py",
         "documents/docx_transform.py",
@@ -209,7 +219,7 @@ def test_python_host_from_installed_wheel_without_http(artifacts, tmp_path):  # 
     assert not ({"fastapi", "uvicorn", "starlette", "asyncpg"} & pkgs), pkgs
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002", "0003", "0004", "0005"] and out["again"] is True and out["scope"] == "a"
+    assert out["applied"] == ["0001", "0002", "0003", "0004", "0005", "0006"] and out["again"] is True and out["scope"] == "a"
     assert "site-packages" in out["installed_from"] and str(ROOT) not in out["installed_from"]
 
 
@@ -234,7 +244,7 @@ def test_sdist_builds_and_installs(artifacts, tmp_path):
     env = make_env(tmp_path, "sdist", f"cawbase-content-engine[sqlite,migrations] @ {artifacts['sdist'].as_uri()}")
     (cwd / "host.py").write_text(HOST_SCRIPT)
     out = json.loads(py(env, str(cwd / "host.py"), str(cwd / "db.sqlite"), cwd=cwd).stdout)
-    assert out["applied"] == ["0001", "0002", "0003", "0004", "0005"]
+    assert out["applied"] == ["0001", "0002", "0003", "0004", "0005", "0006"]
 
 
 def test_installed_service_starts_and_stops(artifacts, tmp_path):  # AC-02
@@ -286,7 +296,7 @@ def test_python_example_from_installed_wheel_runs_on_sqlite_and_postgres(artifac
     for target in (str(cwd / "example.db"), pg_url):
         out = py(env, str(example), target, cwd=cwd).stdout
         assert (
-            "migrated: ('0001', '0002', '0003', '0004', '0005')" in out
+            "migrated: ('0001', '0002', '0003', '0004', '0005', '0006')" in out
             and "isolation: project-a cannot read project-b" in out
         )
         assert "project-c" not in out.split("after host rollback:")[1] and "cce1." not in out
