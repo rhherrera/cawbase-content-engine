@@ -16,7 +16,7 @@ Relacionado: [contrato de A08](pdf-protection.md) · [especificación y matriz A
 | Rama | `feature/a08-pdf-protection-restoration` |
 | Punto de partida | `b6f749d` (etapa 2B), árbol limpio verificado al empezar |
 | Versión / migración / nivel | `0.7.0` · `0006_pdf_protection` · `schema_level` 6 · `min_runtime_level` 1 · sin extra nuevo; `documents` añade `pypdf>=7,<8` · catálogo 25 → **29** |
-| Commits | §8 |
+| Commit de evidencia | **`2c7809a`**: macOS y Linux final se ejecutaron sobre este SHA (Linux con `git archive`, `SNAPSHOT=head`). Ver §8 |
 | Autorización | encargo de la etapa 3 del usuario: alcance PDF acotado y criterio visual ([decisiones §2.2](decisions/A08-decisions.md#22-etapa-3-alcance-y-criterio-visual-aprobados-por-el-usuario)), sin aprobación intermedia del contrato |
 
 ## 1. Estado por nivel de evidencia
@@ -26,7 +26,7 @@ Relacionado: [contrato de A08](pdf-protection.md) · [especificación y matriz A
 | 1 | Especificado | Sí: [contrato](pdf-protection.md), ajustado al alcance de la etapa 3 |
 | 2 | Implementado | Sí (§2) |
 | 3 | Probado en macOS | Sí: regresión completa (PostgreSQL 17 + SQLite), suites de A08 y renders de PDFium y Poppler (§4) |
-| 4 | Probado en Linux local (Docker) | §4.2 |
+| 4 | Probado en Linux local (Docker) | Sí: PostgreSQL 15–18, SQLite, cotas mínimas, distribución y renders (§4.2) |
 | 5 | Probado en GitHub Actions | **No** |
 | 6 | Aceptado por el usuario | **No** (pendiente) |
 
@@ -98,11 +98,31 @@ Estados: **verificado**, **parcial** o **sin evidencia**. «PG+SQ» = PostgreSQL
 
 ### 4.1 macOS
 
-macOS 27.0.1 arm64, Python 3.13 y PostgreSQL 17 (contenedor descartable `cce-a07-pg17`, bases `cce_t_*`), con `CCE_REQUIRE_POSTGRES=1`.
+macOS 27.0.1 arm64, Python 3.13.16, PostgreSQL 17.11 (contenedor descartable, bases `cce_t_*`) y `CCE_REQUIRE_POSTGRES=1`. Bibliotecas: pikepdf 10.18.1, pypdf 7.1.0, pypdfium2 5.15.2 y Poppler 26.10.0.
+
+| Comprobación | Resultado |
+|---|---|
+| `ruff check .`, `ruff format --check`, `mypy` | pasan (113 archivos fuente) |
+| `pytest -q -rs` (PostgreSQL + SQLite) | **1649 pasadas, 0 fallidas**, 16 omitidas: variantes SQLite de pruebas solo PostgreSQL, la espera de bloqueo de A08 en SQLite y la evidencia de A07 sin su variable. La corrida completa fue sobre `ed056bd`, con el mismo `src/`; `2c7809a` solo corrige una prueba de A06, repetida aparte |
+| `pytest -m dist` | 10 pasadas |
+| Importación (D-33, wheel instalada) | mediana en caliente 236,3 ms (≤ 300) |
+| `scripts/check_doc_links.py` | 0 enlaces rotos |
+| Renders (§4.3) | 0 px en los cinco casos |
 
 ### 4.2 Linux local (Docker)
 
-`bash scripts/linux_docker_validate.sh` (`python:3.13-bookworm`, PostgreSQL 15–18 en contenedores exclusivos y Poppler instalado en el contenedor para la evidencia).
+`bash scripts/linux_docker_validate.sh`: Debian 12 aarch64, Python 3.13.18, SQLite 3.40.1 y Poppler 22.12.0 instalado en el contenedor.
+
+| Corrida | Resultado |
+|---|---|
+| `e174b0d` (mismo `src/` que el final), PostgreSQL 15 | 1640 pasadas, 0 fallidas |
+| `e174b0d`, PostgreSQL 16, 17 y 18 | 1639–1638 pasadas; 1 o 2 fallos de una **prueba heredada de A06**: buscaba el carácter `5` en la fila de `engine_state` y dependía de la marca de tiempo. Corregida en `2c7809a` para comparar el nivel exacto |
+| `e174b0d`, `pytest -m dist` | 3 fallos: la prueba esperaba hasta la migración `0005`; corregido en `0c763eb` |
+| **`2c7809a`**, PostgreSQL 17 | **1640 pasadas, 0 fallidas**, 25 omitidas: las de macOS más el aislamiento Docker dentro del contenedor y un caso de permisos que `root` elude |
+| **`2c7809a`**, cotas mínimas declaradas | **1640 pasadas, 0 fallidas** |
+| **`2c7809a`**, distribución | 10 pasadas; auditoría de la wheel y del sdist sin hallazgos (`experiments/` excluido; fuente candidata y migración `0006` incluidas) |
+| Importación (D-33) | mediana en caliente 188,2 ms |
+| Renders con Poppler 22.12 y PDFium | 0 px en los cinco casos (como en macOS) |
 
 ### 4.3 Renders: criterio visual [V]
 
@@ -127,7 +147,10 @@ El ancho del marcador depende del token aleatorio de A06, así que los planes, f
 - **corpus:** 60 a 80 ejecuciones por caso;
 - **sintético:** 200 ejecuciones del documento de `test_a08_access`.
 
-Con ellos se detectaron y corrigieron cuatro defectos antes de entregar (§6). Resultado final: §4.1.
+Con ellos se detectaron y corrigieron defectos antes de entregar (§6). Resultado final con el código entregado, sin fallos:
+
+- 80 ciclos completos de cada caso positivo, con C5 rechazado 80 de 80;
+- 200 ciclos del sintético.
 
 ## 5. Matriz de soporte exacta
 
@@ -171,4 +194,21 @@ Ningún problema conocido impide cumplir una garantía de protección dentro del
 
 ## 8. Commits
 
-Están en la sección final de este informe (§9), que se completa al cerrar la entrega.
+Sobre `b6f749d` (`git log b6f749d..HEAD`), con identidad Git local del repositorio. No se hizo push.
+
+- `c739a0b` feat(a08): PDF protection and restoration as durable A05 jobs (Python API) in 0.7.0
+- `5b6d205` test(a08): corpus, controls, durable flows, compatibility and render evidence on PostgreSQL and SQLite
+- `e174b0d` docs(a08): implemented contract, decisions rev. 5, support matrix and permanent documentation for 0.7.0
+- `0c763eb` test(a08): distribution checks ship migration 0006, the A08 modules and the candidate font data
+- `ed056bd` style(a08): ruff format of the distribution test
+- `2c7809a` test(a06): check the head schema level in engine_state exactly (the substring check depended on the timestamp)
+- (este informe con los resultados) docs(a08): results per environment
+
+## 9. Qué queda para la revisión del usuario
+
+- Aceptar o no A08 con este alcance. Decisiones abiertas:
+  - P-A08-03, la lista de imágenes declarada por el host, sin la cual los documentos con logotipo se rechazan;
+  - el clonado de Form XObjects (P-A08-05);
+  - las exportaciones de Word y Google Docs, que siguen sin verificar.
+- GitHub Actions: no ejecutado. El push, la PR y el merge los hace el usuario.
+- A09 queda fuera.
