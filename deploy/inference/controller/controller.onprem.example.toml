@@ -14,7 +14,7 @@ max_in_flight = 1
 
 [endpoint]
 base_url = "http://10.0.0.5:8080"
-model_alias = "qwen3.6-27b-q4km"
+model_alias = "qwen3.6-27b-q4km"         # manifest.json models[targets.onprem].alias (Q4_K_M)
 api_key_file = "/etc/cce-inference-controller/api-key"
 
 [backend]

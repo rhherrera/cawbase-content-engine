@@ -12,7 +12,12 @@ imds() {
 }
 cuda=$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9.]*\).*/\1/p' | head -n1)
 runtime=$(cat /opt/cce-inference/runtime/runtime.json 2>/dev/null || echo null)
-model=$(cat /srv/cce-inference/models/*.verified.json 2>/dev/null | head -n1)
+# the configured model (server.env) and the verification record of exactly its file
+ENV_FILE=${CCE_SERVER_ENV:-/etc/cce-inference/server.env}
+model_id=$(sed -n 's/^CCE_MODEL_ID=//p' "$ENV_FILE" 2>/dev/null | tail -n1)
+model_path=$(sed -n 's/^CCE_MODEL_PATH=//p' "$ENV_FILE" 2>/dev/null | tail -n1)
+model_alias=$(sed -n 's/^CCE_MODEL_ALIAS=//p' "$ENV_FILE" 2>/dev/null | tail -n1)
+record=$(cat "$model_path.verified.json" 2>/dev/null | head -n1)
 . /etc/os-release 2>/dev/null || true
 cat <<EOF
 {
@@ -29,6 +34,9 @@ cat <<EOF
   "ami_id": "$(imds ami-id)",
   "availability_zone": "$(imds placement/availability-zone)",
   "runtime": ${runtime:-null},
-  "model": ${model:-null}
+  "model_id": "${model_id}",
+  "model_path": "${model_path}",
+  "model_alias": "${model_alias}",
+  "model": ${record:-null}
 }
 EOF

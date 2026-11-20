@@ -74,9 +74,15 @@ WINDOW_TOLERANCE_S = 2.0  # clock granularity of the host sampler (whole seconds
 
 
 class Http:
-    def __init__(self, base_url: str, key: str | None) -> None:
+    def __init__(self, base_url: str, key: str | None, model: str | None = None) -> None:
         self.base = base_url.rstrip("/")
         self.key = key
+        self.model = model  # the served alias (manifest models[...].alias); sent in every request
+
+    def model_ids(self) -> list[str]:
+        _, res = self.call("GET", "/v1/models", timeout=10)
+        data = res.get("data") if isinstance(res, dict) else None
+        return [str(m.get("id")) for m in data if isinstance(m, dict)] if isinstance(data, list) else []
 
     def call(self, method: str, path: str, body: Any = None, timeout: float = 600) -> tuple[int, Any]:
         headers = {"Content-Type": "application/json"}
@@ -104,7 +110,7 @@ class Http:
         return len(tok["tokens"])
 
     def chat(self, messages: list[dict[str, str]], max_tokens: int, schema: dict[str, Any] = SCHEMA) -> dict[str, Any]:
-        body = {
+        body: dict[str, Any] = {
             "temperature": 0,
             "max_tokens": max_tokens,
             "messages": messages,
@@ -113,6 +119,8 @@ class Http:
                 "json_schema": {"name": "salida", "strict": True, "schema": schema},
             },
         }
+        if self.model:
+            body["model"] = self.model
         t = time.monotonic()
         status, res = self.call("POST", "/v1/chat/completions", body)
         out: dict[str, Any] = {"status": status, "latency_s": round(time.monotonic() - t, 3)}
@@ -247,7 +255,10 @@ def wait_ready(http: Http, t0: float, timeout: float) -> dict[str, Any]:
             marks["health_ok_s"] = round(time.monotonic() - t0, 3)
             break
         time.sleep(0.25)
-    if "health_ok_s" in marks:
+    if "health_ok_s" in marks and http.model:
+        listed = http.model_ids()  # the served alias must be the expected one (manifest), not only "some model"
+        marks["models_listed"], marks["model_ok"] = listed, http.model in listed
+    if "health_ok_s" in marks and marks.get("model_ok", True):
         c = http.chat(
             [{"role": "user", "content": 'Reply with {"ok": true}.'}],
             1024,
@@ -375,7 +386,9 @@ def expected_runs(slots: int, reference: bool) -> dict[str, int]:
     return runs
 
 
-def profile_verdict(profile: str, docs: list[dict[str, Any]], *, slots: int, reference: bool = False) -> dict[str, Any]:
+def profile_verdict(
+    profile: str, docs: list[dict[str, Any]], *, slots: int, reference: bool = False, model: str | None = None
+) -> dict[str, Any]:
     """Criteria fixed before measuring (report §4). `pass` only when every criterion passed with evidence of every
     expected run; an expected run without evidence, or a criterion without evidence (for example memory not sampled
     on the host), makes the verdict `incomplete`; a measurement that ran and failed (`status: failed`) is `fail`."""
@@ -391,6 +404,9 @@ def profile_verdict(profile: str, docs: list[dict[str, Any]], *, slots: int, ref
     crit["loaded"] = (
         "unavailable" if not loads else ("pass" if all(d.get("ready_s") and not failed(d) for d in loads) else "fail")
     )
+    if model is not None:  # every load must have served exactly this alias
+        served = all(d.get("model") == model and d.get("model_ok") is True and not failed(d) for d in loads)
+        crit["model"] = "unavailable" if not loads else "pass" if served else "fail"
     seen_slots = {d.get("total_slots") for d in loads if not failed(d)}
     crit["slots"] = (
         "unavailable" if not seen_slots or None in seen_slots else "pass" if seen_slots == {slots} else "fail"
@@ -441,6 +457,7 @@ def profile_verdict(profile: str, docs: list[dict[str, Any]], *, slots: int, ref
         "kind": "verdict",
         "profile": profile,
         "expected_slots": slots,
+        "expected_model": model,
         "reference": reference,
         "expected_runs": expected,
         "runs": run_status,
@@ -475,6 +492,7 @@ def main() -> int:
     v.add_argument("--out", required=True)
     v.add_argument("--slots", type=int, required=True, help="slots of the profile definition (expected runs)")
     v.add_argument("--reference", action="store_true", help="the reference profile (also requires `overload`)")
+    v.add_argument("--model", help="served alias every load must have listed (manifest models[...].alias)")
     v.add_argument("evidence", nargs="+")
     for name in ("load", "run", "limits", "ec2-cycle"):
         p = sub.add_parser(name)
@@ -482,6 +500,7 @@ def main() -> int:
         p.add_argument("--key-file")
         p.add_argument("--out", required=True)
         p.add_argument("--label", default="")
+        p.add_argument("--model", help="served alias to require and send (manifest models[...].alias)")
         if name in ("load", "ec2-cycle"):
             p.add_argument("--timeout", type=float, default=1800)
         if name in ("load", "run"):
@@ -509,15 +528,17 @@ def main() -> int:
     a = ap.parse_args()
     if a.cmd == "verdict":
         docs, unreadable = read_evidence(a.evidence)
-        res = {**profile_verdict(a.profile, docs, slots=a.slots, reference=a.reference), "unreadable": unreadable}
+        verdict = profile_verdict(a.profile, docs, slots=a.slots, reference=a.reference, model=a.model)
+        res = {**verdict, "unreadable": unreadable}
         if unreadable and res["verdict"] == "pass":
             res["verdict"] = "incomplete"  # evidence that cannot be read is never a pass
         Path(a.out).write_text(json.dumps(res, indent=2), encoding="utf-8")
         print(json.dumps(res))
         return {"pass": 0, "fail": 1}.get(res["verdict"], 3)
-    http = Http(a.base_url, key_from(a.key_file))
+    http = Http(a.base_url, key_from(a.key_file), a.model)
     fn = {"load": cmd_load, "run": cmd_run, "limits": cmd_limits, "ec2-cycle": cmd_ec2_cycle}[a.cmd]
-    result = {"label": a.label, "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **fn(a, http)}
+    measured_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    result = {"label": a.label, "measured_at": measured_at, "model": a.model, **fn(a, http)}
     with open(a.out, "w", encoding="utf-8") as fh:
         json.dump(result, fh, indent=2, ensure_ascii=False)
     print(json.dumps({k: v for k, v in result.items() if k != "per_request"}, indent=2, ensure_ascii=False))

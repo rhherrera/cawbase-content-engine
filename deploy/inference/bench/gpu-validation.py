@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""A09-1 validation on the real L4, run from the operator machine (standard library only). Reproducible sequence:
+"""A09-1 validation on the real AWS target (g6e.xlarge, NVIDIA L40S, Qwen3.6-27B Q8_0, all weights on the GPU), run
+from the operator machine (standard library only). Reproducible sequence:
 
   0. preflight, with no side effects: the instance is `stopped`, the controller state is fresh (auto, no work), the
-     evidence directory is outside the repository, every profile is defined in this checkout, and the interpreter is
-     the controller environment's (it also runs every child: `cce-inference` through CCE_PYTHON and measure.py);
+     evidence directory is outside the repository, every profile is defined in this checkout, the controller's
+     `model_alias` is the alias of the manifest's AWS target model, and the interpreter is the controller
+     environment's (it also runs every child: `cce-inference` through CCE_PYTHON and measure.py);
   1. job-driven cycle: tunnel keeper + controller `serve` + one worker in the background, then ONE durable job is
      submitted; the evidence must show the start requested by demand (no manual start), the EC2 start, the verified
      readiness and the job succeeded with a structured result;
-  2. host evidence through SSM (host facts, boot timeline of this cold start);
+  2. host evidence through SSM (host facts, boot timeline of this cold start); the served artifact must be the
+     manifest's AWS target (model id, file, alias, size and SHA-256 of its verification record), or the run fails;
   3. profile campaign while the instance is up (controller stopped so it cannot idle-stop under the measurements):
      per profile, `load` (switch + restart, memory sampled ON the host), `limits`, every expected run (`c1`; `cN`
      for N slots; `overload` for the first, reference profile; memory on the host) and the verdict over ALL of them:
@@ -30,7 +33,9 @@ touched); 130 interrupted (instance verified stopped); 4 CLEANUP FAILED: the ins
     "$CCE_PYTHON" deploy/inference/bench/gpu-validation.py --config "$EV/controller.toml" --instance-id "$IID" \\
         --key-file "$EV/api-key" --evidence "$EV/run-1"
 
-Tool overrides (tests only): CCE_AWS_BIN, CCE_HOST_SRC, CCE_HOST_SUDO, CCE_POLL_S, CCE_MEASURE_SCRIPT.
+Every measurement sends and requires the served alias (`--model`); parity.sh gets it and the artifact record.
+
+Tool overrides (tests only): CCE_AWS_BIN, CCE_HOST_SRC, CCE_HOST_SUDO, CCE_POLL_S, CCE_MEASURE_SCRIPT, CCE_MANIFEST.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ import signal
 import subprocess
 import sys
 import time
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +59,7 @@ CLI = DEPLOY / "bin" / "cce-inference"
 MEASURE = BENCH / "measure.py"
 SSM_RUN = BENCH / "ssm-run.sh"
 PROFILES_DIR = DEPLOY / "server" / "profiles"
+MANIFEST = DEPLOY / "manifest.json"
 DEFAULT_PROFILES = "reference-8k-1slot candidate-16k-1slot candidate-16k-2slot"
 
 
@@ -97,6 +104,13 @@ def profile_slots(name: str) -> int:
     raise Refused(f"profile {name!r}: CCE_PARALLEL is not defined")
 
 
+def aws_target_model() -> tuple[str, dict[str, Any]]:
+    """The manifest's AWS target: (model id, model entry)."""
+    m = json.loads(Path(os.environ.get("CCE_MANIFEST", str(MANIFEST))).read_text(encoding="utf-8"))
+    model_id = m["targets"]["aws"]
+    return model_id, m["models"][model_id]
+
+
 def _raise_interrupted(signum: int, _frame: Any) -> None:
     raise Interrupted(signal.Signals(signum).name)
 
@@ -115,6 +129,8 @@ class Validation:
         self.bg: dict[str, subprocess.Popen[bytes]] = {}
         self.summary: dict[str, Any] = {"instance_id": a.instance_id, "steps": {}, "verdicts": {}}
         self.profiles = a.profiles.split()
+        self.model_id, self.model = aws_target_model()
+        self.alias: str = self.model["alias"]
         self.slots: dict[str, int] = {}
         self.original_profile: str | None = None
         self.profile_changed = False
@@ -229,6 +245,12 @@ class Validation:
             raise Refused(f"the controller needs Python >= 3.13 (this is {sys.version.split()[0]})")
         if not self.profiles:
             raise Refused("no profile to validate")
+        configured = tomllib.loads(Path(self.a.config).read_text(encoding="utf-8"))["endpoint"]["model_alias"]
+        if configured != self.alias:
+            raise Refused(
+                f"artifact mismatch: the controller model_alias is {configured!r}, the AWS target "
+                f"{self.model_id} serves {self.alias!r} (manifest.json)"
+            )
         self.slots = {p: profile_slots(p) for p in self.profiles}
         if not Path(self.a.key_file).is_file():
             raise Refused("missing --key-file")
@@ -247,7 +269,11 @@ class Validation:
             raise Refused("the controller state must be fresh (auto, stopped, no work): use a new db_path")
         self.ev.mkdir(parents=True, exist_ok=True)
         python = {"executable": sys.executable, "version": sys.version.split()[0]}
-        self.save("preflight.json", {"instance_state": state, "controller": st, "python": python, "slots": self.slots})
+        target = {"model_id": self.model_id, **{k: self.model[k] for k in ("alias", "file", "bytes", "sha256")}}
+        self.save(
+            "preflight.json",
+            {"instance_state": state, "controller": st, "python": python, "slots": self.slots, "target": target},
+        )
 
     # --- 1. job-driven cycle ---------------------------------------------------------------------------------------
 
@@ -349,9 +375,36 @@ class Validation:
     # --- 2. host evidence -------------------------------------------------------------------------------------------
 
     def host_evidence(self) -> None:
-        (self.ev / "host-facts.json").write_text(self.on_host("bench/host-facts.sh", timeout=120), encoding="utf-8")
+        facts_raw = self.on_host("bench/host-facts.sh", timeout=120)
+        (self.ev / "host-facts.json").write_text(facts_raw, encoding="utf-8")
         (self.ev / "boot-timings.json").write_text(self.on_host("bench/boot-timings.sh", timeout=120), encoding="utf-8")
-        self.summary["steps"]["host_evidence"] = "collected"
+        try:
+            facts = json.loads(facts_raw)
+        except ValueError as exc:
+            raise ValidationFailed(f"host facts are not JSON: {exc}") from exc
+        record = facts.get("model") if isinstance(facts.get("model"), dict) else {}
+        served = {
+            "model_id": facts.get("model_id"),
+            "file": Path(str(facts.get("model_path") or "")).name,
+            "alias": facts.get("model_alias"),
+            "record_file": record.get("file"),
+            "record_bytes": record.get("bytes"),
+            "record_sha256": record.get("sha256"),
+        }
+        expected = {
+            "model_id": self.model_id,
+            "file": self.model["file"],
+            "alias": self.alias,
+            "record_file": self.model["file"],
+            "record_bytes": self.model["bytes"],
+            "record_sha256": self.model["sha256"],
+        }
+        self.save("model-record.json", record or None)
+        artifact = {"expected": expected, "served": served, "match": served == expected}
+        self.summary["steps"]["host_evidence"] = {"artifact": artifact}
+        if served != expected:
+            raise ValidationFailed(f"artifact mismatch on the host: served {served}, expected {expected}")
+        self.log(f"served artifact verified: {self.model_id} ({self.model['file']}, sha256 {self.model['sha256']})")
 
     # --- 3. profile campaign ----------------------------------------------------------------------------------------
 
@@ -370,7 +423,7 @@ class Validation:
         self.original_profile = self.on_host("server/switch-profile.sh", "--current", timeout=60).strip()
         self.profile["original"] = self.summary["original_profile"] = self.original_profile
         expected_runs = _load_measure().expected_runs
-        common = ["--base-url", self.a.base_url, "--key-file", self.a.key_file]
+        common = ["--base-url", self.a.base_url, "--key-file", self.a.key_file, "--model", self.alias]
         for i, prof in enumerate(self.profiles):
             reference, slots = i == 0, self.slots[prof]
             self.log(f"profile {prof} ({slots} slot(s)): load, limits, runs")
@@ -417,6 +470,10 @@ class Validation:
                             self.a.base_url,
                             "--key-file",
                             self.a.key_file,
+                            "--model",
+                            self.alias,
+                            "--artifact",
+                            str(self.ev / "model-record.json"),
                             "--out",
                             str(self.ev / f"parity-{prof}"),
                         ],
@@ -426,7 +483,7 @@ class Validation:
             vout = self.ev / f"verdict-{prof}.json"
             vout.unlink(missing_ok=True)
             flags = ["--reference"] if reference else []
-            vargs = ["--profile", prof, "--slots", str(slots), *flags, "--out", str(vout)]
+            vargs = ["--profile", prof, "--slots", str(slots), "--model", self.alias, *flags, "--out", str(vout)]
             self.measure("verdict", *vargs, *map(str, files))
             try:
                 verdict = json.loads(vout.read_text(encoding="utf-8"))
