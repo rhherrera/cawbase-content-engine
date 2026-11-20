@@ -4,9 +4,9 @@
     python3 deploy/inference/aws/build_template.py           # write cloudformation.yaml
     python3 deploy/inference/aws/build_template.py --check   # exit 1 if cloudformation.yaml is stale
 
-Bundled: manifest.json, server/ (scripts, units, profiles), aws/bootstrap.sh, bench/host-facts.sh and
-bench/boot-timings.sh. EC2 limits raw
-user data to 16 KiB; the build fails if the rendered user data would exceed it.
+Bundled: manifest.json, server/ (scripts, units, profiles), aws/bootstrap.sh, bench/host-facts.sh,
+bench/boot-timings.sh and bench/mem-sample.sh. EC2 limits raw user data to 16 KiB; the build fails if the rendered
+user data would exceed it.
 """
 
 from __future__ import annotations
@@ -19,9 +19,13 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # deploy/inference
-FILES = ["manifest.json", "aws/bootstrap.sh", "bench/host-facts.sh", "bench/boot-timings.sh"] + sorted(
-    str(p.relative_to(ROOT)) for p in (ROOT / "server").rglob("*") if p.is_file() and p.suffix != ".example"
-)
+FILES = [
+    "manifest.json",
+    "aws/bootstrap.sh",
+    "bench/host-facts.sh",
+    "bench/boot-timings.sh",
+    "bench/mem-sample.sh",
+] + sorted(str(p.relative_to(ROOT)) for p in (ROOT / "server").rglob("*") if p.is_file() and p.suffix != ".example")
 USER_DATA_LIMIT = 16 * 1024
 
 

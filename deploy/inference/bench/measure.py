@@ -2,15 +2,28 @@
 """A09-1 measurements on real hardware (standard library only; boto3 only for `ec2-cycle`). Writes JSON evidence.
 Synthetic, deterministic inputs only: no benchmark cases, no real data.
 
-    # on the GPU host (sudo for load): cold restart of the server, time to HTTP, to weights loaded, to canary
-    sudo python3 measure.py load --base-url http://127.0.0.1:8080 --key-file /etc/cce-inference/api-key --out load.json
-    # latency/throughput at a concurrency, with VRAM/RAM sampling (prompt size in tokens, approx.)
-    python3 measure.py run --base-url URL --key-file F --requests 20 --concurrency 1 --prompt-tokens 1800 --out r.json
+Memory (VRAM/RAM) is sampled **on the measured host** by `mem-sample.sh`, started right before the load and stopped
+right after it. From the operator machine the two hooks run it on EC2 through SSM (`ssm-run.sh`); on the host itself
+`--memory-local` runs it directly. The result records the measured host, the sample counts and the sampling window,
+and is `unavailable` (never a fictitious 0) when there are no samples, the window does not cover the load or the host
+is not the expected one.
+
+    # from the operator, through the tunnel, with memory sampled on EC2 during the same load
+    python3 measure.py run --base-url http://127.0.0.1:18080 --key-file F --requests 20 --concurrency 1 \
+        --prompt-tokens 1800 --expect-instance-id i-... --out r.json \
+        --memory-start-cmd "bench/ssm-run.sh i-... 'sudo /opt/cce-inference/src/bench/mem-sample.sh start r1'" \
+        --memory-stop-cmd  "bench/ssm-run.sh i-... 'sudo /opt/cce-inference/src/bench/mem-sample.sh stop r1'"
+    # on the GPU host itself (on-premise): same, with the local sampler
+    python3 measure.py run --base-url http://127.0.0.1:8080 --key-file F --memory-local --out r.json
+    # restart of the server (time to HTTP, weights loaded, canary), memory as above
+    python3 measure.py load --restart-cmd "..." --base-url ... --key-file ... --out load.json
     # context admission: largest admitted prompt succeeds, one token more is rejected before sending, server 400
     python3 measure.py limits --base-url ... --key-file ... --max-tokens 3072 --out limits.json
     # from the operator machine: EC2 start -> running -> HTTP up -> weights loaded -> canary, then stop -> stopped
     python3 measure.py ec2-cycle --instance-id i-... --region us-east-1 --profile AWS_PROFILE \
         --base-url http://127.0.0.1:18080 --key-file ./api-key --out cycle.json
+    # profile verdict from the evidence files (criteria fixed before measuring): pass | fail | incomplete
+    python3 measure.py verdict --profile reference-8k-1slot --out verdict.json load.json limits.json r.json
 """
 
 from __future__ import annotations
@@ -22,11 +35,11 @@ import shlex
 import statistics
 import subprocess
 import sys
-import threading
 import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
 
 WORDS = (
@@ -52,6 +65,9 @@ SCHEMA = {
     "additionalProperties": False,
 }
 SYSTEM = "Clasificá el texto en una categoría y listá entidades sensibles. Respondé solo con JSON válido."
+MEM_SAMPLER = Path(__file__).resolve().parent / "mem-sample.sh"
+MIN_FREE_VRAM_MIB = 1024  # criterion fixed before measuring (report §4)
+WINDOW_TOLERANCE_S = 2.0  # clock granularity of the host sampler (whole seconds) and operator/host skew
 
 
 class Http:
@@ -132,47 +148,83 @@ def text_of_tokens(http: Http, target: int, seed: int) -> list[dict[str, str]]:
     return best
 
 
-class Sampler(threading.Thread):
-    """Samples GPU memory (nvidia-smi) and host memory every `period` seconds; keeps the peaks."""
+class MemoryProbe:
+    """Runs the host sampler around a load: `start()` before, `finish(window)` after. The commands run on the
+    operator machine; their effect is on the measured host (SSM) or on this host (`--memory-local`)."""
 
-    def __init__(self, period: float = 0.5) -> None:
-        super().__init__(daemon=True)
-        self.period, self.stop_evt = period, threading.Event()
-        self.vram_peak_mib = 0
-        self.vram_samples: list[int] = []
-        self.ram_used_peak_kib = 0
+    def __init__(self, start_cmd: str | None, stop_cmd: str | None, expect_instance_id: str | None) -> None:
+        self.start_cmd, self.stop_cmd, self.expect = start_cmd, stop_cmd, expect_instance_id
+        self.start_error: str | None = None
 
-    def run(self) -> None:
-        while not self.stop_evt.is_set():
-            try:
-                out = subprocess.run(
-                    ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                    check=False,
-                ).stdout.split()
-                if out:
-                    v = int(out[0])
-                    self.vram_samples.append(v)
-                    self.vram_peak_mib = max(self.vram_peak_mib, v)
-            except (OSError, ValueError, subprocess.TimeoutExpired):
-                pass
-            try:
-                mem = dict(line.split(":", 1) for line in open("/proc/meminfo", encoding="ascii"))
-                used = int(mem["MemTotal"].split()[0]) - int(mem["MemAvailable"].split()[0])
-                self.ram_used_peak_kib = max(self.ram_used_peak_kib, used)
-            except (OSError, KeyError, ValueError):
-                pass
-            self.stop_evt.wait(self.period)
+    @classmethod
+    def from_args(cls, a: argparse.Namespace) -> MemoryProbe:
+        start, stop = a.memory_start_cmd, a.memory_stop_cmd
+        if a.memory_local:
+            label = f"measure-{int(time.time())}"
+            start, stop = f"{MEM_SAMPLER} start {label}", f"{MEM_SAMPLER} stop {label}"
+        return cls(start, stop, a.expect_instance_id)
 
-    def result(self) -> dict[str, Any]:
-        self.stop_evt.set()
-        return {
-            "vram_peak_mib": self.vram_peak_mib,
-            "vram_last_mib": self.vram_samples[-1] if self.vram_samples else None,
-            "ram_used_peak_kib": self.ram_used_peak_kib,
-        }
+    def start(self) -> None:
+        if not self.start_cmd:
+            return
+        r = subprocess.run(shlex.split(self.start_cmd), capture_output=True, text=True, timeout=180, check=False)
+        if r.returncode != 0:
+            self.start_error = f"start_cmd_exit_{r.returncode}"
+
+    def finish(self, window: dict[str, float]) -> dict[str, Any]:
+        if not (self.start_cmd and self.stop_cmd):
+            return memory_evidence(None, window, self.expect, reason="not_requested")
+        r = subprocess.run(shlex.split(self.stop_cmd), capture_output=True, text=True, timeout=180, check=False)
+        if self.start_error:
+            return memory_evidence(None, window, self.expect, reason=self.start_error)
+        if r.returncode != 0:
+            return memory_evidence(None, window, self.expect, reason=f"stop_cmd_exit_{r.returncode}")
+        return memory_evidence(r.stdout, window, self.expect)
+
+
+def _unavailable(reason: str, **extra: Any) -> dict[str, Any]:
+    return {"status": "unavailable", "reason": reason, "criterion": "unavailable", **extra}
+
+
+def memory_evidence(
+    raw: str | None, window: dict[str, float], expect_instance_id: str | None, *, reason: str | None = None
+) -> dict[str, Any]:
+    """Validate the host sampler summary against the load window. Only a summary with samples that covers the
+    window, from the expected host, yields numbers and a pass/fail criterion; anything else is `unavailable`."""
+    if raw is None:
+        return _unavailable(reason or "no_summary")
+    try:
+        summary = json.loads(raw.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return _unavailable("invalid_summary")
+    host = summary.get("host") or {}
+    counts = {"vram_samples": summary.get("vram_samples", 0), "ram_samples": summary.get("ram_samples", 0)}
+    window_seen = [summary.get("started_epoch"), summary.get("stopped_epoch")]
+    base = {"host": host, "samples": counts, "sampler_window": window_seen}
+    if summary.get("status") != "ok" or not counts["vram_samples"] or not counts["ram_samples"]:
+        return _unavailable("no_samples", **base)
+    if expect_instance_id and host.get("instance_id") != expect_instance_id:
+        return _unavailable("host_mismatch", expected_instance_id=expect_instance_id, **base)
+    started, stopped = summary.get("started_epoch"), summary.get("stopped_epoch")
+    if not isinstance(started, (int, float)) or not isinstance(stopped, (int, float)):
+        return _unavailable("window_unknown", **base)
+    if started > window["start_epoch"] + WINDOW_TOLERANCE_S or stopped < window["end_epoch"] - WINDOW_TOLERANCE_S:
+        return _unavailable("window_not_covered", load_window=[window["start_epoch"], window["end_epoch"]], **base)
+    peak, total = summary.get("vram_peak_mib"), summary.get("vram_total_mib")
+    free = total - peak if isinstance(total, (int, float)) and isinstance(peak, (int, float)) else None
+    return {
+        "status": "measured",
+        **base,
+        "vram_peak_mib": peak,
+        "vram_total_mib": total,
+        "vram_free_min_mib": free,
+        "ram_used_peak_kib": summary.get("ram_used_peak_kib"),
+        "criterion": "unavailable" if free is None else ("pass" if free >= MIN_FREE_VRAM_MIB else "fail"),
+    }
+
+
+def _window(t_wall: float) -> dict[str, float]:
+    return {"start_epoch": round(t_wall, 3), "end_epoch": round(time.time(), 3)}
 
 
 def props(http: Http) -> dict[str, Any]:
@@ -205,24 +257,26 @@ def wait_ready(http: Http, t0: float, timeout: float) -> dict[str, Any]:
 
 
 def cmd_load(a: argparse.Namespace, http: Http) -> dict[str, Any]:
-    s = Sampler()
-    s.start()
-    t0 = time.monotonic()
+    mem = MemoryProbe.from_args(a)
+    mem.start()
+    t_wall, t0 = time.time(), time.monotonic()
     subprocess.run(shlex.split(a.restart_cmd), check=True)
     marks = wait_ready(http, t0, a.timeout)
-    res = {"kind": "load", "restart_cmd": a.restart_cmd, **marks, **s.result(), **props(http)}
+    window = _window(t_wall)
+    res = {"kind": "load", "restart_cmd": a.restart_cmd, **marks, "memory": mem.finish(window), **props(http)}
     res["weights_load_s"] = round(marks["health_ok_s"] - marks["http_up_s"], 3) if "health_ok_s" in marks else None
     return res
 
 
 def cmd_run(a: argparse.Namespace, http: Http) -> dict[str, Any]:
     msgs = [text_of_tokens(http, a.prompt_tokens, seed=i) for i in range(a.requests)]
-    s = Sampler()
-    s.start()
-    t0 = time.monotonic()
+    mem = MemoryProbe.from_args(a)
+    mem.start()
+    t_wall, t0 = time.time(), time.monotonic()
     with ThreadPoolExecutor(a.concurrency) as pool:
         results = list(pool.map(lambda m: http.chat(m, a.max_tokens), msgs))
     wall = time.monotonic() - t0
+    window = _window(t_wall)
     ok = [r for r in results if r["status"] == 200]
     lat = [r["latency_s"] for r in ok]
     gen = sum((r.get("usage") or {}).get("completion_tokens", 0) for r in ok)
@@ -242,7 +296,9 @@ def cmd_run(a: argparse.Namespace, http: Http) -> dict[str, Any]:
         "completion_tokens_total": gen,
         "throughput_tokens_per_s": round(gen / wall, 2) if wall else None,
         "decode_tps_median": statistics.median(tps) if tps else None,
-        **s.result(),
+        "finish_reason_length": sum(1 for r in ok if r.get("finish_reason") == "length"),
+        "load_window": window,
+        "memory": mem.finish(window),
         **props(http),
         "per_request": results,
     }
@@ -303,9 +359,47 @@ def cmd_ec2_cycle(a: argparse.Namespace, http: Http) -> dict[str, Any]:
     return res
 
 
+def profile_verdict(profile: str, docs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Criteria fixed before measuring (report §4). `pass` only when every criterion passed with evidence; a
+    criterion without evidence (for example memory not sampled on the host) makes the verdict `incomplete`."""
+    by_kind: dict[str, list[dict[str, Any]]] = {}
+    for d in docs:
+        by_kind.setdefault(d.get("kind", "?"), []).append(d)
+    crit: dict[str, str] = {}
+    loads = by_kind.get("load", [])
+    crit["loaded"] = "unavailable" if not loads else ("pass" if all(d.get("ready_s") for d in loads) else "fail")
+    mems = [d.get("memory") or _unavailable("absent") for d in loads + by_kind.get("run", [])]
+    states = {m.get("criterion", "unavailable") for m in mems}
+    crit["memory"] = (
+        "unavailable" if not mems else "fail" if "fail" in states else "pass" if states == {"pass"} else "unavailable"
+    )
+    lims = by_kind.get("limits", [])
+
+    def limits_ok(d: dict[str, Any]) -> bool:
+        fit = (d.get("fit") or {}).get("result") or {}
+        over = (d.get("over_context") or {}).get("server_result") or {}
+        rejected = over.get("error_type") == "exceed_context_size_error"
+        return fit.get("status") == 200 and bool(fit.get("json_ok")) and rejected
+
+    crit["limits"] = "unavailable" if not lims else ("pass" if all(limits_ok(d) for d in lims) else "fail")
+    runs = by_kind.get("run", [])
+
+    def run_ok(d: dict[str, Any]) -> bool:
+        return d.get("ok") == d.get("requests") == d.get("json_ok") and not d.get("finish_reason_length")
+
+    crit["run"] = "unavailable" if not runs else ("pass" if all(run_ok(d) for d in runs) else "fail")
+    values = set(crit.values())
+    verdict = "fail" if "fail" in values else "pass" if values == {"pass"} else "incomplete"
+    return {"kind": "verdict", "profile": profile, "criteria": crit, "verdict": verdict}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    v = sub.add_parser("verdict")
+    v.add_argument("--profile", required=True)
+    v.add_argument("--out", required=True)
+    v.add_argument("evidence", nargs="+")
     for name in ("load", "run", "limits", "ec2-cycle"):
         p = sub.add_parser(name)
         p.add_argument("--base-url", required=True)
@@ -314,6 +408,11 @@ def main() -> int:
         p.add_argument("--label", default="")
         if name in ("load", "ec2-cycle"):
             p.add_argument("--timeout", type=float, default=1800)
+        if name in ("load", "run"):
+            p.add_argument("--memory-start-cmd", help="starts mem-sample.sh on the measured host (e.g. via ssm-run.sh)")
+            p.add_argument("--memory-stop-cmd", help="stops it; its stdout must be the sampler JSON summary")
+            p.add_argument("--memory-local", action="store_true", help="run mem-sample.sh here (measuring this host)")
+            p.add_argument("--expect-instance-id", help="the summary must come from this host")
         if name == "load":
             p.add_argument(
                 "--restart-cmd",
@@ -331,6 +430,12 @@ def main() -> int:
             p.add_argument("--region", required=True)
             p.add_argument("--profile")
     a = ap.parse_args()
+    if a.cmd == "verdict":
+        docs = [json.loads(Path(f).read_text(encoding="utf-8")) for f in a.evidence]
+        res = profile_verdict(a.profile, docs)
+        Path(a.out).write_text(json.dumps(res, indent=2), encoding="utf-8")
+        print(json.dumps(res))
+        return {"pass": 0, "fail": 1}.get(res["verdict"], 3)
     http = Http(a.base_url, key_from(a.key_file))
     fn = {"load": cmd_load, "run": cmd_run, "limits": cmd_limits, "ec2-cycle": cmd_ec2_cycle}[a.cmd]
     result = {"label": a.label, "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **fn(a, http)}

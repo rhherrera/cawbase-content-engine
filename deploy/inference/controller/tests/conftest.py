@@ -15,6 +15,10 @@ from cce_inference_controller.decide import Policy, Readiness  # noqa: E402
 from cce_inference_controller.executor import ExecutorPolicy, JobQueue  # noqa: E402
 from cce_inference_controller.store import Store  # noqa: E402
 
+HERE = Path(__file__).parent
+DEPLOY = HERE.parent.parent  # deploy/inference
+SERVER = DEPLOY / "server"
+
 JOB = {
     "messages": [{"role": "system", "content": "Classify."}, {"role": "user", "content": "Synthetic text."}],
     "schema": {

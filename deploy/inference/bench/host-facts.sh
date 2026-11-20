@@ -2,12 +2,13 @@
 # Print the facts of the GPU host as JSON (evidence): GPU, driver, CUDA, OS, kernel, instance identity (on EC2),
 # installed runtime and model verification record. Read-only.
 set -uo pipefail
+IMDS=${CCE_IMDS_BASE:-http://169.254.169.254}  # override for tests only
 
 q() { nvidia-smi --query-gpu="$1" --format=csv,noheader,nounits 2>/dev/null | head -n1 | sed 's/^ *//;s/ *$//'; }
 imds() {
   local tok
-  tok=$(curl -fsS -m 2 -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' 2>/dev/null) || return 0
-  curl -fsS -m 2 -H "X-aws-ec2-metadata-token: $tok" "http://169.254.169.254/latest/meta-data/$1" 2>/dev/null
+  tok=$(curl -fsS -m 2 -X PUT "$IMDS/latest/api/token" -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' 2>/dev/null) || return 0
+  curl -fsS -m 2 -H "X-aws-ec2-metadata-token: $tok" "$IMDS/latest/meta-data/$1" 2>/dev/null
 }
 cuda=$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9.]*\).*/\1/p' | head -n1)
 runtime=$(cat /opt/cce-inference/runtime/runtime.json 2>/dev/null || echo null)
