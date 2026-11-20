@@ -73,6 +73,8 @@ ignore = ["S101", "UP046", "UP047", "ASYNC109", "S110"]
 "tests/*" = ["S105", "S106", "S108", "S603", "S607", "S608", "E501", "ASYNC210", "ASYNC220", "ASYNC221", "ASYNC240", "B017", "E731"]
 "scripts/*" = ["S603", "E501"]
 "examples/*" = ["S105", "S106", "E501"]
+# A09-1 operator tooling outside the package (stdlib HTTP to a configured endpoint, subprocess to fixed tools)
+"deploy/*" = ["S310", "S311", "S603", "S607"]
 
 [tool.mypy]
 python_version = "3.13"

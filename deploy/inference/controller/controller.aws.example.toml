@@ -1,0 +1,32 @@
+# Controller configuration for AWS (runs OUTSIDE the GPU host: the workers' host, B01). No secrets in this file.
+[controller]
+db_path = "/var/lib/cce-inference-controller/state.db"
+tick_interval_s = 10
+lease_ttl_s = 60
+
+[policy]
+idle_timeout_s = 3600          # fixed by the user: 60 continuous minutes without pending or active work
+readiness_timeout_s = 1200     # proposal P-A09-01: EC2 boot + weight load + canary; separate from the inference timeout
+drain_timeout_s = 1800
+max_start_attempts = 3
+start_retry_backoff_s = 300
+unhealthy_threshold = 3
+
+[executor]
+inference_timeout_s = 180      # per request (the external run used 180 s per case)
+max_in_flight = 1              # = server slots of the active profile
+max_attempts = 5
+job_deadline_s = 86400
+
+[endpoint]
+base_url = "http://10.0.1.23:8080"          # CloudFormation output EndpointUrl
+model_alias = "qwen3.6-27b-q4km"
+api_key_file = "/etc/cce-inference-controller/api-key"   # copy of the SSM SecureString, 0600
+canary = true
+canary_timeout_s = 180
+
+[backend]
+kind = "aws"
+instance_id = "i-0123456789abcdef0"           # CloudFormation output InstanceId
+region = "us-east-1"
+profile = ""                                  # named AWS profile of the operator, or empty for the default chain / role

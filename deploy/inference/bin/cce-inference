@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Operate the inference host: start | stop | status (and serve/tick/probe/events; submit/work/job for the test
+# executor). Needs python3 >= 3.13; boto3 only for the AWS backend. Config: --config FILE or CCE_INFERENCE_CONFIG.
+set -euo pipefail
+HERE=$(cd "$(dirname "$0")/.." && pwd)
+PYTHONPATH="$HERE/controller/src${PYTHONPATH:+:$PYTHONPATH}" exec "${CCE_PYTHON:-python3}" -m cce_inference_controller.cli "$@"

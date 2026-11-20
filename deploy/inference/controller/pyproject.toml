@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cce-inference-controller"
+version = "0.1.0"
+description = "A09-1 inference start/stop controller and test executor. NOT part of the engine package, wheel or sdist."
+requires-python = ">=3.13"
+# The controller core is standard library only. boto3 is needed only by the EC2 backend.
+dependencies = []
+
+[project.optional-dependencies]
+aws = ["boto3>=1.35,<2"]
+
+[project.scripts]
+cce-inference = "cce_inference_controller.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "boto3>=1.35,<2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cce_inference_controller"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101", "S310", "S603", "S607"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cce_inference_controller", "conftest", "fake_llama_server"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "S108", "S311", "E501"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

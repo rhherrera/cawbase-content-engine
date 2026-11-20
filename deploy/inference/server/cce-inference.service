@@ -1,0 +1,32 @@
+[Unit]
+Description=CAWbase content engine inference server (llama.cpp b12329, Qwen3.6-27B Q4_K_M)
+Documentation=file:///opt/cce-inference/src/README.md
+Wants=network-online.target
+After=network-online.target
+# The weights volume must be mounted before the server starts.
+RequiresMountsFor=/srv/cce-inference
+
+[Service]
+Type=exec
+User=cce-inference
+Group=cce-inference
+EnvironmentFile=/etc/cce-inference/server.env
+Environment=HOME=/var/lib/cce-inference
+StateDirectory=cce-inference
+# Quick check: size + verification record written by install-model.sh (full SHA-256 at install time).
+ExecStartPre=/opt/cce-inference/src/server/install-model.sh --dir /srv/cce-inference/models --verify --quick
+ExecStart=/opt/cce-inference/src/server/run-server.sh
+Restart=on-failure
+RestartSec=5
+# Loading 19.4 GB of weights from EBS can take minutes; readiness is judged by the controller, not by systemd.
+TimeoutStartSec=0
+TimeoutStopSec=60
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/etc/cce-inference
+ProtectHome=true
+PrivateTmp=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

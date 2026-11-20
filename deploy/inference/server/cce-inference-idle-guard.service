@@ -1,0 +1,7 @@
+[Unit]
+Description=CAWbase inference host idle guard (powers off after prolonged inactivity; AWS backstop)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/cce-inference/idle-guard.env
+ExecStart=/opt/cce-inference/src/server/idle-guard.sh

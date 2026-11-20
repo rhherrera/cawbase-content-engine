@@ -1,0 +1,24 @@
+# Controller configuration on-premise: no AWS. The "instance" is the systemd unit of the server.
+[controller]
+db_path = "/var/lib/cce-inference-controller/state.db"
+tick_interval_s = 10
+lease_ttl_s = 60
+
+[policy]
+idle_timeout_s = 3600
+readiness_timeout_s = 900
+
+[executor]
+inference_timeout_s = 180
+max_in_flight = 1
+
+[endpoint]
+base_url = "http://10.0.0.5:8080"
+model_alias = "qwen3.6-27b-q4km"
+api_key_file = "/etc/cce-inference-controller/api-key"
+
+[backend]
+kind = "command"
+describe = "systemctl is-active cce-inference.service"
+start = "sudo systemctl start cce-inference.service"
+stop = "sudo systemctl stop cce-inference.service"
