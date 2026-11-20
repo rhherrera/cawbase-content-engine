@@ -148,3 +148,15 @@ Rama de implementación de A01: `feature/a01-product-foundation` (cerrada). Rama
 - **Auxiliares:** `tests/a08_helpers.py` y `tests/a08_synth.py`, este último un constructor sintético con pikepdf que no importa `experiments/`.
 - **Corpus:** PDF nativos `L1`, `C1`, `M1`, `L5`, `C5` y `M5`, con el manifiesto 2B, en `tests/fixtures/a08/`.
 - **Dependencias de desarrollo nuevas:** `pypdfium2`, `numpy` y `pillow`, solo para la evidencia. La fuente candidata se regenera con `scripts/build_pdf_candidate_font.py`, que necesita fontTools del entorno de `experiments/a08`.
+
+## 17. A09-1 — Proceso (implementado en `deploy/inference/`)
+
+El controlador y las herramientas de despliegue viven fuera del paquete, con su propio `pyproject.toml` y `uv.lock` (`deploy/inference/controller`). Checks propios:
+
+```bash
+cd deploy/inference/controller && uv sync --group dev && uv run pytest -q -rs && uv run mypy && uv run ruff check . && uv run ruff format --check .
+python3 deploy/inference/aws/build_template.py --check     # la plantilla generada coincide con sus fuentes
+shellcheck -S warning deploy/inference/*/*.sh deploy/inference/bin/cce-inference
+```
+
+La prueba de la guardia de inactividad necesita Linux (`/proc/uptime`); en macOS se omite y no cuenta como aprobada. La evidencia en GPU real sigue la receta del [informe de A09-1](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real). Contrato: [despliegue de inferencia y operación](inference-deployment.md).

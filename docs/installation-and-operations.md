@@ -340,3 +340,9 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 - **Orden de despliegue:** migrar (`0006`) → actualizar todos los runtimes → emitir claves con `pdf:*`. Hasta actualizar, un runtime `0.6.0` sigue ejecutando lo suyo, pero no reclama los análisis nuevos.
 - **Limpieza:** `run_cleanup` de A05 purga los artefactos; un `pdf_restored` descartado es elegible de inmediato, con la limpieza de `0.7.0`. `cleanup-pdf` marca `ended` los vínculos de contextos terminados y purga sus lápidas.
 - **Evidencia de render** (no se ejecuta en runtime): `uv run pytest tests/test_a08_evidence.py` con Poppler (`pdftoppm`) instalado; `CCE_A08_EVIDENCE_DIR` guarda los PDF y un resumen por caso.
+
+## 18. A09-1 — Servidor de inferencia y controlador (implementado en `deploy/inference/`)
+
+> **Implementado fuera del paquete del motor; validación en GPU real y aceptación pendientes.** Nada de §1–§17 cambia: el motor no inicia, espera ni apaga infraestructura (A03 §8) y su readiness sigue siendo la de A01.
+
+El servidor de inferencia (llama.cpp `b12329` + Qwen3.6-27B Q4_K_M), su despliegue en AWS (`g6.xlarge`, endpoint privado, pesos en EBS, servidor al iniciar EC2) y on-premise, el controlador externo de arranque y apagado y los comandos `start`/`stop`/`status` están en [despliegue de inferencia y operación](inference-deployment.md). Permisos de AWS: [§4.1](inference-deployment.md#41-permisos); costos residuales: [§4.2](inference-deployment.md#42-costos-precios-públicos-us-east-1-consultados-el-2026-11-20-con-la-api-de-precios-de-aws).
