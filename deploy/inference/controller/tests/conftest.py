@@ -33,10 +33,13 @@ class ScriptedProber:
     state: Readiness = field(default_factory=lambda: Readiness("loading", "health_503"))
     calls: int = 0
     full_calls: int = 0
+    liveness_only: bool = False  # when True, a full probe cannot verify the model (e.g. canary not answered yet)
 
     def probe(self, *, full: bool) -> Readiness:
         self.calls += 1
         self.full_calls += int(full)
+        if self.state.state == "ready" and (not full or self.liveness_only):
+            return Readiness("ready", "health_ok")  # like HttpProber: liveness answers, nothing verified
         return self.state
 
 

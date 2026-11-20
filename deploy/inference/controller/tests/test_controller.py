@@ -10,7 +10,7 @@ from cce_inference_controller.decide import Readiness
 from cce_inference_controller.executor import JobQueue
 from conftest import JOB, Rig
 
-READY = Readiness("ready", "canary_ok")
+READY = Readiness("ready", "canary_ok", verified=True)
 
 
 def bring_up(rig: Rig, ctl) -> None:

@@ -16,13 +16,41 @@ from cce_inference_controller.decide import (
     decide,
     dispatch_allowed,
     needs_probe,
+    probe_is_full,
 )
 
 P = Policy()
 T0 = 1_000_000.0
-READY = Readiness("ready", "canary_ok")
+READY = Readiness("ready", "canary_ok", verified=True)
 LOADING = Readiness("loading", "health_503")
 DOWN = Readiness("unreachable", "inference_unreachable")
+HEALTH_ONLY = Readiness("ready", "health_ok")  # liveness: answers, verifies nothing
+
+
+def test_entering_ready_needs_a_verified_probe_before_the_deadline():
+    s = decide(ControlState(), Demand(pending=1), Observation("stopped"), P, T0).state
+    assert decide(s, Demand(pending=1), Observation("running", HEALTH_ONLY), P, T0 + 60).state.phase == "starting"
+    late = decide(s, Demand(pending=1), Observation("running", READY), P, T0 + P.readiness_timeout_s)
+    assert late.state.phase == "stopping" and late.actions == ("stop_instance",)
+    assert not dispatch_allowed(late.state)
+
+
+def test_failed_probe_closes_dispatch_and_verified_probe_reopens():
+    s = ready_state()
+    assert dispatch_allowed(s) and not probe_is_full(s)
+    d = decide(s, Demand(active=1), Observation("running", DOWN), P, T0 + 10)
+    assert d.state.phase == "ready" and not dispatch_allowed(d.state) and probe_is_full(d.state)
+    assert ("dispatch_closed", {"code": DOWN.code}) in d.events
+    still = decide(d.state, Demand(active=1), Observation("running", HEALTH_ONLY), P, T0 + 20).state
+    assert not dispatch_allowed(still)
+    assert not dispatch_allowed(decide(still, Demand(), Observation("running"), P, T0 + 25).state)
+    back = decide(still, Demand(active=1), Observation("running", READY), P, T0 + 30)
+    assert dispatch_allowed(back.state) and ("dispatch_reopened", {"code": READY.code}) in back.events
+
+
+def test_state_written_before_the_rename_keeps_dispatch_closed():
+    old = ready_state().to_json().replace('"failed_probes":0', '"unhealthy_count":2')
+    assert not dispatch_allowed(ControlState.from_json(old))
 
 
 def ready_state(at: float = T0) -> ControlState:
@@ -120,7 +148,7 @@ def test_unhealthy_server_while_ready_goes_back_to_waiting_readiness():
     s = ready_state()
     for _ in range(P.unhealthy_threshold - 1):
         s = decide(s, Demand(pending=1), Observation("running", DOWN), P, T0 + 10).state
-        assert s.phase == "ready"
+        assert s.phase == "ready" and not dispatch_allowed(s) and probe_is_full(s)
     d = decide(s, Demand(pending=1), Observation("running", DOWN), P, T0 + 20)
     assert d.state.phase == "starting" and not dispatch_allowed(d.state)
     assert d.state.ready_deadline == T0 + 20 + P.readiness_timeout_s
@@ -148,7 +176,11 @@ def test_drain_timeout_stops_anyway():
 def test_manual_start_resumes_a_drain_and_starts_a_stopped_host():
     s = apply_command(ready_state(), "stop", P, T0).state
     s = apply_command(s, "start", P, T0 + 5).state
-    assert s.phase == "ready" and s.mode == "auto" and s.ready_at == T0 + 5
+    # resuming a drain re-verifies the model before dispatch (A09-1 review, finding 1)
+    assert s.phase == "starting" and s.mode == "auto" and not dispatch_allowed(s)
+    assert s.ready_deadline == T0 + 5 + P.readiness_timeout_s
+    assert decide(s, Demand(active=1), Observation("running", HEALTH_ONLY), P, T0 + 6).state.phase == "starting"
+    assert decide(s, Demand(active=1), Observation("running", READY), P, T0 + 6).state.phase == "ready"
     stopped = ControlState(mode="paused")
     s = apply_command(stopped, "start", P, T0).state
     d = decide(s, Demand(), Observation("stopped"), P, T0)

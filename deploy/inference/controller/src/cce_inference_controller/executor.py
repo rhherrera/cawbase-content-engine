@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .clock import Clock
-from .decide import Demand
+from .decide import Demand, dispatch_allowed
 from .llama import ContextExceededError, InferenceError, LlamaClient, OutputInvalidError, TransientInferenceError
 from .store import Store
 
@@ -133,8 +133,7 @@ class JobQueue:
         now = self.clock.now()
         with self.store.tx() as conn:
             self._recover(conn, now)
-            phase = conn.execute("SELECT json_extract(data, '$.phase') FROM ctl_state WHERE id = 1").fetchone()[0]
-            if phase != "ready":
+            if not dispatch_allowed(Store.read(conn).state):  # ready and no failed probe since the last verification
                 return None
             running = conn.execute(
                 "SELECT COUNT(*) FROM jobs WHERE status = 'running' AND lease_expires_at > ?", (now,)

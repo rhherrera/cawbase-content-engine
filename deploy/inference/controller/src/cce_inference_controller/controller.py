@@ -1,9 +1,12 @@
 """The reconciler. One leader (lease in the store) runs `tick()` periodically:
 
 1. take/renew the lease (a second controller waits; a dead leader is replaced after the lease TTL);
-2. observe the instance (`describe`) and, while starting or ready, the readiness (outside any transaction);
-3. in one serialized transaction: re-check the lease, read the state and the durable demand, `decide`, persist the
-   new state and events;
+2. observe the instance (`describe`) and, while starting or ready, the readiness (outside any transaction; a full
+   probe with the structured canary while starting or after a failed probe, liveness otherwise);
+3. in one serialized transaction: re-check the lease, read the state and the durable demand, `decide` with the
+   clock read *after* the probe returned, persist the new state and events. A probe result is discarded when the
+   durable state changed while it ran (for example a manual stop + start began a new attempt): it belongs to a
+   previous attempt;
 4. after commit, run the idempotent actions (`start_instance` / `stop_instance`).
 
 Recovery after a crash or restart needs nothing special: the phase is durable and every tick reconciles the real
@@ -16,7 +19,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from .backends import BackendError, InstanceBackend
@@ -34,6 +37,7 @@ from .decide import (
     dispatch_allowed,
     idle_reference,
     needs_probe,
+    probe_is_full,
 )
 from .store import Store
 
@@ -83,22 +87,30 @@ class Controller:
         with self.store.tx() as conn:
             if not self.store.take_lease(conn, self.owner, now, self.lease_ttl_s):
                 return TickReport(leader=False)
-            before = self.store.read(conn).state
+            before_row = self.store.read(conn)
+        before = before_row.state
         try:
             instance: str | None = self.backend.describe()
         except BackendError:
             instance = None
         readiness = None
         if needs_probe(before, instance):
-            readiness = self.prober.probe(full=before.phase == "starting")
+            readiness = self.prober.probe(full=probe_is_full(before))
 
-        now = self.clock.now()
+        now = self.clock.now()  # after the probe: a slow canary is judged against the deadline when it finished
         with self.store.tx() as conn:
             if not self.store.take_lease(conn, self.owner, now, self.lease_ttl_s):
                 return TickReport(leader=False)  # another controller took over while we were observing
             row = self.store.read(conn)
+            observed = readiness
+            if readiness is not None and row.generation != before_row.generation:
+                observed = None  # the probe belongs to a previous attempt or state
             demand = self.demand(conn, now)
-            decision = decide(row.state, demand, Observation(instance, readiness), self.policy, now)
+            decision = decide(row.state, demand, Observation(instance, observed), self.policy, now)
+            if readiness is not None and observed is None:
+                decision = replace(
+                    decision, events=(("stale_probe_discarded", {"code": readiness.code}), *decision.events)
+                )
             self._persist(conn, row.state, row.generation, decision, now)
 
         errors = self._act(decision)
@@ -159,6 +171,7 @@ class Status:
     autostart_paused: bool
     phase: str
     dispatch_allowed: bool
+    failed_probes: int
     blocked: bool
     start_failures: int
     pending: int
@@ -199,6 +212,7 @@ def status(
         autostart_paused=s.mode == "paused",
         phase=s.phase,
         dispatch_allowed=dispatch_allowed(s),
+        failed_probes=s.failed_probes,
         blocked=s.blocked,
         start_failures=s.start_failures,
         pending=dem.pending,

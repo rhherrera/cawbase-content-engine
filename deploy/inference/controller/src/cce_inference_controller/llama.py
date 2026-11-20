@@ -240,9 +240,9 @@ class HttpProber:
                 )
                 if not isinstance(res["output"].get("ok"), bool):
                     return Readiness("unhealthy", "canary_schema")
-                return Readiness("ready", "canary_ok")
+                return Readiness("ready", "canary_ok", verified=True)
         except TransientInferenceError as exc:
             return Readiness("loading", f"canary:{exc.code}")
         except InferenceError as exc:
             return Readiness("unhealthy", f"canary:{exc.code}")
-        return Readiness("ready", "models_ok")
+        return Readiness("ready", "models_ok", verified=True)

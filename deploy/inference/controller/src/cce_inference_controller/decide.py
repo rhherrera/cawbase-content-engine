@@ -8,11 +8,16 @@ same decision, which is what the tests exercise with a controlled clock.
 Phases:
 
     stopped ──demand/start──► starting ──real readiness──► ready ──60 min idle──► stopping ──► stopped
-                                 │  ▲                        │  └─ manual stop ─► draining ─┘
-                                 │  └── unhealthy (N probes)─┘
+                                 │  ▲ ▲                      │  └─ manual stop ─► draining ─┘
+                                 │  │ └── unhealthy (N probes)─┘                      │
+                                 │  └──────────── manual start (resume) ──────────────┘
                                  └── readiness deadline ─► stopping (retry with backoff; blocked after N attempts)
 
-Dispatch of inference work is allowed only in `ready`.
+Dispatch of inference work is allowed only in `ready` **and** while the last probe did not fail. The first failed
+probe closes dispatch (`failed_probes > 0`); only a *verified* readiness (health + alias + canary, i.e. a full probe)
+reopens it. The threshold of consecutive failed probes still decides when to go back to `starting`. Entering
+`ready` always requires a verified readiness observed before the attempt's deadline: a manual start during a drain
+goes back to `starting` instead of straight to `ready`.
 """
 
 from __future__ import annotations
@@ -68,8 +73,12 @@ class Demand:
 
 @dataclass(frozen=True)
 class Readiness:
+    """Probe result. `verified` is True only when a full probe confirmed the model (alias listed and structured
+    canary parsed); a liveness probe (`/health` only) can say `ready` but is never `verified`."""
+
     state: ReadinessState
     code: str
+    verified: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,7 +100,7 @@ class ControlState:
     blocked: bool = False
     stop_reason: str | None = None
     drain_deadline: float | None = None
-    unhealthy_count: int = 0
+    failed_probes: int = 0  # consecutive failed probes while ready; > 0 closes dispatch
     last_error: str | None = None
 
     def to_json(self) -> str:
@@ -100,6 +109,8 @@ class ControlState:
     @classmethod
     def from_json(cls, raw: str) -> ControlState:
         data = json.loads(raw)
+        if "unhealthy_count" in data and "failed_probes" not in data:  # state written before the rename
+            data["failed_probes"] = data["unhealthy_count"]
         known = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in data.items() if k in known})
 
@@ -144,8 +155,14 @@ def needs_probe(state: ControlState, instance: str | None) -> bool:
     return state.phase in ("starting", "ready") and instance == "running"
 
 
+def probe_is_full(state: ControlState) -> bool:
+    """A full probe (alias + structured canary) is needed to enter `ready` and to reopen dispatch after a failure;
+    otherwise liveness (`/health`, no decoding) is enough."""
+    return state.phase == "starting" or (state.phase == "ready" and state.failed_probes > 0)
+
+
 def dispatch_allowed(state: ControlState) -> bool:
-    return state.phase == "ready"
+    return state.phase == "ready" and state.failed_probes == 0
 
 
 def idle_reference(state: ControlState, demand: Demand) -> float:
@@ -158,7 +175,7 @@ def _backoff(policy: Policy, failures: int) -> float:
 
 
 def _begin_start(b: _Builder, policy: Policy, reason: str) -> None:
-    b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, stop_reason=None, unhealthy_count=0)
+    b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, stop_reason=None, failed_probes=0)
     b.act("start_instance")
     b.event("start_requested", reason=reason)
 
@@ -193,7 +210,7 @@ def _stopped(b: _Builder, demand: Demand, inst: str, policy: Policy) -> None:
         return  # paused: hands-off (an operator may have started the host for maintenance)
     if inst in RUNNING_LIKE:
         # Running outside our control (or a start we lost track of): adopt it so it is gated and idle-stopped.
-        b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, stop_reason=None, unhealthy_count=0)
+        b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, stop_reason=None, failed_probes=0)
         b.event("adopted_running_instance", instance=inst)
         return
     if inst != "stopped":
@@ -209,20 +226,8 @@ def _stopped(b: _Builder, demand: Demand, inst: str, policy: Policy) -> None:
 
 def _starting(b: _Builder, inst: str, readiness: Readiness | None, policy: Policy) -> None:
     s = b.state
-    if inst == "running" and readiness is not None and readiness.state == "ready":
-        waited = b.now - s.phase_since
-        b.go(
-            "ready",
-            ready_at=b.now,
-            ready_deadline=None,
-            start_failures=0,
-            retry_not_before=None,
-            start_requested=False,
-            unhealthy_count=0,
-            last_error=None,
-        )
-        b.event("ready", waited_s=round(waited, 3), code=readiness.code)
-        return
+    # The deadline is checked first, with `now` taken after the probe returned: a canary that finishes after the
+    # deadline does not open dispatch for that expired attempt.
     if s.ready_deadline is not None and b.now >= s.ready_deadline:
         failures = s.start_failures + 1
         blocked = failures >= policy.max_start_attempts
@@ -239,6 +244,20 @@ def _starting(b: _Builder, inst: str, readiness: Readiness | None, policy: Polic
         b.act("stop_instance")
         b.event("readiness_timeout", attempt=failures, blocked=blocked, code=code)
         return
+    if inst == "running" and readiness is not None and readiness.state == "ready" and readiness.verified:
+        waited = b.now - s.phase_since
+        b.go(
+            "ready",
+            ready_at=b.now,
+            ready_deadline=None,
+            start_failures=0,
+            retry_not_before=None,
+            start_requested=False,
+            failed_probes=0,
+            last_error=None,
+        )
+        b.event("ready", waited_s=round(waited, 3), code=readiness.code)
+        return
     if inst == "stopped":
         b.act("start_instance")  # idempotent re-issue (lost call, controller restart, external stop)
         b.event("start_reissued")
@@ -248,21 +267,26 @@ def _ready(b: _Builder, demand: Demand, inst: str, readiness: Readiness | None, 
     s = b.state
     if inst != "running":
         if inst == "pending":
-            b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, unhealthy_count=0)
+            b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, failed_probes=0)
         else:
             b.go("stopping" if inst == "stopping" else "stopped", stop_reason="external", ready_deadline=None)
         b.event("instance_left_running", instance=inst)
         return
     if readiness is not None and readiness.state != "ready":
-        count = s.unhealthy_count + 1
+        count = s.failed_probes + 1
+        if count == 1:
+            b.event("dispatch_closed", code=readiness.code)
         if count >= policy.unhealthy_threshold:
-            b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, unhealthy_count=0)
+            b.go("starting", ready_deadline=b.now + policy.readiness_timeout_s, failed_probes=0)
             b.event("unhealthy", code=readiness.code, probes=count)
         else:
-            b.set(unhealthy_count=count)
+            b.set(failed_probes=count, last_error=f"probe_failed:{readiness.code}")
         return
-    if readiness is not None and s.unhealthy_count:
-        b.set(unhealthy_count=0)
+    if s.failed_probes:
+        if readiness is None or not readiness.verified:
+            return  # dispatch stays closed until a full probe verifies the model again
+        b.set(failed_probes=0, last_error=None)
+        b.event("dispatch_reopened", code=readiness.code)
     if s.mode != "auto" or demand.pending > 0 or demand.active > 0:
         return
     idle_for = b.now - idle_reference(s, demand)
@@ -304,7 +328,16 @@ def apply_command(state: ControlState, command: Command, policy: Policy, now: fl
     if command == "start":
         b.set(mode="auto", blocked=False, start_failures=0, retry_not_before=None, last_error=None)
         if state.phase == "draining":
-            b.go("ready", ready_at=now, drain_deadline=None, stop_reason=None, start_requested=False)
+            # Resume: the model must be verified again before dispatch reopens (the drain may have begun while the
+            # model was still loading). Active work keeps its lease; the host is not stopped.
+            b.go(
+                "starting",
+                ready_deadline=now + policy.readiness_timeout_s,
+                drain_deadline=None,
+                stop_reason=None,
+                start_requested=False,
+                failed_probes=0,
+            )
         elif state.phase in ("ready", "starting"):
             b.set(start_requested=False)
         else:
