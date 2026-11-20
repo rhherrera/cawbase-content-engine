@@ -1,6 +1,6 @@
 # Informe de implementación de A09-1
 
-> **Estado: A09-1 implementada; validación en GPU real PENDIENTE (bloqueada por la cuota de instancias G = 0 vCPU); aceptación pendiente del usuario.** Este informe separa tres niveles de evidencia: **simulación** (§2.1), **artefactos y servicios reales fuera de la GPU** (§2.2) y **GPU real** (§2.3, ninguna). Las correcciones de la revisión 1 (sobre `889e2fe`) están en §2.4. La receta exacta de la validación pendiente está en §4. Contrato: [inference-deployment.md](inference-deployment.md); matriz: [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md); decisiones: [A09-decisions](decisions/A09-decisions.md).
+> **Estado: A09-1 implementada; validación en GPU real PENDIENTE (bloqueada por la cuota de instancias G = 0 vCPU); aceptación pendiente del usuario.** Este informe separa tres niveles de evidencia: **simulación** (§2.1), **artefactos y servicios reales fuera de la GPU** (§2.2) y **GPU real** (§2.3, ninguna). Las correcciones de la revisión 1 (sobre `889e2fe`) están en §2.4 y las de la revisión 2 (sobre `de3e8e2`), en §2.5. La receta exacta de la validación pendiente está en §4. Contrato: [inference-deployment.md](inference-deployment.md); matriz: [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md); decisiones: [A09-decisions](decisions/A09-decisions.md).
 
 ## 1. Qué se entregó
 
@@ -21,12 +21,12 @@ El paquete del motor no cambia (sin cambios en `src/`, versión, esquema, permis
 
 ### 2.1 Simulación (pruebas automáticas)
 
-Suite del controlador (`deploy/inference/controller/tests`, 71 pruebas): reglas puras con reloj controlado (`test_decide.py`, 20), controlador + store + backend falso con concurrencia (`test_controller.py`, 11), compuerta de readiness y despacho de la revisión 1 (`test_readiness_gating.py`, 7), extremo a extremo por HTTP real contra un `llama-server` falso que emula `/health` 503→200, `/v1/models`, `/props`, `/apply-template`, `/tokenize`, `response_format`, slots en cola, error `exceed_context_size_error` y `/metrics` (`test_e2e.py`, 7), evidencia de memoria y veredicto (`test_measure.py`, 12), secuencia de validación en GPU con herramientas simuladas (`test_gpu_validation.py`, 9) y scripts y CLI con un host simulado que arranca `run-server.sh` real con el binario falso (`test_scripts.py`, 5). El modelo es simulado; transporte, readiness, slots, admisión de contexto, timeouts y mapeo de errores son código real. Ninguna prueba usa AWS: la secuencia de validación corre con un `aws` falso (`tests/fake_aws.py`) que ejecuta los comandos SSM en local y opera el host simulado.
+Suite del controlador (`deploy/inference/controller/tests`, 79 pruebas): reglas puras con reloj controlado (`test_decide.py`, 20), controlador + store + backend falso con concurrencia (`test_controller.py`, 11), compuerta de readiness y despacho de la revisión 1 (`test_readiness_gating.py`, 7), extremo a extremo por HTTP real contra un `llama-server` falso que emula `/health` 503→200, `/v1/models`, `/props`, `/apply-template`, `/tokenize`, `response_format`, slots en cola, error `exceed_context_size_error` y `/metrics` (`test_e2e.py`, 7), evidencia de memoria y veredicto (`test_measure.py`, 17), secuencia de validación en GPU con herramientas simuladas (`test_gpu_validation.py`, 12) y scripts y CLI con un host simulado que arranca `run-server.sh` real con el binario falso (`test_scripts.py`, 5). El modelo es simulado; transporte, readiness, slots, admisión de contexto, timeouts y mapeo de errores son código real. Ninguna prueba usa AWS: la secuencia de validación corre con un `aws` falso (`tests/fake_aws.py`) que ejecuta los comandos SSM en local, los rechaza si el host simulado no está `running` (como el servicio real) y opera el host simulado; `tests/fake_measure.py` envuelve `measure.py` para inyectar una medición fallida o colgada.
 
 | Ambiente | Comando | Resultado |
 |---|---|---|
-| macOS (Apple M1, Python 3.13, uv) | `cd deploy/inference/controller && uv run pytest -q -rs` | **70 aprobadas**, 1 omitida (guardia de inactividad: necesita `/proc/uptime`, no cuenta como aprobada) |
-| Linux local (Docker `python:3.13-bookworm`, aarch64, Python 3.13.18) | `PYTHONPATH=src python3 -m pytest -q -rs -p no:cacheprovider tests` (copia de `deploy/inference` en el contenedor) | **71 aprobadas**, sin omisiones |
+| macOS (Apple M1, Python 3.13, uv) | `cd deploy/inference/controller && uv run pytest -q -rs` | **78 aprobadas**, 1 omitida (guardia de inactividad: necesita `/proc/uptime`, no cuenta como aprobada) |
+| Linux local (Docker `python:3.13-bookworm`, aarch64, Python 3.13.18) | `PYTHONPATH=src python3 -m pytest -q -rs -p no:cacheprovider tests` (copia de `deploy/inference` en el contenedor) | **79 aprobadas**, sin omisiones |
 | macOS | `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy` (estricto) en el controlador | sin hallazgos |
 | macOS | `shellcheck -S warning` de todos los scripts de `deploy/inference` | sin hallazgos |
 
@@ -62,6 +62,18 @@ Cambios: `Readiness.verified` (solo un sondeo completo, alias + canario, verific
 
 **Verificado localmente** (S, macOS y Linux local): todo lo anterior. **Requiere la L4** (G): que el canario real verifique el modelo, que el muestreador lanzado por SSM sobreviva al fin del comando y produzca muestras de la GPU real, el túnel SSM real, la secuencia completa de `gpu-validation.py` contra EC2 y la parada verificada; ninguno de estos puntos se ejecutó.
 
+### 2.5 Correcciones de la revisión 2 (sobre `de3e8e2`)
+
+Cada defecto se reprodujo sobre `de3e8e2` antes de corregirlo; las regresiones nuevas fallan sobre `de3e8e2` y pasan con la corrección.
+
+**1. Restitución del perfil.** `gpu-validation.py` ejecutaba `stop --wait` y recién después intentaba restituir el perfil original por Run Command, que no llega a una instancia detenida. Reproducción: con un `aws` falso que, como el servicio real, rechaza Run Command si la instancia no está `running`, la corrida completa de `de3e8e2` terminó con salida 0 y `validated`, pero la restitución falló (`InvalidInstanceId`) y el host quedó con el último perfil medido. Corrección (contrato §6.2, pasos 5 y «Siempre»): el perfil se restituye (`switch-profile.sh ORIGINAL --no-restart`) y se **verifica** (`--current`) con la instancia en `running`, antes de la parada del controlador; ante fallo o interrupción, la limpieza lo intenta antes de detener, solo si la instancia sigue `running`, y un fallo se registra sin impedir la parada ni la verificación de `stopped`. `final-state.json` registra por separado EC2 (`state`, `instance_stopped`, `fallback_stop`) y el perfil (`profile.status`, perfil leído, intentos); una restitución fallida impide declarar validada la corrida (salida 1). Regresiones en `test_gpu_validation.py`: ciclo completo (restitución verificada antes de la parada del controlador, un solo intento, sin parada de respaldo), restitución que falla (EC2 detenida por la limpieza, perfil `not_restored` con dos intentos, salida 1, nunca `validated`) e interrupción durante la campaña (perfil restituido y luego instancia detenida, salida 130).
+
+**2. Integridad del veredicto.** `gpu-validation.py` solo pasaba a `measure.py verdict` los archivos de las mediciones con salida 0, y el veredicto no sabía qué corridas esperar. Reproducción: sobre `de3e8e2`, `measure.py verdict` con la carga de un perfil de dos slots, `limits` y una única corrida a concurrencia 1 dio `pass` (salida 0). Corrección (contrato §6.1 y §6.2): `verdict --slots N [--reference]` exige cada corrida esperada (`c1`; `c2` con dos slots; `overload` en la referencia), identificada por `tag` y a la concurrencia esperada, y que los slots del servidor coincidan con los de la definición del perfil; una corrida ausente o un archivo ilegible dan `incomplete`; una medición ejecutada y fallida queda registrada (`status: failed`, salida, error) y da `fail`, con el detalle en `failures`. `gpu-validation.py` toma los slots de `server/profiles/` (rechaza perfiles desconocidos sin efectos), deja siempre el archivo de cada medición y pasa todos al veredicto. Regresiones en `test_measure.py` (perfil de dos slots solo con `c1` ⇒ `incomplete`; referencia sin `overload` ⇒ `incomplete`; corrida, `limits` o `load` fallidos ⇒ `fail` registrado; concurrencia, slots o evidencia ilegible ⇒ nunca `pass`) y en `test_gpu_validation.py` (la corrida `c2` falla de verdad en la campaña: queda `status: failed`, el veredicto es `fail` con `runs = {c1: pass, c2: fail}` y el perfil se restituye antes de detener).
+
+**Intérprete.** La receta ejecutaba `gpu-validation.py` con `python3` del sistema mientras `cce-inference` usaba `CCE_PYTHON`; ahora el script se ejecuta con `"$CCE_PYTHON"` (el entorno del controlador), fija ese mismo intérprete para `cce-inference` y `measure.py`, lo registra en `preflight.json` y rechaza sin efectos un `CCE_PYTHON` distinto o un Python < 3.13.
+
+**Verificado localmente** (S, macOS y Linux local): todo lo anterior, con `aws` y mediciones simulados. **Requiere la L4** (G): la restitución por Run Command real con la instancia encendida y su verificación, y los veredictos con mediciones reales; no se ejecutó ninguno.
+
 ## 3. Trazabilidad AC-A09-1
 
 | AC | Prueba / evidencia | Nivel | Resultado |
@@ -88,8 +100,8 @@ Cambios: `Readiness.verified` (solo un sondeo completo, alias + canario, verific
 | 20 | contrato §4.1–§4.2; API de precios | D, A | cumplido |
 | 21 | parada protegida probada en simulación (`test_gpu_validation.py`); no se levantó GPU; `describe-instances` vacío | S | cumplido en S; **no aplica todavía** en G |
 | 22 | §5 | S | ver §5 |
-| 23 | `test_measure.py` (12): host y muestras registrados; `unavailable` sin cifras; veredicto `incomplete` | S | cumplido en S; muestreo en la L4 **pendiente** (G) |
-| 24 | `test_gpu_validation.py` (9) con `aws` simulado | S | cumplido en S; corrida real **pendiente** (G) |
+| 23 | `test_measure.py` (17): host y muestras registrados; `unavailable` sin cifras; veredicto `incomplete`; revisión 2: corridas esperadas por perfil (ausente ⇒ `incomplete`, fallida ⇒ `fail` registrado) | S | cumplido en S; muestreo en la L4 **pendiente** (G) |
+| 24 | `test_gpu_validation.py` (12) con `aws` simulado que rechaza Run Command en una instancia detenida; revisión 2: restitución verificada antes de la parada, fallo de restitución (EC2 detenida, perfil `not_restored`, no validada), interrupción durante la campaña | S | cumplido en S; corrida real **pendiente** (G) |
 
 ## 4. Validación pendiente en GPU real
 
@@ -134,7 +146,7 @@ sed -e "s|^db_path = .*|db_path = \"$RUN/state.db\"|" \
     -e "s|^instance_id = .*|instance_id = \"$IID\"|" \
     -e "s|^profile = .*|profile = \"$AWS_PROFILE\"|" \
     deploy/inference/controller/controller.aws.example.toml > "$RUN/controller.toml"
-python3 deploy/inference/bench/gpu-validation.py --config "$RUN/controller.toml" --instance-id "$IID" \
+"$CCE_PYTHON" deploy/inference/bench/gpu-validation.py --config "$RUN/controller.toml" --instance-id "$IID" \
   --key-file "$EV/api-key" --evidence "$RUN" --parity-pkg /ruta/cawbase_resultados   # ZIP descomprimido, fuera de Git
 echo "exit=$?"   # 0 validado · 1 falló/incompleta · 2 rechazada sin efectos · 130 interrumpida · 4 CLEANUP FAILED
 # comprobación independiente al terminar, cualquiera haya sido la salida
@@ -143,13 +155,14 @@ aws ec2 describe-instances --instance-ids "$IID" --query 'Reservations[0].Instan
 
 Qué hace `gpu-validation.py` (contrato §6.2) y qué deja en `$RUN`:
 
-1. Verificación previa sin efectos (`preflight.json`): instancia `stopped`, estado del controlador nuevo, evidencia fuera del repositorio.
+1. Verificación previa sin efectos (`preflight.json`): instancia `stopped`, estado del controlador nuevo, evidencia fuera del repositorio, perfiles definidos (con sus slots) e intérprete del controlador (también para los procesos hijos).
 2. Ciclo disparado por trabajo: túnel SSM (`tunnel.log`), `serve` (`controller.log`) y un worker (`worker.log`); encola un trabajo sintético (`job.json`) y exige el arranque por demanda, `running`, la readiness verificada por el canario real y el trabajo `succeeded` con salida estructurada (`job-cycle.json` con la línea de tiempo envío → pedido de arranque → `running` observado → `ready` → fin; `events.json`, `job-result.json`). Es la **prueba real de inferencia estructurada** (AC-A09-1-19) y la primera medición del **arranque en frío** desde EBS.
 3. Hechos del host y línea de tiempo del arranque (`host-facts.json` con GPU, driver, CUDA, AMI, runtime y modelo; `boot-timings.json` con arranque del kernel, inicio de la unidad, «loading model», «model loaded» y «listening»). Junto con `job-cycle.json` separan arranque EC2, arranque del SO, carga de pesos y tiempo hasta readiness.
-4. Campaña con la instancia disponible, en el orden de `--profiles` (por defecto `reference-8k-1slot`, `candidate-16k-1slot`, `candidate-16k-2slot`): `load-P.json` (cambio de perfil y reinicio; memoria en el host), `limits-P.json`, `run-P-c1.json`, `run-P-c2.json` con dos slots, `run-P-overload.json` en el primero (3 a la vez sobre 1 slot: cola), `parity-P/` en el primero, y `verdict-P.json`. Se detiene en el primer perfil que no pasa y lo registra como escalamiento (D-A09-05).
-5. Parada final por el controlador (`stop --wait`); siempre: perfil original restituido en `server.env`, instancia verificada `stopped` (`final-state.json`), `summary.json`.
+4. Campaña con la instancia disponible, en el orden de `--profiles` (por defecto `reference-8k-1slot`, `candidate-16k-1slot`, `candidate-16k-2slot`): `load-P.json` (cambio de perfil y reinicio; memoria en el host), `limits-P.json`, `run-P-c1.json`, `run-P-c2.json` con dos slots, `run-P-overload.json` en el primero (3 a la vez sobre 1 slot: cola), `parity-P/` en el primero, y `verdict-P.json` sobre todos ellos (una medición fallida queda como `status: failed`, nunca se omite). Se detiene en el primer perfil que no pasa y lo registra como escalamiento (D-A09-05).
+5. Con la instancia en `running`: perfil original restituido en `server.env` por Run Command y verificado (rige desde el próximo arranque).
+6. Parada final por el controlador (`stop --wait`); siempre: restitución pendiente intentada antes de detener (si la instancia sigue `running`), instancia verificada `stopped`, `final-state.json` con el perfil y EC2 por separado, `summary.json`.
 
-Criterios para elegir el predeterminado (fijados antes de medir; `measure.py verdict`, contrato §6.1): el perfil debe cargar con `--fit off` sin error de memoria, dejar ≥ 1024 MiB de VRAM libre en el pico **medido en el host** (memoria `unavailable` ⇒ veredicto `incomplete`, nunca `pass`), completar `limits` (prompt admitido con 3072 de salida) y la carga `run` sin errores ni `finish_reason = length`; entre los que cumplan, se prefiere el que dé más contexto por solicitud con un slot; dos slots solo si la latencia mediana con concurrencia 2 no supera el doble de la de un slot. Si `reference-8k-1slot` no cumple, se aplica D-A09-05 (elevar al usuario). La paridad es evidencia preliminar (A09-2 hace la evaluación formal): se informa la diferencia con 43/50 sin ajustar nada.
+Criterios para elegir el predeterminado (fijados antes de medir; `measure.py verdict`, contrato §6.1): el perfil debe cargar con `--fit off` sin error de memoria, dejar ≥ 1024 MiB de VRAM libre en el pico **medido en el host** (memoria `unavailable` ⇒ veredicto `incomplete`, nunca `pass`), completar `limits` (prompt admitido con 3072 de salida) y **cada corrida esperada** (`c1`; `c2` con dos slots; `overload` en la referencia) sin errores ni `finish_reason = length` (corrida ausente ⇒ `incomplete`; fallida ⇒ `fail`); entre los que cumplan, se prefiere el que dé más contexto por solicitud con un slot; dos slots solo si la latencia mediana con concurrencia 2 no supera el doble de la de un slot. Si `reference-8k-1slot` no cumple, se aplica D-A09-05 (elevar al usuario). La paridad es evidencia preliminar (A09-2 hace la evaluación formal): se informa la diferencia con 43/50 sin ajustar nada.
 
 ## 5. Checks del repositorio
 
@@ -161,7 +174,7 @@ Criterios para elegir el predeterminado (fijados antes de medir; `measure.py ver
 | `uv run pytest -q -rs` con PostgreSQL 17 descartable (`cce_t_*`) y `CCE_REQUIRE_POSTGRES=1` (macOS) | **1662 aprobadas**, 16 omitidas (variantes SQLite de pruebas solo PostgreSQL, generación opcional de evidencia de A07, versión de SQLite no pedida), 10 deseleccionadas (`dist`), 0 fallos, 15 min |
 | `python scripts/check_doc_links.py` | `bad 0` |
 | `python3 deploy/inference/aws/build_template.py --check` | al día |
-| Suite del controlador, mypy estricto, ruff y shellcheck de `deploy/inference` | §2.1 (macOS 70 + 1 omitida; Linux 71) |
+| Suite del controlador, mypy estricto, ruff y shellcheck de `deploy/inference` | §2.1 (macOS 78 + 1 omitida; Linux 79) |
 
 No se ejecutaron `pytest -m dist` ni las validaciones Linux en Docker del motor (`linux_docker_validate.sh`, `sqlite_floor_validate.sh`): el paquete no cambió. GitHub Actions no se ejecutó.
 
@@ -173,5 +186,6 @@ No se ejecutaron `pytest -m dist` ni las validaciones Linux en Docker del motor 
 - El estado del controlador y el ejecutor de prueba comparten un SQLite local; B01 debe ofrecer la misma serialización entre la decisión de apagado y el despacho.
 - La paridad depende del ZIP externo y sus datos de evaluación (fuera de Git).
 - El paquete del host en el *user data* ocupa 15 204 bytes en base64 (límite de EC2: 16 384 bytes con el envoltorio); queda poco margen para agregar archivos al paquete.
+- El perfil original se restituye en `server.env` sin reiniciar el servidor (`--no-restart`): rige desde el próximo arranque; hasta la parada, el proceso en marcha conserva el último perfil medido. Si la limpieza no logra detener la instancia (salida 4), puede quedar encendida con ese perfil en memoria.
 - `gpu-validation.py` detiene el controlador durante la campaña de perfiles para que no apague por inactividad bajo las mediciones (que no pasan por la cola); en ese tramo la parada la garantiza el propio script. El autoapagado real a los 60 min no se mide en la L4: se prueba con reloj controlado (AC-A09-1-10).
 - Si la máquina del operador se apaga o pierde la red durante la corrida, la limpieza del script no puede ejecutarse; quedan como respaldo la guardia de inactividad de la instancia (120 min) y la comprobación independiente del final de la receta B.

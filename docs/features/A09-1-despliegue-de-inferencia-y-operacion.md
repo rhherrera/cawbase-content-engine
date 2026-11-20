@@ -1,6 +1,6 @@
 # A09-1 — Despliegue de inferencia y operación
 
-> **Estado: IMPLEMENTADA (infraestructura, controlador y ejecutor de prueba), con las correcciones de la revisión 1 (readiness y despacho, evidencia de memoria y secuencia de validación); validación en GPU real PENDIENTE; aceptación pendiente del usuario.**
+> **Estado: IMPLEMENTADA (infraestructura, controlador y ejecutor de prueba), con las correcciones de la revisión 1 (readiness y despacho, evidencia de memoria y secuencia de validación) y de la revisión 2 (restitución del perfil antes de la parada e integridad del veredicto); validación en GPU real PENDIENTE; aceptación pendiente del usuario.**
 >
 > - **Documentos.** Contrato: [inference-deployment.md](../inference-deployment.md); decisiones: [A09-decisions](../decisions/A09-decisions.md); evidencia: [informe de A09-1](../a09-1-implementation-report.md); plan: [A09](../a09-plan.md).
 > - **Ambientes.** Simulación probada en macOS y en Linux local (Docker). Artefactos reales del runtime verificados en Linux x64 local. **Sin** prueba en GPU real: la cuota de instancias G de la cuenta es 0 vCPU (Q-A09-01). **No** ejecutada en GitHub Actions.
@@ -45,8 +45,8 @@ Niveles de evidencia: **S** = simulación (pruebas automáticas con servidor y b
 | AC-A09-1-20 | Permisos y costos residuales documentados | D, A (API de precios) |
 | AC-A09-1-21 | Tras cualquier prueba con GPU, la instancia queda detenida: la secuencia de validación la detiene y la verifica también ante fallo o interrupción, y un fallo de la limpieza es visible | S (secuencia simulada), G (no aplica sin prueba) |
 | AC-A09-1-22 | El paquete del motor no cambia y sus checks siguen en verde | S |
-| AC-A09-1-23 | La VRAM/RAM se muestrea en el host medido durante la misma carga; se registran el host y la cantidad de muestras; sin muestras (o ventana no cubierta, u otro host) el resultado es «medición no disponible» y el criterio de memoria no aprueba el perfil | S, G |
-| AC-A09-1-24 | Secuencia de validación reproducible: parte de `stopped`, un trabajo durable dispara el arranque y se verifican readiness y resultado; los perfiles se prueban con la instancia disponible; la parada final está protegida ante fallos e interrupciones y se verifica `stopped` | S (herramientas simuladas), G |
+| AC-A09-1-23 | La VRAM/RAM se muestrea en el host medido durante la misma carga; se registran el host y la cantidad de muestras; sin muestras (o ventana no cubierta, u otro host) el resultado es «medición no disponible» y el criterio de memoria no aprueba el perfil. El veredicto de cada perfil exige evidencia de todas sus corridas esperadas (concurrencia 1; concurrencia 2 con dos slots; sobrecarga en el perfil de referencia): una corrida ausente da `incomplete` y una ejecutada y fallida queda registrada y da `fail` | S, G |
+| AC-A09-1-24 | Secuencia de validación reproducible: parte de `stopped`, un trabajo durable dispara el arranque y se verifican readiness y resultado; los perfiles se prueban con la instancia disponible; el perfil original se restituye y verifica con la instancia en `running`, antes de la parada; la parada final está protegida ante fallos e interrupciones (también si falla la restitución) y se verifica `stopped`; perfil restituido y EC2 detenida se registran por separado y una restitución fallida impide declarar validada la corrida | S (herramientas simuladas), G |
 
 ## 3. Reglas
 
