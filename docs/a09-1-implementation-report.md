@@ -1,6 +1,6 @@
 # Informe de implementación de A09-1
 
-> **Estado: A09-1 implementada; validación en GPU real PENDIENTE (bloqueada por la cuota de instancias G = 0 vCPU); aceptación pendiente del usuario.** Este informe separa tres niveles de evidencia: **simulación** (§2.1), **artefactos y servicios reales fuera de la GPU** (§2.2) y **GPU real** (§2.3, ninguna). Las correcciones de la revisión 1 (sobre `889e2fe`) están en §2.4 y las de la revisión 2 (sobre `de3e8e2`), en §2.5. La receta exacta de la validación pendiente está en §4. Contrato: [inference-deployment.md](inference-deployment.md); matriz: [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md); decisiones: [A09-decisions](decisions/A09-decisions.md).
+> **Estado: A09-1 implementada; objetivo AWS cambiado por el usuario a `g6e.xlarge` (NVIDIA L40S) + Qwen3.6-27B Q8_0 con todos los pesos en GPU (D-A09-08), PENDIENTE de validación real (cuota G/VT = 0 vCPU con la solicitud de aumento abierta; el despliegue y la corrida requieren autorización de gasto aparte); on-premise sigue con Q4_K_M; aceptación pendiente del usuario.** Los datos de L4/Q4_K_M de este informe son **históricos**; el cambio de objetivo está en §2.6. Este informe separa tres niveles de evidencia: **simulación** (§2.1), **artefactos y servicios reales fuera de la GPU** (§2.2) y **GPU real** (§2.3, ninguna). Las correcciones de la revisión 1 (sobre `889e2fe`) están en §2.4 y las de la revisión 2 (sobre `de3e8e2`), en §2.5. La receta exacta de la validación pendiente está en §4. Contrato: [inference-deployment.md](inference-deployment.md); matriz: [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md); decisiones: [A09-decisions](decisions/A09-decisions.md).
 
 ## 1. Qué se entregó
 
@@ -21,12 +21,12 @@ El paquete del motor no cambia (sin cambios en `src/`, versión, esquema, permis
 
 ### 2.1 Simulación (pruebas automáticas)
 
-Suite del controlador (`deploy/inference/controller/tests`, 79 pruebas): reglas puras con reloj controlado (`test_decide.py`, 20), controlador + store + backend falso con concurrencia (`test_controller.py`, 11), compuerta de readiness y despacho de la revisión 1 (`test_readiness_gating.py`, 7), extremo a extremo por HTTP real contra un `llama-server` falso que emula `/health` 503→200, `/v1/models`, `/props`, `/apply-template`, `/tokenize`, `response_format`, slots en cola, error `exceed_context_size_error` y `/metrics` (`test_e2e.py`, 7), evidencia de memoria y veredicto (`test_measure.py`, 17), secuencia de validación en GPU con herramientas simuladas (`test_gpu_validation.py`, 12) y scripts y CLI con un host simulado que arranca `run-server.sh` real con el binario falso (`test_scripts.py`, 5). El modelo es simulado; transporte, readiness, slots, admisión de contexto, timeouts y mapeo de errores son código real. Ninguna prueba usa AWS: la secuencia de validación corre con un `aws` falso (`tests/fake_aws.py`) que ejecuta los comandos SSM en local, los rechaza si el host simulado no está `running` (como el servicio real) y opera el host simulado; `tests/fake_measure.py` envuelve `measure.py` para inyectar una medición fallida o colgada.
+Suite del controlador (`deploy/inference/controller/tests`, 99 pruebas): reglas puras con reloj controlado (`test_decide.py`, 20), controlador + store + backend falso con concurrencia (`test_controller.py`, 11), compuerta de readiness y despacho de la revisión 1 (`test_readiness_gating.py`, 7), extremo a extremo por HTTP real contra un `llama-server` falso que emula `/health` 503→200, `/v1/models`, `/props`, `/apply-template`, `/tokenize`, `response_format`, slots en cola, error `exceed_context_size_error` y `/metrics` (`test_e2e.py`, 7), evidencia de memoria y veredicto (`test_measure.py`, 17), secuencia de validación en GPU con herramientas simuladas (`test_gpu_validation.py`, 12) scripts y CLI con un host simulado que arranca `run-server.sh` real con el binario falso, para el destino AWS (Q8_0) y para una instalación on-premise Q4_K_M anterior a la selección (`test_scripts.py`, 6) y selección del modelo (`test_model_selection.py`, 17). El modelo es simulado; transporte, readiness, slots, admisión de contexto, timeouts y mapeo de errores son código real. Ninguna prueba usa AWS: la secuencia de validación corre con un `aws` falso (`tests/fake_aws.py`) que ejecuta los comandos SSM en local, los rechaza si el host simulado no está `running` (como el servicio real) y opera el host simulado; `tests/fake_measure.py` envuelve `measure.py` para inyectar una medición fallida o colgada.
 
 | Ambiente | Comando | Resultado |
 |---|---|---|
-| macOS (Apple M1, Python 3.13, uv) | `cd deploy/inference/controller && uv run pytest -q -rs` | **78 aprobadas**, 1 omitida (guardia de inactividad: necesita `/proc/uptime`, no cuenta como aprobada) |
-| Linux local (Docker `python:3.13-bookworm`, aarch64, Python 3.13.18) | `PYTHONPATH=src python3 -m pytest -q -rs -p no:cacheprovider tests` (copia de `deploy/inference` en el contenedor) | **79 aprobadas**, sin omisiones |
+| macOS (Apple M1, Python 3.13, uv) | `cd deploy/inference/controller && uv run pytest -q -rs` | **98 aprobadas**, 1 omitida (guardia de inactividad: necesita `/proc/uptime`, no cuenta como aprobada) |
+| Linux local (Docker `python:3.13-bookworm`, aarch64, Python 3.13.18) | `PYTHONPATH=src python3 -m pytest -q -rs -p no:cacheprovider tests` (copia de `deploy/inference` en el contenedor) | **99 aprobadas**, sin omisiones |
 | macOS | `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy` (estricto) en el controlador | sin hallazgos |
 | macOS | `shellcheck -S warning` de todos los scripts de `deploy/inference` | sin hallazgos |
 
@@ -40,7 +40,7 @@ Suite del controlador (`deploy/inference/controller/tests`, 79 pruebas): reglas 
 
 ### 2.3 GPU real
 
-**Ninguna.** No se levantó ninguna instancia ni se ejecutó el modelo de referencia: la cuota de instancias G es 0 vCPU (Q-A09-01) y no hay autorización de gasto (Q-A09-02). El Mac de desarrollo (M1, 16 GiB) no puede alojar los 19,4 GB del GGUF. La «prueba real de inferencia estructurada» de A09-1 queda **pendiente** (§4).
+**Ninguna.** No se levantó ninguna instancia ni se ejecutó ningún modelo: la cuota de instancias G/VT es 0 vCPU (Q-A09-01, solicitud abierta) y no hay autorización de gasto (Q-A09-02). El Mac de desarrollo (M1, 16 GiB) no puede alojar los GGUF (19,4 GB Q4_K_M; 28,6 GB Q8_0). La «prueba real de inferencia estructurada» de A09-1 queda **pendiente** (§4).
 
 ### 2.4 Correcciones de la revisión 1 (sobre `889e2fe`)
 
@@ -74,11 +74,30 @@ Cada defecto se reprodujo sobre `de3e8e2` antes de corregirlo; las regresiones n
 
 **Verificado localmente** (S, macOS y Linux local): todo lo anterior, con `aws` y mediciones simulados. **Requiere la L4** (G): la restitución por Run Command real con la instancia encendida y su verificación, y los veredictos con mediciones reales; no se ejecutó ninguno.
 
+### 2.6 Cambio de objetivo AWS: `g6e.xlarge` + Q8_0 (decisión del usuario, D-A09-08)
+
+Rama `fix/a09-1-g6e-q8-inference`, creada desde `origin/main` en `5a1943e` (merge del PR #8, verificado como ancestro de `origin/main` tras `git fetch`).
+
+**Artefacto (A).** `ggml-org/Qwen3.6-27B-GGUF`, revisión `fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f` (la misma de Q4_K_M; `main` apunta a ella), `Qwen3.6-27B-Q8_0.gguf`, **28 595 762 752 bytes**, SHA-256 **`7cdc25ae00036f204a5748a63456f81ea11eec1225c2336064db157adc6f1c7c`**, URL inmutable `…/resolve/fec6ff7c…/Qwen3.6-27B-Q8_0.gguf`. Verificado el 2026-11-20 en tres fuentes coincidentes: el árbol de la revisión (`/api/models/…/tree/<rev>`: tamaño y `lfs.oid`), la API de blobs (`lfs.sha256`) y el HEAD de la URL inmutable (`x-repo-commit` = la revisión, `x-linked-size`, `x-linked-etag`). La licencia declarada en la ficha de esa revisión es `apache-2.0`. No se descargó el archivo: la descarga completa y su SHA-256 se verifican en el primer arranque (G).
+
+**Qué cambió.**
+- `manifest.json` v2: `models` (Q8_0 y Q4_K_M), `targets` (`aws` = Q8_0, `onprem` = Q4_K_M), `aws` con `g6e.xlarge` y el objetivo L4 como `historical`; el 43/50 queda rotulado como resultado **solo de Q4_K_M**.
+- `install-model.sh --model ID` lee el manifiesto (sin valores fijos en el script), comprueba el espacio libre, elimina un archivo final que no verifica y conserva la instalación atómica y la verificación de tamaño y SHA-256; `--check` y `run-server.sh --check` (`ExecStartPre`) validan id, ruta, alias, tamaño y registro antes de arrancar.
+- `bootstrap.sh` exige `--model`; la plantilla le pasa `qwen3.6-27b-q8_0` (de `targets.aws`) y escribe `CCE_MODEL_ID`, la ruta y el alias del manifiesto en `server.env`.
+- Plantilla: `InstanceType` por defecto `g6e.xlarge`; volumen de pesos con mínimo **30 GiB** generado del tamaño exacto (antes 25 GiB, por debajo de los 26,63 GiB del GGUF); `mkfs.ext4 -m 0`.
+- *User data*: con el manifiesto completo y las cabeceras de los scripts la plantilla superaba el límite (19 293 bytes); ahora el paquete lleva un manifiesto reducido al destino AWS y los scripts sin cabecera de documentación, y `build_template.py` calcula el peor caso con los valores más largos de los parámetros: **13 849 de 16 384 bytes**; plantilla de 21,5 KB (límite en línea de CloudFormation: 51 200 bytes).
+- Alias real: `controller.aws.example.toml` usa `qwen3.6-27b-q8_0`; `measure.py --model` lo envía y exige en `/v1/models`, y el veredicto agrega el criterio `model`; `gpu-validation.py` rechaza otro alias del controlador y falla si el host sirve otro artefacto; `parity.sh` ya no tiene `qwen3.6-27b-q4km` fijo: exige `--model`, lo comprueba, registra el artefacto exacto y los hashes de las herramientas, y reporta el 43/50 de Q4_K_M aparte.
+- On-premise: `onprem/install.sh` usa `targets.onprem` (Q4_K_M) por defecto y escribe `CCE_MODEL_ID`; un `server.env` anterior sin `CCE_MODEL_ID` resuelve a Q4_K_M y el registro de verificación anterior sigue siendo válido. Requisito nuevo: `python3` en el host.
+
+**Regresiones** (`test_model_selection.py`, 17; además `test_scripts.py` y `test_gpu_validation.py` corren ahora con un manifiesto de prueba que conserva ids, archivos y alias reales y reemplaza tamaño, hash y URL por un archivo diminuto): manifiesto y plantilla seleccionan Q8_0 y `g6e.xlarge`; el volumen alcanza el artefacto; el paquete lleva la entrada Q8_0 idéntica y scripts válidos; el bootstrap exige `--model`; la unidad verifica antes de arrancar; el controlador y las herramientas usan el alias servido; discrepancias que fallan de forma explícita (archivo Q4_K_M con id Q8_0, alias distinto, id desconocido, sin registro, tamaño alterado; archivo que no es el fijado, sin espacio, alias no servido); instalación on-premise Q4_K_M anterior a la selección; instalador on-premise sin AWS. En la secuencia simulada: alias del controlador distinto ⇒ rechazo sin efectos; host que sirve otro artefacto ⇒ salida 1 e instancia detenida; ciclo completo con Q8_0 verificado en el host, en cada carga y en los veredictos. Todas fallan sobre `5a1943e` (9 fallos y 26 errores) y pasan con el cambio.
+
+**Verificado localmente** (S y A): todo lo anterior, sin AWS ni GPU. **Requiere la L40S** (G): la descarga real de 28,6 GB y su SHA-256, la carga con `-ngl all --fit off` en la L40S, VRAM/RAM medidas en el host, tiempos de arranque y carga, la campaña de perfiles desde `reference-8k-1slot`, la calidad de Q8_0 con la metodología de la referencia y la parada verificada. Nada de esto se ejecutó.
+
 ## 3. Trazabilidad AC-A09-1
 
 | AC | Prueba / evidencia | Nivel | Resultado |
 |---|---|---|---|
-| 01 | metadatos HF; `test_install_model_verifies_hash_size_and_is_atomic` | A, S | cumplido en S/A; descarga real de 19,4 GB **pendiente** (G) |
+| 01 | metadatos HF (Q4_K_M; Q8_0 en §2.6); `test_install_model_verifies_hash_size_and_is_atomic`; `test_model_selection.py` | A, S | cumplido en S/A; descarga real de 28,6 GB (Q8_0) **pendiente** (G) |
 | 02 | descarga y hashes de los tarballs; instalación y `--version` en Linux x64; chequeo de `libgomp` | A | cumplido; **driver pendiente** (G) |
 | 03 | `test_run_server_command_line_is_the_reference_profile`; `test_full_cycle_over_http` (forma de la solicitud) | S | cumplido |
 | 04 | re-evaluación 43/43/43 con el evaluador sin cambios; ZIP fuera de Git | A | cumplido |
@@ -92,27 +111,29 @@ Cada defecto se reprodujo sobre `de3e8e2` antes de corregirlo; las regresiones n
 | 12 | `test_controller_crash_and_restart_resume_the_cycle`, `test_restart_in_the_middle_of_a_stop` | S | cumplido |
 | 13 | `test_manual_stop_drains_active_work_and_keeps_pending`, `test_status_reports_instance_readiness_pause_and_idle_timer`, `test_cli_start_stop_status_cycle_with_a_simulated_host`, `test_resume_during_drain_with_active_work_revalidates_before_dispatch` | S | cumplido |
 | 14 | `test_input_over_the_admitted_context_is_rejected_explicitly`, `test_work_beyond_capacity_waits_durably_in_the_queue`, `test_two_slots_admit_two_in_flight` | S | cumplido en S; límites reales **pendientes** (G) |
-| 15 | `validate-template`; `test_cloudformation_template_is_generated_from_the_sources` | A | plantilla válida; **stack real pendiente** (G) |
-| 16 | `onprem/install.sh` revisado con shellcheck; mismo runtime/modelo/unidad | D | **pendiente** en hardware |
+| 15 | `validate-template` (también la plantilla regenerada para `g6e.xlarge` + Q8_0, 2026-11-20: válida, `CAPABILITY_IAM`, `InstanceType` = `g6e.xlarge`, `WeightsVolumeGiB` = 40); `test_cloudformation_template_is_generated_from_the_sources`; `test_template_selects_g6e_and_q8_0_with_a_volume_that_fits_it` | A, S | plantilla válida; **stack real pendiente** (G) |
+| 16 | `onprem/install.sh` revisado con shellcheck; mismo runtime/unidad; Q4_K_M por defecto: `test_existing_on_premise_q4_k_m_installation_keeps_working`, `test_on_premise_installer_defaults_to_q4_k_m_without_aws`, ciclo CLI `onprem-legacy-q4km` | D, S | cumplido en S; **pendiente** en hardware |
 | 17 | `test_idle_guard_dry_run` | S (Linux) | cumplido en Linux; omitida en macOS |
-| 18 | herramientas probadas contra el servidor falso; memoria en el host: `test_measure.py` | S | herramientas listas; mediciones **pendientes** (G) |
-| 19 | — | — | **pendiente** (G) |
+| 18 | herramientas probadas contra el servidor falso; memoria en el host: `test_measure.py`; alias servido: `test_measurements_require_the_served_alias` | S | herramientas listas; mediciones en la L40S con Q8_0 **pendientes** (G) |
+| 19 | — | — | **pendiente** (G), con Q8_0 |
 | 20 | contrato §4.1–§4.2; API de precios | D, A | cumplido |
 | 21 | parada protegida probada en simulación (`test_gpu_validation.py`); no se levantó GPU; `describe-instances` vacío | S | cumplido en S; **no aplica todavía** en G |
 | 22 | §5 | S | ver §5 |
 | 23 | `test_measure.py` (17): host y muestras registrados; `unavailable` sin cifras; veredicto `incomplete`; revisión 2: corridas esperadas por perfil (ausente ⇒ `incomplete`, fallida ⇒ `fail` registrado) | S | cumplido en S; muestreo en la L4 **pendiente** (G) |
 | 24 | `test_gpu_validation.py` (12) con `aws` simulado que rechaza Run Command en una instancia detenida; revisión 2: restitución verificada antes de la parada, fallo de restitución (EC2 detenida, perfil `not_restored`, no validada), interrupción durante la campaña | S | cumplido en S; corrida real **pendiente** (G) |
+| 25 | `test_model_selection.py` (17), `test_scripts.py` (ciclos `aws-q8_0` y `onprem-legacy-q4km`), `test_gpu_validation.py` (alias del controlador y artefacto del host); metadatos HF de Q8_0 (§2.6) | S, A | cumplido en S/A; descarga y carga reales **pendientes** (G) |
+| 26 | `parity.sh` con `--model`, artefacto registrado y 43/50 aparte (revisión y prueba estática) | D | **pendiente** (G) |
 
 ## 4. Validación pendiente en GPU real
 
-Requiere decisiones del usuario: aumento de cuota (Q-A09-01), autorización de gasto (Q-A09-02) y red (Q-A09-03). Costo estimado: preparación (primer arranque con descarga de 19,4 GB) ≈ 0,5 h y validación 1,5–2,5 h de `g6.xlarge` (≈ 2,4 USD en total), más EBS mientras exista el stack (≈ 14,6 USD/mes). Usar siempre `--profile rodrigo`, nunca `fede`. Todas las salidas van a un directorio **fuera del repositorio** (`$EV`). Herramientas del operador: AWS CLI v2, `session-manager-plugin`, `uv` y Python ≥ 3.13.
+Objetivo: `g6e.xlarge` (L40S) + Q8_0, todos los pesos en GPU (D-A09-08). Requiere: la aprobación de la cuota G/VT (Q-A09-01; la solicitud ya está abierta), la autorización de gasto (Q-A09-02) y la red (Q-A09-03). Costo estimado: preparación (primer arranque con descarga de 28,6 GB) ≈ 0,5 h y validación 1,5–2,5 h de `g6e.xlarge` a 1,861 USD/h (≈ 3,7–5,6 USD en total), más EBS mientras exista el stack (≈ 14,6 USD/mes con 80 + 40 GiB). Usar siempre `--profile rodrigo`, nunca `fede`. Todas las salidas van a un directorio **fuera del repositorio** (`$EV`). Herramientas del operador: AWS CLI v2, `session-manager-plugin`, `uv` y Python ≥ 3.13.
 
 **A. Preparación (una sola vez; no es la validación).** Termina con la instancia **detenida**.
 
 ```bash
 export AWS_PROFILE=rodrigo AWS_REGION=us-east-1 EV=$HOME/cce-a09-1-evidence; mkdir -p "$EV"
-# A0. cuota (decisión del usuario; puede tardar)
-aws service-quotas request-service-quota-increase --service-code ec2 --quota-code L-DB2E81BA --desired-value 8
+# A0. cuota G/VT: la solicitud ya está abierta; comprobar que la cuota aplicada sea >= 4 vCPU antes de seguir
+aws service-quotas get-service-quota --service-code ec2 --quota-code L-DB2E81BA --query Quota.Value
 # A1. API key en SSM (SecureString) y copia local 0600 para el controlador
 umask 077; openssl rand -hex 32 > "$EV/api-key"
 aws ssm put-parameter --name /cce/inference/api-key --type SecureString --value "file://$EV/api-key"
@@ -121,13 +142,15 @@ AMI=$(aws ssm get-parameter --name /aws/service/deeplearning/ami/x86_64/base-oss
 echo "$AMI" > "$EV/ami-id"
 # A3. stack (VpcId, SubnetId, AZ y ClientCidr/ClientSecurityGroupId según Q-A09-03)
 python3 deploy/inference/aws/build_template.py --check
+python3 deploy/inference/aws/build_template.py --report   # g6e.xlarge, qwen3.6-27b-q8_0, pesos >= 30 GiB, user data < 16384
 aws cloudformation deploy --stack-name cce-inference-a09 --template-file deploy/inference/aws/cloudformation.yaml \
   --capabilities CAPABILITY_IAM --parameter-overrides VpcId=vpc-… SubnetId=subnet-… AvailabilityZone=us-east-1a \
   AssignPublicIp=true ClientCidr=10.0.0.0/16 ImageId="$AMI" ServerProfile=reference-8k-1slot
 aws cloudformation describe-stacks --stack-name cce-inference-a09 --query 'Stacks[0].Outputs' > "$EV/stack-outputs.json"
 IID=$(aws cloudformation describe-stacks --stack-name cce-inference-a09 \
   --query "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue" --output text)
-# A4. primer arranque: bootstrap (descarga y SHA-256 de 19,4 GB); esperar «bootstrap done» y el servidor activo
+# A4. primer arranque: bootstrap (descarga y SHA-256 de 28,6 GB de Q8_0); esperar «units installed; server started»,
+#     «model selected: qwen3.6-27b-q8_0» en el log y el servidor activo (la unidad verifica el artefacto antes de arrancar)
 aws ssm start-session --target "$IID"   # en el host: tail -f /var/lib/cce-inference/bootstrap.log; systemctl is-active cce-inference
 # A5. dejar la instancia DETENIDA: la validación parte de stopped
 aws ec2 stop-instances --instance-ids "$IID"; aws ec2 wait instance-stopped --instance-ids "$IID"
@@ -155,10 +178,10 @@ aws ec2 describe-instances --instance-ids "$IID" --query 'Reservations[0].Instan
 
 Qué hace `gpu-validation.py` (contrato §6.2) y qué deja en `$RUN`:
 
-1. Verificación previa sin efectos (`preflight.json`): instancia `stopped`, estado del controlador nuevo, evidencia fuera del repositorio, perfiles definidos (con sus slots) e intérprete del controlador (también para los procesos hijos).
+1. Verificación previa sin efectos (`preflight.json`, con el artefacto objetivo): instancia `stopped`, estado del controlador nuevo, evidencia fuera del repositorio, perfiles definidos (con sus slots), `model_alias` del controlador = alias de Q8_0 e intérprete del controlador (también para los procesos hijos).
 2. Ciclo disparado por trabajo: túnel SSM (`tunnel.log`), `serve` (`controller.log`) y un worker (`worker.log`); encola un trabajo sintético (`job.json`) y exige el arranque por demanda, `running`, la readiness verificada por el canario real y el trabajo `succeeded` con salida estructurada (`job-cycle.json` con la línea de tiempo envío → pedido de arranque → `running` observado → `ready` → fin; `events.json`, `job-result.json`). Es la **prueba real de inferencia estructurada** (AC-A09-1-19) y la primera medición del **arranque en frío** desde EBS.
-3. Hechos del host y línea de tiempo del arranque (`host-facts.json` con GPU, driver, CUDA, AMI, runtime y modelo; `boot-timings.json` con arranque del kernel, inicio de la unidad, «loading model», «model loaded» y «listening»). Junto con `job-cycle.json` separan arranque EC2, arranque del SO, carga de pesos y tiempo hasta readiness.
-4. Campaña con la instancia disponible, en el orden de `--profiles` (por defecto `reference-8k-1slot`, `candidate-16k-1slot`, `candidate-16k-2slot`): `load-P.json` (cambio de perfil y reinicio; memoria en el host), `limits-P.json`, `run-P-c1.json`, `run-P-c2.json` con dos slots, `run-P-overload.json` en el primero (3 a la vez sobre 1 slot: cola), `parity-P/` en el primero, y `verdict-P.json` sobre todos ellos (una medición fallida queda como `status: failed`, nunca se omite). Se detiene en el primer perfil que no pasa y lo registra como escalamiento (D-A09-05).
+3. Hechos del host y línea de tiempo del arranque (`host-facts.json` con GPU, driver, CUDA, AMI, runtime, `CCE_MODEL_ID` y el registro de verificación del archivo servido, que debe coincidir con Q8_0 del manifiesto; `model-record.json`; `boot-timings.json` con arranque del kernel, inicio de la unidad, «loading model», «model loaded» y «listening»). Junto con `job-cycle.json` separan arranque EC2, arranque del SO, carga de pesos y tiempo hasta readiness.
+4. Campaña con la instancia disponible, en el orden de `--profiles` (por defecto `reference-8k-1slot`, `candidate-16k-1slot`, `candidate-16k-2slot`): `load-P.json` (cambio de perfil y reinicio; memoria en el host), `limits-P.json`, `run-P-c1.json`, `run-P-c2.json` con dos slots, `run-P-overload.json` en el primero (3 a la vez sobre 1 slot: cola), `parity-P/` en el primero (calidad de Q8_0 con la metodología del ZIP y el artefacto registrado, aparte del 43/50 de Q4_K_M), y `verdict-P.json` sobre todos ellos (una medición fallida queda como `status: failed`, nunca se omite). Se detiene en el primer perfil que no pasa y lo registra como escalamiento (D-A09-05).
 5. Con la instancia en `running`: perfil original restituido en `server.env` por Run Command y verificado (rige desde el próximo arranque).
 6. Parada final por el controlador (`stop --wait`); siempre: restitución pendiente intentada antes de detener (si la instancia sigue `running`), instancia verificada `stopped`, `final-state.json` con el perfil y EC2 por separado, `summary.json`.
 
@@ -174,14 +197,17 @@ Criterios para elegir el predeterminado (fijados antes de medir; `measure.py ver
 | `uv run pytest -q -rs` con PostgreSQL 17 descartable (`cce_t_*`) y `CCE_REQUIRE_POSTGRES=1` (macOS) | **1662 aprobadas**, 16 omitidas (variantes SQLite de pruebas solo PostgreSQL, generación opcional de evidencia de A07, versión de SQLite no pedida), 10 deseleccionadas (`dist`), 0 fallos, 15 min |
 | `python scripts/check_doc_links.py` | `bad 0` |
 | `python3 deploy/inference/aws/build_template.py --check` | al día |
-| Suite del controlador, mypy estricto, ruff y shellcheck de `deploy/inference` | §2.1 (macOS 78 + 1 omitida; Linux 79) |
+| Suite del controlador, mypy estricto, ruff y shellcheck de `deploy/inference` | §2.1 (macOS 98 + 1 omitida; Linux 99) |
 
 No se ejecutaron `pytest -m dist` ni las validaciones Linux en Docker del motor (`linux_docker_validate.sh`, `sqlite_floor_validate.sh`): el paquete no cambió. GitHub Actions no se ejecutó.
 
 ## 6. Limitaciones
 
 - Sin evidencia en GPU: tiempos de arranque, carga de pesos, VRAM/RAM, latencia, throughput, paridad y driver están pendientes; el predeterminado `reference-8k-1slot` es provisional (P-A09-04).
-- Riesgos a medir en la L4: margen de VRAM (19,4 GB de pesos frente a 22 888 MiB) y 16 GiB de RAM del host frente a 18 GiB de archivo con `mmap` más la caché de prompts de `llama-server`.
+- Riesgos a medir en la L40S: margen de VRAM (28,6 GB de pesos Q8_0 más la caché KV frente a 48 GB) y 32 GiB de RAM del host frente a 26,6 GiB de archivo con `mmap` más la caché de prompts de `llama-server`. Los riesgos previstos para la L4 con Q4_K_M quedan como históricos.
+- La calidad de Q8_0 no está medida: el 43/50 es de Q4_K_M (corrida externa) y no se traslada.
+- Los scripts empaquetados en el *user data* no llevan su cabecera de documentación (límite de 16 KiB); la documentación está en el repositorio. El manifiesto del host contiene solo el modelo del destino AWS.
+- On-premise necesita ahora `python3` en el host (la verificación previa al arranque lee el manifiesto).
 - `bootstrap.sh`, la plantilla y `onprem/install.sh` se validaron estáticamente (shellcheck, `validate-template`, ejecución parcial en contenedores); no se ejecutaron completos en un host real.
 - El estado del controlador y el ejecutor de prueba comparten un SQLite local; B01 debe ofrecer la misma serialización entre la decisión de apagado y el despacho.
 - La paridad depende del ZIP externo y sus datos de evaluación (fuera de Git).
