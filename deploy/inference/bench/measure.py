@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import shlex
 import statistics
 import subprocess
 import sys
@@ -207,9 +208,9 @@ def cmd_load(a: argparse.Namespace, http: Http) -> dict[str, Any]:
     s = Sampler()
     s.start()
     t0 = time.monotonic()
-    subprocess.run(["systemctl", "restart", a.unit], check=True)
+    subprocess.run(shlex.split(a.restart_cmd), check=True)
     marks = wait_ready(http, t0, a.timeout)
-    res = {"kind": "load", "unit": a.unit, **marks, **s.result(), **props(http)}
+    res = {"kind": "load", "restart_cmd": a.restart_cmd, **marks, **s.result(), **props(http)}
     res["weights_load_s"] = round(marks["health_ok_s"] - marks["http_up_s"], 3) if "health_ok_s" in marks else None
     return res
 
@@ -314,7 +315,11 @@ def main() -> int:
         if name in ("load", "ec2-cycle"):
             p.add_argument("--timeout", type=float, default=1800)
         if name == "load":
-            p.add_argument("--unit", default="cce-inference.service")
+            p.add_argument(
+                "--restart-cmd",
+                default="systemctl restart cce-inference.service",
+                help="command that restarts the server (e.g. an `aws ssm send-command` from the operator machine)",
+            )
         if name in ("run", "limits"):
             p.add_argument("--max-tokens", type=int, default=3072)
         if name == "run":
