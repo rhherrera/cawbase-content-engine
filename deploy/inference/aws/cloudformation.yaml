@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CAWbase content engine A09-1 inference host: one g6.xlarge (NVIDIA L4) with llama.cpp b12329 and
+  Qwen3.6-27B Q4_K_M on a persistent EBS weights volume, private endpoint, server started at every boot,
+  stopped (not terminated) when idle. GENERATED (do not edit) by build_template.py from cloudformation.template.yaml.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet of the GPU host. It needs outbound HTTPS at first boot (GitHub, Hugging Face, SSM).
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Must be the Availability Zone of SubnetId (the weights volume is zonal).
+  AssignPublicIp:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: >-
+      true only for a public subnet without NAT, to allow outbound downloads. The endpoint stays private either
+      way: the security group admits port 8080 only from ClientSecurityGroupId / ClientCidr.
+  ClientSecurityGroupId:
+    Type: String
+    Default: ""
+    Description: Security group of the controller and workers allowed to reach the endpoint (preferred).
+  ClientCidr:
+    Type: String
+    Default: ""
+    Description: Alternative private CIDR allowed to reach the endpoint (e.g. 10.0.0.0/16). Leave empty if unused.
+  ImageId:
+    Type: AWS::EC2::Image::Id
+    Description: >-
+      Pinned AMI id. Resolve it once with: aws ssm get-parameter --name
+      /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id
+  InstanceType:
+    Type: String
+    Default: g6.xlarge
+  ServerProfile:
+    Type: String
+    Default: reference-8k-1slot
+    AllowedValues: [reference-8k-1slot, candidate-16k-1slot, candidate-16k-2slot, candidate-32k-2slot]
+  ApiKeyParameterName:
+    Type: String
+    Default: /cce/inference/api-key
+    Description: Existing SSM SecureString (aws/ssm key) with the endpoint API key. Created by the operator.
+  RootVolumeGiB:
+    Type: Number
+    Default: 80
+    MinValue: 75
+  WeightsVolumeGiB:
+    Type: Number
+    Default: 40
+    MinValue: 25
+  WeightsVolumeThroughput:
+    Type: Number
+    Default: 250
+    MinValue: 125
+    MaxValue: 1000
+    Description: gp3 MiB/s of the weights volume (cold weight load time vs. monthly cost).
+  GuardIdleMinutes:
+    Type: Number
+    Default: 120
+    MinValue: 90
+    Description: Instance-side backstop; must exceed the controller's 60-minute idle rule plus the readiness limit.
+
+Conditions:
+  HasClientSg: !Not [!Equals [!Ref ClientSecurityGroupId, ""]]
+  HasClientCidr: !Not [!Equals [!Ref ClientCidr, ""]]
+
+Resources:
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: CCE inference endpoint (private; no SSH, access by SSM Session Manager)
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS to GitHub, Hugging Face and AWS APIs
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Ubuntu package mirrors (libgomp1 at first boot if absent)
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+          Description: DNS
+      Tags:
+        - {Key: Name, Value: !Sub "${AWS::StackName}-endpoint"}
+
+  IngressFromClientSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: HasClientSg
+    Properties:
+      GroupId: !Ref EndpointSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      SourceSecurityGroupId: !Ref ClientSecurityGroupId
+
+  IngressFromClientCidr:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: HasClientCidr
+    Properties:
+      GroupId: !Ref EndpointSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      CidrIp: !Ref ClientCidr
+
+  HostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ec2.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: read-endpoint-api-key
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ApiKeyParameterName}"
+
+  HostProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref HostRole]
+
+  WeightsVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      Size: !Ref WeightsVolumeGiB
+      VolumeType: gp3
+      Iops: 3000
+      Throughput: !Ref WeightsVolumeThroughput
+      Encrypted: true
+      Tags:
+        - {Key: Name, Value: !Sub "${AWS::StackName}-weights"}
+
+  Host:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref HostProfile
+      InstanceInitiatedShutdownBehavior: stop
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          SubnetId: !Ref SubnetId
+          AssociatePublicIpAddress: !Ref AssignPublicIp
+          GroupSet: [!Ref EndpointSecurityGroup]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref RootVolumeGiB
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - {Key: Name, Value: !Sub "${AWS::StackName}-gpu"}
+        - {Key: cce:role, Value: inference}
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            set -euo pipefail
+            mkdir -p /opt/cce-inference/src
+            echo '${Bundle}' | base64 -d | tar -xz -C /opt/cce-inference/src
+            /opt/cce-inference/src/aws/bootstrap.sh --volume-id ${WeightsVolume} --region ${AWS::Region} \
+              --api-key-param ${ApiKeyParameterName} --profile ${ServerProfile} --guard-idle-min ${GuardIdleMinutes}
+          - Bundle: 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
+
+  WeightsAttachment:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      InstanceId: !Ref Host
+      VolumeId: !Ref WeightsVolume
+      Device: /dev/sdf
+
+  ControllerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Least privilege for the inference controller (outside the GPU host) to operate this instance.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: StartStopThisInstance
+            Effect: Allow
+            Action: [ec2:StartInstances, ec2:StopInstances]
+            Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Host}"
+          - Sid: DescribeIsNotResourceScoped
+            Effect: Allow
+            Action: ec2:DescribeInstances
+            Resource: "*"
+          - Sid: ReadEndpointApiKey
+            Effect: Allow
+            Action: ssm:GetParameter
+            Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ApiKeyParameterName}"
+
+Outputs:
+  InstanceId:
+    Value: !Ref Host
+  EndpointUrl:
+    Description: Private endpoint (stable across stop/start; the primary private IP does not change).
+    Value: !Sub "http://${Host.PrivateIp}:8080"
+  EndpointSecurityGroupId:
+    Value: !Ref EndpointSecurityGroup
+  WeightsVolumeId:
+    Value: !Ref WeightsVolume
+  ControllerPolicyArn:
+    Value: !Ref ControllerPolicy

@@ -1,0 +1,81 @@
+{
+  "manifest_version": 1,
+  "note": "A09-1 pinned artifacts. Hashes verified against the Hugging Face and GitHub APIs on 2026-11-20 (model: HEAD x-linked-etag/x-linked-size; runtime: release asset digests and a local download of both tarballs). Weights are never stored in Git.",
+  "model": {
+    "id": "qwen3.6-27b-q4km",
+    "repository": "ggml-org/Qwen3.6-27B-GGUF",
+    "revision": "fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f",
+    "file": "Qwen3.6-27B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/ggml-org/Qwen3.6-27B-GGUF/resolve/fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f/Qwen3.6-27B-Q4_K_M.gguf",
+    "bytes": 19403683392,
+    "sha256": "f3ab00cc923590947877bad882e09ada67789f747f5d3cb3c178fdf91b9aaab9",
+    "license": "apache-2.0 (as declared in the external run metadata; to be re-checked on the model card before production use)"
+  },
+  "runtime": {
+    "engine": "llama.cpp",
+    "tag": "b12329",
+    "commit": "0d69255c5205c3af9eb15d8a7fc027594848041f",
+    "published_at": "2026-11-12T22:22:59Z",
+    "license": "MIT (LICENSE file inside the release tarball)",
+    "linux_x64_cuda": {
+      "variant": "cuda-13.5",
+      "artifacts": [
+        {
+          "name": "llama-b12329-bin-ubuntu-cuda-13.5-x64.tar.gz",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12329/llama-b12329-bin-ubuntu-cuda-13.5-x64.tar.gz",
+          "bytes": 177032917,
+          "sha256": "efd2f8a8da31a9f2dc432bc9c4e8c2aca495d4811f817d7936e73ad8cbbce88f",
+          "top_dir": "llama-b12329"
+        },
+        {
+          "name": "cudart-llama-b12329-bin-ubuntu-cuda-13.5-x64.tar.gz",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12329/cudart-llama-b12329-bin-ubuntu-cuda-13.5-x64.tar.gz",
+          "bytes": 444078936,
+          "sha256": "5b34aefc86df6e8890694866c803da5ebeac5f8f277a5d069d9a9f123ab22bd9",
+          "top_dir": "cudart-llama-b12329-bin-ubuntu-cuda-13.5-x64"
+        }
+      ],
+      "fallback_variant": {
+        "variant": "cuda-12.8",
+        "reason": "only if the host NVIDIA driver cannot run the CUDA 13.5 build; record the decision",
+        "artifacts": [
+          {
+            "name": "llama-b12329-bin-ubuntu-cuda-12.8-x64.tar.gz",
+            "bytes": 198059792,
+            "sha256": "09b350ea374593bd5bb4257a5cbcb813a9db4b729f104c0afaa53dd2dab052de"
+          },
+          {
+            "name": "cudart-llama-b12329-bin-ubuntu-cuda-12.8-x64.tar.gz",
+            "bytes": 594371572,
+            "sha256": "07b91f774120763dad5587394beb8ca1f14a2981a44071a8f82deaae136ab9e9"
+          }
+        ]
+      },
+      "driver": "recorded at validation time by deploy/inference/bench/host-facts.sh (pending: no GPU run yet)"
+    },
+    "external_reference_build": "llama-b12329-bin-win-cuda-13.5-x64.zip (Windows 11, RTX 5090) — the external run used the Windows build of the same tag"
+  },
+  "reference_profile": {
+    "name": "razona512+esquema",
+    "server_args": ["-c", "8192", "-ngl", "all", "--parallel", "1", "--reasoning", "on", "--reasoning-format", "deepseek", "--reasoning-budget", "512"],
+    "request": {
+      "temperature": 0,
+      "max_tokens": 3072,
+      "response_format": "per request: {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"salida\", \"strict\": true, \"schema\": <esquema_salida.json>}} (added by proxy_esquema.py; --json-schema-file returned HTTP 400 with the Qwen template in b12329)"
+    },
+    "external_result": "43/50 strict (3 repetitions 43/43/43), RTX 5090 32 GiB, +19123 MiB VRAM at load, median 7.60 s/case, ~73.5 tok/s",
+    "external_hashes": {
+      "prompt_sistema.txt": "e0720bce7966d5cc7ec63817ad6dcee540e8104fa1954d38843741bbff1f866d",
+      "entradas/evaluacion.jsonl": "c0d20428bb552adf18e8b91053e25db91362360a6fbc75e35efb2ad89431c8a7",
+      "entradas/calibracion.jsonl": "afe4023c4d6c139938843303184d90c718f023c342596b9a5cd9f487f373041e"
+    }
+  },
+  "aws": {
+    "instance_type": "g6.xlarge",
+    "gpu": "NVIDIA L4, 22888 MiB",
+    "vcpu": 4,
+    "memory_mib": 16384,
+    "ami_ssm_parameter": "/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id",
+    "ami_seen": {"us-east-1": "ami-0fcbed7f428844048 (Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04) 20261119)"}
+  }
+}

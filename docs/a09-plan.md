@@ -1,0 +1,21 @@
+# A09 — Integración real, evaluación y operación
+
+A08 quedó cerrada por el usuario y mergeada en `55fc607` (PR #7), con el alcance PDF documentado. Este plan desarrolla el hito A09 del playbook interno. Secuencia: A08 → A09-1 → A09-2 → A10. B01 conserva la integración con el backend y los workers de CAWbase.
+
+## A09-1 — Despliegue de inferencia y operación
+
+> **Implementada** en `deploy/inference/` (validación en GPU real y aceptación pendientes): [contrato](inference-deployment.md) · [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md) · [decisiones](decisions/A09-decisions.md) · [informe](a09-1-implementation-report.md).
+
+- **Modelo de referencia.** Qwen3.6-27B Q4_K_M, artefacto `ggml-org/Qwen3.6-27B-GGUF`, revisión `fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f`, archivo `Qwen3.6-27B-Q4_K_M.gguf`, SHA-256 `f3ab00cc923590947877bad882e09ada67789f747f5d3cb3c178fdf91b9aaab9`. Referencia externa: llama.cpp `b12329`, perfil `razona512+esquema`, 43/50 casos estrictos en español. Fijar el artefacto Linux del runtime y registrar driver, CUDA, plantilla, contexto, concurrencia y parámetros. Verificar la licencia de los artefactos.
+- **AWS.** Despliegue reproducible en EC2 `g6.xlarge`, endpoint privado y pesos persistentes en EBS. Un controlador externo a la GPU arranca la instancia al llegar el primer trabajo durable que necesita inferencia. Coordina arranques concurrentes y conserva el trabajo mientras espera readiness real con límite. Detiene tras 60 minutos continuos sin trabajo pendiente ni activo. Coordina drenaje y nuevos ingresos. Los sondeos de salud no reinician el reloj. Proveer comandos manuales de arranque, apagado con drenaje y estado, con política explícita de pausa y reanudación del autoarranque.
+- **Presupuesto de memoria y concurrencia.** Q4_K_M es el perfil inicial en la L4. Q8_0 supera la VRAM disponible solo con los pesos y queda como opción para hardware con más memoria. Medir Q4_K_M con un slot antes de aumentar el contexto por solicitud o probar dos slots. Registrar contexto total y efectivo por slot, espacio para la salida y el razonamiento, pico de VRAM/RAM, latencia, throughput y respuesta a sobrecarga. Solo habilitar límites superiores con evidencia. Encolar el excedente y reportar explícitamente entradas fuera de límite. Si el perfil de referencia no entra o no cumple, documentar la restricción antes de cambiar cuantización, usar offload a CPU o cambiar de instancia.
+- **On-premise.** Instalación reproducible que usa el mismo contrato de inferencia y readiness. Documentar hardware, configuración de endpoint, control de acceso y arranque con pesos locales, sin dependencia operativa de AWS.
+- **Aceptación.** Demostrar un ciclo completo con un ejecutor de prueba y trabajo durable. Medir por separado arranque EC2, carga de pesos y tiempo hasta readiness. Probar concurrencia, fallos, inactividad, drenaje y control manual. Documentar costos residuales y distinguir evidencia simulada de evidencia obtenida en hardware real. El controlador EC2 vive fuera del núcleo del motor. La conexión con la cola real de CAWbase pertenece a B01.
+
+## A09-2 — Integración real y evaluación
+
+- Integrar el adaptador con el contrato A03, prompts, esquema estructurado, límites de contexto/tokenización, segmentación, reconciliación, posiciones exactas y errores tipados. Tratar el contenido como datos no confiables y operar sin fallback externo.
+- Inspeccionar el benchmark y sus condiciones de publicación. Separar datos de ajuste y evaluación y fijar umbrales antes de correr la evaluación formal. Medir español e inglés, falsos negativos y positivos por tipo y categoría, precisión de posiciones, protección y restauración para texto, DOCX y PDF dentro de sus contratos. Medir latencia, throughput, CPU/GPU, memoria y documentos largos.
+- Verificar aislamiento, entradas adversariales, caídas, retención, copias y restauración operativa según el alcance. Entregar evidencia reproducible, límites y configuración soportada. La corrida externa y el smoke test de A09-1 son evidencia preliminar. Si el modelo no alcanza los umbrales, informar y consultar antes de evaluar un reemplazo.
+
+A09 se cierra al completar ambas subtareas. A10 incorpora los despliegues de referencia a la distribución independiente. B01 conecta el mecanismo con la cola y los workers reales de CAWbase.
