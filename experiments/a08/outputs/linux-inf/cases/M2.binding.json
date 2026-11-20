@@ -1,0 +1,339 @@
+{
+ "occurrences": [
+  {
+   "page": 1,
+   "start": 413,
+   "end": 438,
+   "token": "KDQXNDJJDDGG841Y"
+  },
+  {
+   "page": 1,
+   "start": 445,
+   "end": 470,
+   "token": "GZQNTVVN5PBWQGNP"
+  },
+  {
+   "page": 1,
+   "start": 480,
+   "end": 505,
+   "token": "W1EHH422GC0WCXNN"
+  },
+  {
+   "page": 1,
+   "start": 525,
+   "end": 550,
+   "token": "QYBA10TD3RSXWJ66"
+  }
+ ],
+ "redactions": [],
+ "lines": [
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 320.86614,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S1",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 320.86614,
+     "orig_adv_page": 123.83999999999992,
+     "sub_nat_page": 137.88,
+     "value_font": "/TT3",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 413,
+     "x_orig": 320.86614,
+     "span_page": 123.83999999999992,
+     "substitute": "[[CCE1:KDQXNDJJDDGG841Y]]",
+     "runs": [
+      {
+       "font": "/TT3",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 10,
+       "adv": 62.208000000000006
+      },
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 11,
+       "adv": 61.99199999999999
+      }
+     ],
+     "token": "KDQXNDJJDDGG841Y"
+    }
+   ],
+   "moved": [],
+   "block": [
+    527,
+    546
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 321.3461608886719,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S2",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 321.3461608886719,
+     "orig_adv_page": 29.220000000000027,
+     "sub_nat_page": 148.21200000000002,
+     "value_font": "/TT1",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 441,
+     "x_orig": 320.86614,
+     "span_page": 28.739979111328125,
+     "substitute": "[[CCE1:GZQNTVVN5PBWQGNP]]",
+     "runs": [
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 5,
+       "adv": 29.22
+      }
+     ],
+     "token": "GZQNTVVN5PBWQGNP"
+    }
+   ],
+   "moved": [],
+   "block": [
+    570,
+    589
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 321.4661560058594,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S3",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 321.4661560058594,
+     "orig_adv_page": 91.7279999999999,
+     "sub_nat_page": 147.672,
+     "value_font": "/TT1",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 456,
+     "x_orig": 320.86614,
+     "span_page": 91.1279839941405,
+     "substitute": "[[CCE1:W1EHH422GC0WCXNN]]",
+     "runs": [
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 15,
+       "adv": 91.72800000000001
+      }
+     ],
+     "token": "W1EHH422GC0WCXNN"
+    }
+   ],
+   "moved": [],
+   "block": [
+    605,
+    624
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 321.41815185546875,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S4",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 321.41815185546875,
+     "orig_adv_page": 135.17999999999995,
+     "sub_nat_page": 136.14000000000001,
+     "value_font": "/TT1",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 491,
+     "x_orig": 320.86614,
+     "span_page": 134.62798814453117,
+     "substitute": "[[CCE1:QYBA10TD3RSXWJ66]]",
+     "runs": [
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 22,
+       "adv": 135.42
+      }
+     ],
+     "token": "QYBA10TD3RSXWJ66"
+    }
+   ],
+   "moved": [],
+   "block": [
+    640,
+    659
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 321.45416259765625,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S5",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 321.45416259765625,
+     "orig_adv_page": 65.80799999999994,
+     "sub_nat_page": 55.70400000000001,
+     "value_font": "/TT1",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 524,
+     "x_orig": 320.86614,
+     "span_page": 65.21997740234366,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 10,
+       "adv": 65.80799999999998
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    675,
+    694
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 322.0301513671875,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S6",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 322.0301513671875,
+     "orig_adv_page": 179.86799999999954,
+     "sub_nat_page": 55.70400000000001,
+     "value_font": "/TT1",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 542,
+     "x_orig": 320.86614,
+     "span_page": 178.703988632812,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 29,
+       "adv": 179.86800000000005
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    710,
+    729
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 321.1181640625,
+   "r": 540.5660888671875,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S7",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 321.1181640625,
+     "orig_adv_page": 40.56,
+     "sub_nat_page": 55.70400000000001,
+     "value_font": "/TT1",
+     "size": 1.0,
+     "th": 1.0,
+     "unit_start": 590,
+     "x_orig": 320.86614,
+     "span_page": 40.307975937499975,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/TT1",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 6,
+       "adv": 33.69599999999999
+      },
+      {
+       "font": "/TT4",
+       "size": 1.0,
+       "th": 1.0,
+       "n": 1,
+       "adv": 6.863999999999999
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    745,
+    764
+   ]
+  }
+ ]
+}

@@ -1,0 +1,442 @@
+{
+ "env": {
+  "python": "3.13.16",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "rules": [
+   "RP3",
+   "RP5",
+   "RP7"
+  ],
+  "maxrss_mb": 166.2
+ },
+ "results": [
+  {
+   "case_id": "W1",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "W2",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "W3",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "W4",
+   "family": "W",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G1",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G2",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G3",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "case_id": "G4",
+   "family": "G",
+   "stages": {
+    "export": {
+     "result": "missing",
+     "reason": "export_unavailable"
+    }
+   }
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "executable_action"
+   },
+   "case_id": "L1",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "replacement_overflow",
+     "detail": "no attempt fits (Z1 and Z2): substitute taller than the zone band"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 6,
+     "xmp_metadata": 1
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP3": 7
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "98b582f0b6aa78d1af67b11c90eae412bb1af28516216e924d3083094bbb4bfa"
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "executable_action"
+   },
+   "case_id": "L2",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "replacement_overflow",
+     "detail": "no attempt fits (Z1 and Z2): substitute taller than the zone band"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 6,
+     "xmp_metadata": 1
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": true,
+    "rules_used": {
+     "RP3": 21
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "52e7a7908f92eeea65b32a904cc04b7d330d9781501a064024cf895a5ab11651"
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "executable_action"
+   },
+   "case_id": "L3",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "uncovered_content",
+     "detail": "page 2 path [65.5, 614.9, 519.0, 638.3]"
+    }
+   }
+  },
+  {
+   "family": "L",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "incremental_update"
+   },
+   "case_id": "L4",
+   "stages": {
+    "oracle": {
+     "result": "failed",
+     "reason": "oracle_unavailable",
+     "detail": [
+      [
+       "S1",
+       "pdfium_matches=0"
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C1",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "alternate_text_duplication",
+     "detail": "/ActualText"
+    }
+   }
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C2",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "alternate_text_duplication",
+     "detail": "/ActualText"
+    }
+   }
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C3",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "alternate_text_duplication",
+     "detail": "/ActualText"
+    }
+   }
+  },
+  {
+   "family": "C",
+   "type0_cid_subset": true,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "C4",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "failed",
+     "reason": "alternate_text_duplication",
+     "detail": "/ActualText"
+    }
+   }
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M1",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "replacement_overflow",
+     "detail": "no attempt fits (Z1 and Z2): substitute taller than the zone band"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 2
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP7": 2,
+     "RP3": 24
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "778f555ceb01d72693bfe2cbaa224e62f18398c99cce74c643a6d3f2fdba909e"
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M2",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "replacement_overflow",
+     "detail": "no attempt fits (Z1 and Z2): substitute taller than the zone band"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 2
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP7": 2,
+     "RP3": 104
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "de47070e814cfa8df901a9ffafaa5ee24507a4eaf0ca47c8eb644cbbe31175ec"
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M3",
+   "stages": {
+    "oracle": {
+     "result": "passed"
+    },
+    "open": {
+     "result": "passed"
+    },
+    "gate": {
+     "result": "passed"
+    },
+    "extract": {
+     "result": "passed"
+    },
+    "plan": {
+     "result": "failed",
+     "reason": "selection_crosses_boundary",
+     "detail": "S1 split across lines"
+    }
+   },
+   "inventory": {
+    "e_classes": {
+     "document_info_descriptive": 2
+    },
+    "links": 0,
+    "struct_tree": false,
+    "outlines": false,
+    "rules_used": {
+     "RP7": 2,
+     "RP5": 1,
+     "RP3": 4
+    }
+   },
+   "source_map_deterministic": true,
+   "source_map_sha256": "dd30d65c49e3de4bae0bdc98d629bbdfd112627ecda7a8b5d416872c99e70a03"
+  },
+  {
+   "family": "M",
+   "type0_cid_subset": false,
+   "baseline": {
+    "open_gate": "rejected",
+    "reason": "unsupported_structure"
+   },
+   "case_id": "M4",
+   "stages": {
+    "oracle": {
+     "result": "failed",
+     "reason": "oracle_unavailable",
+     "detail": [
+      [
+       "S3",
+       "pdfium_matches=0"
+      ]
+     ]
+    }
+   }
+  }
+ ]
+}

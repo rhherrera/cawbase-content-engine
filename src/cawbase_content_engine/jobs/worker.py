@@ -72,6 +72,8 @@ EXPECTED_ARTIFACTS: dict[str, frozenset[str]] = {
     "document_analysis": frozenset({"result", "source_map"}),
     "docx_protection": frozenset({"docx_protected", "docx_protection_report"}),
     "docx_restoration": frozenset({"docx_restored", "docx_restoration_report"}),
+    "pdf_protection": frozenset({"pdf_protected", "pdf_protection_report"}),
+    "pdf_restoration": frozenset({"pdf_restored", "pdf_restoration_report"}),
 }
 # Which role each reference column of ``jobs`` points at (the operation gives the meaning of the column).
 REF_ROLES: dict[str, tuple[str, str | None]] = {
@@ -79,6 +81,8 @@ REF_ROLES: dict[str, tuple[str, str | None]] = {
     "document_analysis": ("result", "source_map"),
     "docx_protection": ("docx_protection_report", "docx_protected"),
     "docx_restoration": ("docx_restoration_report", "docx_restored"),
+    "pdf_protection": ("pdf_protection_report", "pdf_protected"),
+    "pdf_restoration": ("pdf_restoration_report", "pdf_restored"),
 }
 
 
@@ -121,9 +125,13 @@ class JobWorker:
             keys.append(requirements_key(self.e, "text_analysis"))
             if self.e.documents is not None:
                 keys.append(requirements_key(self.e, "document_analysis"))
+                # jobs accepted by 0.4.0-0.6.0 still finish with the frozen A05 extractor they pinned (P-A08-04)
+                keys.append(requirements_key(self.e, "document_analysis_v1"))
         if self.e.storage is not None and self.e.documents is not None and self.e.protection is not None:
             keys.append(requirements_key(self.e, "docx_protection"))
             keys.append(requirements_key(self.e, "docx_restoration"))
+            keys.append(requirements_key(self.e, "pdf_protection"))
+            keys.append(requirements_key(self.e, "pdf_restoration"))
         return keys
 
     async def claim(self, limit: int = 1) -> list[ClaimedJob]:

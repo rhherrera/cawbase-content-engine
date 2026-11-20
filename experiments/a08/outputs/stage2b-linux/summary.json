@@ -1,0 +1,530 @@
+{
+ "env": "stage2b-linux",
+ "env_info": {
+  "python": "3.13.18",
+  "platform": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.41",
+  "rules": [
+   "RP3",
+   "RP5",
+   "RP7"
+  ],
+  "official": {
+   "gate": [
+    "AT"
+   ],
+   "transform": [
+    "RZ"
+   ]
+  },
+  "maxrss_mb": 244.7
+ },
+ "cases": {
+  "W1": {
+   "family": "W",
+   "template": "T1",
+   "success": false,
+   "missing": true,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": "export",
+   "reason": "export_unavailable",
+   "detail": "",
+   "zones": [],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null,
+   "baseline": null,
+   "seconds": null
+  },
+  "W5": {
+   "family": "W",
+   "template": "T5",
+   "success": false,
+   "missing": true,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": "export",
+   "reason": "export_unavailable",
+   "detail": "",
+   "zones": [],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null,
+   "baseline": null,
+   "seconds": null
+  },
+  "G1": {
+   "family": "G",
+   "template": "T1",
+   "success": false,
+   "missing": true,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": "export",
+   "reason": "export_unavailable",
+   "detail": "",
+   "zones": [],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null,
+   "baseline": null,
+   "seconds": null
+  },
+  "G5": {
+   "family": "G",
+   "template": "T5",
+   "success": false,
+   "missing": true,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": "export",
+   "reason": "export_unavailable",
+   "detail": "",
+   "zones": [],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null,
+   "baseline": null,
+   "seconds": null
+  },
+  "L1": {
+   "family": "L",
+   "template": "T1",
+   "success": true,
+   "missing": false,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": null,
+   "reason": null,
+   "detail": null,
+   "zones": [
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S1"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 0.6784,
+     "sels": [
+      "S2"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S3"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S4"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S5"
+     ],
+     "attempts": [
+      2
+     ]
+    }
+   ],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": false,
+   "source_map_deterministic": true,
+   "source_map_sha256": "98b582f0b6aa78d1af67b11c90eae412bb1af28516216e924d3083094bbb4bfa",
+   "baseline": "executable_action",
+   "seconds": 2.26
+  },
+  "L5": {
+   "family": "L",
+   "template": "T5",
+   "success": false,
+   "missing": false,
+   "rt_diagnostic_only": true,
+   "blocker": null,
+   "stage": "verify",
+   "reason": "VR",
+   "detail": "pdfium: page 1 1281 px",
+   "zones": [
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S1"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S2"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S3"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S4",
+      "S5"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S6",
+      "S7"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S8",
+      "S9"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S10"
+     ],
+     "attempts": [
+      2
+     ]
+    }
+   ],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": false,
+   "source_map_deterministic": true,
+   "source_map_sha256": "51e4cbc88511d3dccf7d042716c7bf63b74236ba648cb8e8b99cc6fce173f3d9",
+   "baseline": "executable_action",
+   "seconds": 1.67
+  },
+  "C1": {
+   "family": "C",
+   "template": "T1",
+   "success": true,
+   "missing": false,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": null,
+   "reason": null,
+   "detail": null,
+   "zones": [
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S1"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 0.6702,
+     "sels": [
+      "S2"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S3"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S4"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S5"
+     ],
+     "attempts": [
+      2
+     ]
+    }
+   ],
+   "type0_selected_cycle": true,
+   "type0_cid_subset_in_pdf": true,
+   "source_map_deterministic": true,
+   "source_map_sha256": "4d45033d55f1c39fec4f2c7f97394bb3cc19aedcfd1fd70d83e500d47a31b30c",
+   "baseline": "unsupported_structure",
+   "seconds": 2.37
+  },
+  "C5": {
+   "family": "C",
+   "template": "T5",
+   "success": false,
+   "missing": false,
+   "rt_diagnostic_only": false,
+   "blocker": null,
+   "stage": "plan",
+   "reason": "zone_plan_unjustified",
+   "detail": "moved glyph inside an /ActualText span (its span would no longer match its glyphs)",
+   "zones": [],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": true,
+   "source_map_deterministic": true,
+   "source_map_sha256": "a2d37b4a7f231bc2d59091632c660510f8240ccc14e7a475fe4314161f0afb19",
+   "baseline": "unsupported_structure",
+   "seconds": null
+  },
+  "M1": {
+   "family": "M",
+   "template": "T1",
+   "success": false,
+   "missing": false,
+   "rt_diagnostic_only": true,
+   "blocker": null,
+   "stage": "verify",
+   "reason": "VR",
+   "detail": "pdfium: page 1 262 px",
+   "zones": [
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S1"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 0.6712,
+     "sels": [
+      "S2"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S3"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S4"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S5"
+     ],
+     "attempts": [
+      2
+     ]
+    }
+   ],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": false,
+   "source_map_deterministic": true,
+   "source_map_sha256": "778f555ceb01d72693bfe2cbaa224e62f18398c99cce74c643a6d3f2fdba909e",
+   "baseline": "unsupported_structure",
+   "seconds": 2.6
+  },
+  "M5": {
+   "family": "M",
+   "template": "T5",
+   "success": false,
+   "missing": false,
+   "rt_diagnostic_only": true,
+   "blocker": null,
+   "stage": "verify",
+   "reason": "VR",
+   "detail": "pdfium: page 1 1460 px",
+   "zones": [
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S1"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S2"
+     ],
+     "attempts": [
+      2
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S3"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S4",
+      "S5"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S6",
+      "S7"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z2",
+     "f": 1.0,
+     "sels": [
+      "S8",
+      "S9"
+     ],
+     "attempts": [
+      4
+     ]
+    },
+    {
+     "kind": "Z1",
+     "f": 1.0,
+     "sels": [
+      "S10"
+     ],
+     "attempts": [
+      2
+     ]
+    }
+   ],
+   "type0_selected_cycle": false,
+   "type0_cid_subset_in_pdf": false,
+   "source_map_deterministic": true,
+   "source_map_sha256": "a52341a40bbc403f1eb54cc9d3af2a21629d57c8ae08d02233d36ab9c887d60b",
+   "baseline": "unsupported_structure",
+   "seconds": 1.66
+  }
+ },
+ "floor": {
+  "total": "2/10",
+  "per_family": {
+   "W": 0,
+   "G": 0,
+   "L": 1,
+   "C": 1,
+   "M": 0
+  },
+  "type0_selected_cycle": true,
+  "blockers": [],
+  "negatives_accepted": [],
+  "cv_not_detected": [],
+  "missing": [
+   "G1",
+   "G5",
+   "W1",
+   "W5"
+  ],
+  "rt_diagnostic_only_not_counted": [
+   "L5",
+   "M1",
+   "M5"
+  ],
+  "floor_met": false
+ }
+}

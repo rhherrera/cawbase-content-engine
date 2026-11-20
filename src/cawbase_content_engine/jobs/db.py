@@ -210,6 +210,9 @@ async def cancel_nonterminal(
 
 
 # ---- terminal transitions (T3 is in the worker) -----------------------------------------------
+RESTORED_ROLES = ("docx_restored", "pdf_restored")
+
+
 async def retire_object(
     conn: AsyncConnection,
     t: Tables,
@@ -226,8 +229,8 @@ async def retire_object(
     m = row._mapping
     sid, st = m["scope_id"], m["state"]
     is_file = table is t.stored_files
-    if table is t.job_artifacts and new_state == "discarded" and m["kind"] == "docx_restored":
-        delay_s = 0  # P-A07-04: decrypted content not published is eligible for purge at once
+    if table is t.job_artifacts and new_state == "discarded" and m["kind"] in RESTORED_ROLES:
+        delay_s = 0  # P-A07-04 / D-A08-06: decrypted content not published is eligible for purge at once
     values: dict[str, Any] = {"state": new_state, "abandoned_at": now, "delete_after": plus(now, delay_s)}
     has_storage = m["storage_key"] is not None
     d: dict[str, int] = {}

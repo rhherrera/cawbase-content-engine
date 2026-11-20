@@ -1,0 +1,75 @@
+{
+ "case_id": "M5",
+ "family": "M",
+ "template": "T5",
+ "pdf_sha256": "12ba72686def66a03849688abaa4199d91004583279a3092feb3894a58c131f8",
+ "pdf_size": 26299,
+ "stored_in": "corpus2b",
+ "exporter": {
+  "flow": "docx leído por AppKit (officeOpenXML) en contenedores por página + NSPrintOperation(save) (exporters/export_m.swift T5.docx=M5)",
+  "application": "AppKit del sistema, Version 27.0.1 (Build 26A434)",
+  "os": "macOS 27.0.1-26A434 arm64",
+  "source": "corpus2b/sources/T5.docx",
+  "executed_by": "agent (script)",
+  "options": [
+   "A4",
+   "márgenes 25 mm",
+   "sin encabezado/pie del sistema",
+   "fuentes registradas solo para el proceso"
+  ]
+ },
+ "pdfinfo": [
+  "Title:           Untitled",
+  "Producer:        macOS Version 27.0.1 (Build 26A434) Quartz PDFContext",
+  "CreationDate:    Wed Nov 18 16:51:48 2026 -03",
+  "ModDate:         Wed Nov 18 16:51:48 2026 -03",
+  "Custom Metadata: no",
+  "Metadata Stream: no",
+  "Tagged:          no",
+  "UserProperties:  no",
+  "Suspects:        no",
+  "Form:            none",
+  "JavaScript:      no",
+  "Pages:           1",
+  "Encrypted:       no",
+  "Page size:       595 x 842 pts (A4)",
+  "Page rot:        0",
+  "File size:       26299 bytes",
+  "Optimized:       no",
+  "PDF version:     1.3"
+ ],
+ "pdffonts": [
+  {
+   "name": "AAAAAB+NotoSans-Regular",
+   "type": "TrueType",
+   "encoding": "MacRoman",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "no"
+  },
+  {
+   "name": "AAAAAD+NotoSans-Regular",
+   "type": "TrueType",
+   "encoding": "WinAnsi",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "AAAAAC+NotoSans-Italic",
+   "type": "TrueType",
+   "encoding": "MacRoman",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "no"
+  }
+ ],
+ "type0_cid_subset": false,
+ "intake_utc": "2026-11-18T20:13:46Z",
+ "intake_host": {
+  "system": "Darwin",
+  "release": "27.0.0",
+  "machine": "arm64"
+ },
+ "manifest_sha256": "571fd2a88a8dfedec6523950362ffa369f2070b1c3dca2cf06058ca2bd139753"
+}

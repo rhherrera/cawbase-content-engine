@@ -43,7 +43,7 @@ def test_documented_version_and_levels_match_the_code():
     from cawbase_content_engine import __version__
     from cawbase_content_engine.constants import RUNTIME_LEVEL, SCHEMA_LEVEL
 
-    assert (__version__, SCHEMA_LEVEL, RUNTIME_LEVEL) == ("0.6.0", 5, 1)
+    assert (__version__, SCHEMA_LEVEL, RUNTIME_LEVEL) == ("0.7.0", 6, 1)
     for doc in ("docs/text-protection.md", "docs/features/A06-proteccion-y-restauracion-de-texto.md", "README.md"):
         text = (ROOT / doc).read_text(encoding="utf-8")
         assert "0.5.0" in text and "0004" in text, doc

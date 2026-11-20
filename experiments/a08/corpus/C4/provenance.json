@@ -1,0 +1,110 @@
+{
+ "case_id": "C4",
+ "family": "C",
+ "template": "T4",
+ "pdf_sha256": "1f26b6146f54a7a063445d532b1ca24d3903c8f76965971c368ff0d152bda007",
+ "pdf_size": 80115,
+ "stored_in": "corpus-private (fuentes incrustadas no redistribuibles; fuera de Git)",
+ "exporter": {
+  "flow": "Chrome headless --print-to-pdf (exporters/export_c.sh)",
+  "application": "Google Chrome 157.0.8103.79 ",
+  "os": "macOS 27.0.1-26A434 arm64",
+  "source": "corpus/sources/html/T<n>.html",
+  "executed_by": "agent (script)",
+  "options": [
+   "--headless",
+   "--disable-gpu",
+   "--no-pdf-header-footer",
+   "--run-all-compositor-stages-before-draw",
+   "perfil temporal vacío",
+   "file://"
+  ]
+ },
+ "pdfinfo": [
+  "Title:           Corpus A08 T4 (sintético)",
+  "Creator:         Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "Producer:        Skia/PDF m157",
+  "CreationDate:    Wed Nov 18 14:04:19 2026 -03",
+  "ModDate:         Wed Nov 18 14:04:19 2026 -03",
+  "Custom Metadata: no",
+  "Metadata Stream: no",
+  "Tagged:          yes",
+  "UserProperties:  no",
+  "Suspects:        no",
+  "Form:            none",
+  "JavaScript:      no",
+  "Pages:           3",
+  "Encrypted:       no",
+  "Page size:       594.96 x 841.92 pts (A4)",
+  "Page rot:        0",
+  "File size:       80115 bytes",
+  "Optimized:       no",
+  "PDF version:     1.4"
+ ],
+ "pdffonts": [
+  {
+   "name": "AAAAAA+Times-Bold",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "BAAAAA+Times-Bold",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "CAAAAA+Times-Roman",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "DAAAAA+Times-Bold",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "EAAAAA+Times-Roman",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "FAAAAA+Times-Roman",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "GAAAAA+Times-Roman",
+   "type": "CID TrueType",
+   "encoding": "Identity-H",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  }
+ ],
+ "type0_cid_subset": true,
+ "intake_utc": "2026-11-18T17:13:45Z",
+ "intake_host": {
+  "system": "Darwin",
+  "release": "27.0.0",
+  "machine": "arm64"
+ },
+ "manifest_sha256": "6296d167e0c58f9534a69a533e6df8103100495659587b520720475eb97ce124"
+}

@@ -1,0 +1,79 @@
+{
+ "controls": {
+  "CA01": {
+   "description": "imagen diminuta con «74»",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RI2"
+   ]
+  },
+  "CA02": {
+   "description": "letras «GIL» con segmentos rectos",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RP1"
+   ]
+  },
+  "CA03": {
+   "description": "letras «EF» con filetes largos",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RP1",
+    "RP4"
+   ]
+  },
+  "CA04": {
+   "description": "letra «H» de imágenes uniformes",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RI1"
+   ]
+  },
+  "CA05": {
+   "description": "letra «H» de rectángulos rellenos",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RP1"
+   ]
+  },
+  "CA06": {
+   "description": "cifra «1» con bordes adicionales dentro de una tabla",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RP1"
+   ]
+  },
+  "CA07": {
+   "description": "letras «SO» con curvas pequeñas (cada una <= 6 pt)",
+   "result": "admitted (rule failure)",
+   "admitted_by": [
+    "RP2"
+   ]
+  }
+ },
+ "refuted": {
+  "RI2": [
+   "CA01"
+  ],
+  "RP1": [
+   "CA02",
+   "CA03",
+   "CA05",
+   "CA06"
+  ],
+  "RP4": [
+   "CA03"
+  ],
+  "RI1": [
+   "CA04"
+  ],
+  "RP2": [
+   "CA07"
+  ]
+ },
+ "surviving": [
+  "RP3",
+  "RP5",
+  "RP7"
+ ]
+}

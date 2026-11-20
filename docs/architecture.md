@@ -152,3 +152,15 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 - Subpaquete `docx_protection/` (importación perezosa) sobre el sistema de trabajos de A05 y las funciones de A06 (`obtain_tokens`, `decrypt_tokens`, `insert_context`, `context_index_key`); modos nuevos del proceso aislado: `documents/docx_transform.py` (lxml) y `documents/docx_verify.py` (biblioteca estándar).
 - La publicación de A05 admite un *hook* (`PublishHook`) para bloquear rangos posteriores, decidir con la misma hora y escribir el vínculo en la misma transacción que T3.
+
+## 14. A08 — Protección y restauración PDF (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- **Subpaquete `pdf_protection/`** (importación perezosa): reutiliza las piezas de A07 (*hooks* de publicación parametrizados por tabla, auxiliares de envío y limpieza de vínculos) y las funciones de A06.
+- **Modos nuevos del proceso aislado:**
+  - `documents/pdf_extract.py`: extractor v2 sobre `pikepdf`;
+  - `documents/pdf_transform.py`: plan, transformación y restauración;
+  - `documents/pdf_verify.py`: verificador con `pypdf` y analizador léxico propio;
+  - `documents/ttf_ink.py`: cajas de tinta TrueType sobre bytes.
+- **Fuente candidata:** dato del paquete en `documents/data/`.

@@ -1,0 +1,28 @@
+[project]
+name = "cce-a08-experiments"
+version = "0.0.0"
+description = "A08 D-A04-04 check (PDF protection/restoration prototype). NOT part of the engine package, wheel or sdist."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "python-docx",
+    "pikepdf",
+    "pypdfium2",
+    "pypdf",
+    "pillow",
+    "fonttools",
+    "numpy",
+    "cawbase-content-engine[sqlite,migrations,documents]",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+cawbase-content-engine = { path = "../..", editable = true }
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501", "E701", "E702", "E731", "E741"]

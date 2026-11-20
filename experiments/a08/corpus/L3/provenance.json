@@ -1,0 +1,94 @@
+{
+ "case_id": "L3",
+ "family": "L",
+ "template": "T3",
+ "pdf_sha256": "0234442618c6ced77bbe0c0067887a212f1bf3dd8ac90e8a98c3525bcba3e5ff",
+ "pdf_size": 38505,
+ "stored_in": "corpus",
+ "exporter": {
+  "flow": "docx -> odt (soffice --convert-to odt) -> writer_pdf_Export (exporters/export_l.sh)",
+  "application": "LibreOffice 25.2.3.2 520(Build:2)",
+  "os": "Debian 13.x en Docker (imagen cce-a08:1, python:3.13-trixie), aarch64",
+  "source": "corpus/sources/T<n>.docx",
+  "executed_by": "agent (script)",
+  "options": {
+   "ExportBookmarks": {
+    "type": "boolean",
+    "value": "true"
+   },
+   "UseTaggedPDF": {
+    "type": "boolean",
+    "value": "false"
+   },
+   "SelectPdfVersion": {
+    "type": "long",
+    "value": "0"
+   }
+  }
+ },
+ "pdfinfo": [
+  "Title:           Corpus A08 T3 (sintético)",
+  "Subject:         Documento sintético de pruebas",
+  "Keywords:        a08, sintético",
+  "Author:          Autoría de ejemplo",
+  "Creator:         Writer",
+  "Producer:        LibreOffice 25.2.3.2 (AARCH64) / LibreOffice Community",
+  "CreationDate:    Wed Nov 18 14:06:43 2026 -03",
+  "Custom Metadata: no",
+  "Metadata Stream: yes",
+  "Tagged:          no",
+  "UserProperties:  no",
+  "Suspects:        no",
+  "Form:            none",
+  "JavaScript:      no",
+  "Pages:           2",
+  "Encrypted:       no",
+  "Page size:       595.304 x 841.89 pts (A4)",
+  "Page rot:        0",
+  "File size:       38505 bytes",
+  "Optimized:       no",
+  "PDF version:     1.7"
+ ],
+ "pdffonts": [
+  {
+   "name": "BAAAAA+NotoSans-Bold",
+   "type": "TrueType",
+   "encoding": "WinAnsi",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "CAAAAA+NotoSerif-Regular",
+   "type": "TrueType",
+   "encoding": "WinAnsi",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "DAAAAA+NotoSerif-Bold",
+   "type": "TrueType",
+   "encoding": "WinAnsi",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  },
+  {
+   "name": "EAAAAA+NotoSans-Regular",
+   "type": "TrueType",
+   "encoding": "WinAnsi",
+   "emb": "yes",
+   "sub": "yes",
+   "uni": "yes"
+  }
+ ],
+ "type0_cid_subset": false,
+ "intake_utc": "2026-11-18T17:13:45Z",
+ "intake_host": {
+  "system": "Darwin",
+  "release": "27.0.0",
+  "machine": "arm64"
+ },
+ "manifest_sha256": "6296d167e0c58f9534a69a533e6df8103100495659587b520720475eb97ce124"
+}

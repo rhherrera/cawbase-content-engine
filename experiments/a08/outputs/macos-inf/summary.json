@@ -1,0 +1,354 @@
+{
+ "env": "macos-inf",
+ "rules": [
+  "RP3",
+  "RP5",
+  "RP7"
+ ],
+ "cases": {
+  "W1": {
+   "family": "W",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "W2": {
+   "family": "W",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "W3": {
+   "family": "W",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "W4": {
+   "family": "W",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "G1": {
+   "family": "G",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "G2": {
+   "family": "G",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "G3": {
+   "family": "G",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "G4": {
+   "family": "G",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "export",
+   "reason": "export_unavailable",
+   "baseline": null,
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "L1": {
+   "family": "L",
+   "success": true,
+   "success_rt": true,
+   "type0": false,
+   "z2": true,
+   "factors": [
+    0.6896
+   ],
+   "attempts": [
+    2,
+    4
+   ],
+   "stage": "verify_restore",
+   "reason": null,
+   "baseline": "executable_action",
+   "source_map_deterministic": true,
+   "source_map_sha256": "98b582f0b6aa78d1af67b11c90eae412bb1af28516216e924d3083094bbb4bfa"
+  },
+  "L2": {
+   "family": "L",
+   "success": true,
+   "success_rt": true,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [
+    2
+   ],
+   "stage": "verify_restore",
+   "reason": null,
+   "baseline": "executable_action",
+   "source_map_deterministic": true,
+   "source_map_sha256": "52e7a7908f92eeea65b32a904cc04b7d330d9781501a064024cf895a5ab11651"
+  },
+  "L3": {
+   "family": "L",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "plan",
+   "reason": "selection_crosses_boundary",
+   "baseline": "executable_action",
+   "source_map_deterministic": true,
+   "source_map_sha256": "2b6b5b96e8e18780b22c09f3e56f4a2c3760d75090336e69e53365d8dfb2e24d"
+  },
+  "L4": {
+   "family": "L",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "oracle",
+   "reason": "oracle_unavailable",
+   "baseline": "incremental_update",
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "C1": {
+   "family": "C",
+   "success": true,
+   "success_rt": true,
+   "type0": true,
+   "z2": true,
+   "factors": [
+    0.6684
+   ],
+   "attempts": [
+    2,
+    4
+   ],
+   "stage": "verify_restore",
+   "reason": null,
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": true,
+   "source_map_sha256": "4d45033d55f1c39fec4f2c7f97394bb3cc19aedcfd1fd70d83e500d47a31b30c"
+  },
+  "C2": {
+   "family": "C",
+   "success": true,
+   "success_rt": true,
+   "type0": true,
+   "z2": false,
+   "factors": [],
+   "attempts": [
+    2
+   ],
+   "stage": "verify_restore",
+   "reason": null,
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": true,
+   "source_map_sha256": "1db0fc6669603f28e1d85fe9ab62a2e13762885b6f07456fc3c09c2ff0bbc500"
+  },
+  "C3": {
+   "family": "C",
+   "success": false,
+   "success_rt": false,
+   "type0": true,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "gate",
+   "reason": "uncovered_content",
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "C4": {
+   "family": "C",
+   "success": false,
+   "success_rt": false,
+   "type0": true,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "gate",
+   "reason": "uncovered_content",
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  },
+  "M1": {
+   "family": "M",
+   "success": false,
+   "success_rt": true,
+   "type0": false,
+   "z2": true,
+   "factors": [
+    0.6634
+   ],
+   "attempts": [
+    2,
+    4
+   ],
+   "stage": "verify_restore",
+   "reason": null,
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": true,
+   "source_map_sha256": "778f555ceb01d72693bfe2cbaa224e62f18398c99cce74c643a6d3f2fdba909e"
+  },
+  "M2": {
+   "family": "M",
+   "success": true,
+   "success_rt": true,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [
+    2
+   ],
+   "stage": "verify_restore",
+   "reason": null,
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": true,
+   "source_map_sha256": "de47070e814cfa8df901a9ffafaa5ee24507a4eaf0ca47c8eb644cbbe31175ec"
+  },
+  "M3": {
+   "family": "M",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "plan",
+   "reason": "selection_crosses_boundary",
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": true,
+   "source_map_sha256": "dd30d65c49e3de4bae0bdc98d629bbdfd112627ecda7a8b5d416872c99e70a03"
+  },
+  "M4": {
+   "family": "M",
+   "success": false,
+   "success_rt": false,
+   "type0": false,
+   "z2": false,
+   "factors": [],
+   "attempts": [],
+   "stage": "oracle",
+   "reason": "oracle_unavailable",
+   "baseline": "unsupported_structure",
+   "source_map_deterministic": null,
+   "source_map_sha256": null
+  }
+ },
+ "strict": {
+  "total": "5/20",
+  "per_family": {
+   "W": "0/4",
+   "G": "0/4",
+   "L": "2/4",
+   "C": "2/4",
+   "M": "1/4"
+  },
+  "type0_native": true,
+  "floor_met": false,
+  "z1_only": [
+   "C2",
+   "L2",
+   "M2"
+  ],
+  "with_z2": [
+   "C1",
+   "L1"
+  ]
+ },
+ "with_rt": {
+  "total": "6/20",
+  "per_family": {
+   "W": "0/4",
+   "G": "0/4",
+   "L": "2/4",
+   "C": "2/4",
+   "M": "2/4"
+  },
+  "type0_native": true,
+  "floor_met": false,
+  "z1_only": [
+   "C2",
+   "L2",
+   "M2"
+  ],
+  "with_z2": [
+   "C1",
+   "L1",
+   "M1"
+  ]
+ }
+}

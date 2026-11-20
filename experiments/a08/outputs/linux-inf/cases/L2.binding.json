@@ -1,0 +1,332 @@
+{
+ "occurrences": [
+  {
+   "page": 1,
+   "start": 424,
+   "end": 449,
+   "token": "0NSRVBBAM9S68TAG"
+  },
+  {
+   "page": 1,
+   "start": 456,
+   "end": 481,
+   "token": "4GDCXSH9SRYXPYDA"
+  },
+  {
+   "page": 1,
+   "start": 491,
+   "end": 516,
+   "token": "BKSRP8X7JNMWJ9BW"
+  },
+  {
+   "page": 1,
+   "start": 536,
+   "end": 561,
+   "token": "Q0FZHAZPPFAQJEAJ"
+  }
+ ],
+ "redactions": [],
+ "lines": [
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 297.75,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S1",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 297.75,
+     "orig_adv_page": 113.793,
+     "sub_nat_page": 129.06300000000002,
+     "value_font": "/F2",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 424,
+     "x_orig": 297.75,
+     "span_page": 113.793,
+     "substitute": "[[CCE1:0NSRVBBAM9S68TAG]]",
+     "runs": [
+      {
+       "font": "/F2",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 10,
+       "adv": 57.023999999999994
+      },
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 11,
+       "adv": 56.82600000000001
+      }
+     ],
+     "token": "0NSRVBBAM9S68TAG"
+    }
+   ],
+   "moved": [],
+   "block": [
+    114,
+    131
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 298.19000244140625,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S2",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 298.19000244140625,
+     "orig_adv_page": 26.74099999999993,
+     "sub_nat_page": 125.939,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 452,
+     "x_orig": 297.75,
+     "span_page": 26.30099755859368,
+     "substitute": "[[CCE1:4GDCXSH9SRYXPYDA]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 5,
+       "adv": 26.785000000000004
+      }
+     ],
+     "token": "4GDCXSH9SRYXPYDA"
+    }
+   ],
+   "moved": [],
+   "block": [
+    155,
+    172
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 298.29998779296875,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S3",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 298.29998779296875,
+     "orig_adv_page": 83.96299999999974,
+     "sub_nat_page": 129.349,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 467,
+     "x_orig": 297.75,
+     "span_page": 83.41301220703099,
+     "substitute": "[[CCE1:BKSRP8X7JNMWJ9BW]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 15,
+       "adv": 84.08400000000002
+      }
+     ],
+     "token": "BKSRP8X7JNMWJ9BW"
+    }
+   ],
+   "moved": [],
+   "block": [
+    188,
+    205
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 298.2560119628906,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S4",
+     "action": "pseudonymize",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 298.2560119628906,
+     "orig_adv_page": 124.05800000000005,
+     "sub_nat_page": 119.46,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 502,
+     "x_orig": 297.75,
+     "span_page": 123.55198803710942,
+     "substitute": "[[CCE1:Q0FZHAZPPFAQJEAJ]]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 22,
+       "adv": 124.135
+      }
+     ],
+     "token": "Q0FZHAZPPFAQJEAJ"
+    }
+   ],
+   "moved": [],
+   "block": [
+    221,
+    238
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 298.28900146484375,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S5",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 298.28900146484375,
+     "orig_adv_page": 60.23599999999982,
+     "sub_nat_page": 51.062000000000005,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 535,
+     "x_orig": 297.75,
+     "span_page": 59.69699853515607,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 10,
+       "adv": 60.324000000000005
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    254,
+    271
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 298.8169860839844,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S6",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 298.8169860839844,
+     "orig_adv_page": 164.68099999999941,
+     "sub_nat_page": 51.062000000000005,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 553,
+     "x_orig": 297.75,
+     "span_page": 163.61401391601504,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 29,
+       "adv": 164.87900000000005
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    287,
+    304
+   ]
+  },
+  {
+   "page": 1,
+   "kind": "Z1",
+   "f": 1.0,
+   "x0": 297.9809875488281,
+   "r": 515.2999755859375,
+   "stream": "page:0:0",
+   "sels": [
+    {
+     "sid": "S7",
+     "action": "redact",
+     "font": "candidate",
+     "attempt": 2,
+     "scale": 1.0,
+     "x_new": 297.9809875488281,
+     "orig_adv_page": 37.11399999999992,
+     "sub_nat_page": 51.062000000000005,
+     "value_font": "/F1",
+     "size": 11.0,
+     "th": 1.0,
+     "unit_start": 601,
+     "x_orig": 297.75,
+     "span_page": 36.883012451171794,
+     "substitute": "[REDACTED]",
+     "runs": [
+      {
+       "font": "/F1",
+       "size": 11.0,
+       "th": 1.0,
+       "n": 7,
+       "adv": 37.18000000000001
+      }
+     ],
+     "token": null
+    }
+   ],
+   "moved": [],
+   "block": [
+    320,
+    337
+   ]
+  }
+ ]
+}

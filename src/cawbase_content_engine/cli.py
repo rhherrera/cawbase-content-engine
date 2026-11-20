@@ -39,6 +39,10 @@ def _parser() -> argparse.ArgumentParser:
         "cleanup-docx",
         help="one bounded, repeatable cleanup of A07 restoration bindings; prints counts only (no keys needed)",
     )
+    sub.add_parser(
+        "cleanup-pdf",
+        help="one bounded, repeatable cleanup of A08 restoration bindings; prints counts only (no keys needed)",
+    )
     pe = sub.add_parser("purge-admin-events", help="purge admin_events older than a cutoff (preview unless --execute)")
     pe.add_argument("--older-than-days", type=float, required=True)
     pe.add_argument("--batch-size", type=int, default=None)
@@ -131,6 +135,11 @@ async def _ops_command(args: argparse.Namespace) -> int:
 
             print(json.dumps(dataclasses.asdict(await engine.maintenance().run_docx_cleanup())))
             return 0
+        if args.command == "cleanup-pdf":
+            import dataclasses
+
+            print(json.dumps(dataclasses.asdict(await engine.maintenance().run_pdf_cleanup())))
+            return 0
         if args.command == "cleanup-protection":
             import dataclasses
 
@@ -177,7 +186,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             return 0
-        if args.command in ("worker", "cleanup", "cleanup-protection", "cleanup-docx", "purge-admin-events"):
+        if args.command in (
+            "worker",
+            "cleanup",
+            "cleanup-protection",
+            "cleanup-docx",
+            "cleanup-pdf",
+            "purge-admin-events",
+        ):
             return asyncio.run(_ops_command(args))
         return asyncio.run(_with_engine(args))
     except ModuleNotFoundError as exc:

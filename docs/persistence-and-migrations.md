@@ -443,3 +443,16 @@ Las pruebas de concurrencia se escriben **por backend** (§6, última línea).
 - `0005_docx_protection`: aditiva, solo hacia adelante; `schema_level` 4 → **5**; `min_runtime_level` **1**. Ninguna tabla de A01–A06 cambia: las operaciones y roles nuevos son valores de `jobs.operation`/`job_artifacts.kind` (sin `CHECK`).
 - Compatibilidad: `0.4.0`/`0.5.0` arrancan sobre nivel 5, no reclaman trabajos de A07 (otra `requirements_key`) y sus lectores genéricos no sirven sus artefactos; `0.6.0` sobre nivel 4 ⇒ `schema_outdated`.
 - Orden de bloqueos: rango nuevo 14 tras los de A06 ([§10.1](docx-protection.md#101-orden-común-de-bloqueos-extiende-a05-62-y-a06-112)).
+
+## 13. A08 — Vínculos PDF, migración `0006` (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- **Tabla nueva `pdf_derivatives`** (`persistence/a08_schema.py`, congelada en `0006`): tiene la forma de `docx_derivatives`, más `extractor_config_sha256` y `layout` (geometría autenticada para el restaurador, sin valores). `scope_id` va en la PK y en la FK a `scopes`, sin FK a `protection_contexts`.
+- **`0006_pdf_protection`:** aditiva y solo hacia adelante; `schema_level` 5 → **6**, `min_runtime_level` **1**. Ninguna tabla de A01–A07 cambia.
+  - Los análisis nuevos guardan en `execution_snapshot` el conjunto `extractors` y usan otra `requirements_key` y otra identidad de validación (valores de columnas existentes).
+- **Compatibilidad:**
+  - `0.4.0`–`0.6.0` arrancan sobre el nivel 6 y no reclaman trabajos nuevos de análisis ni de A08.
+  - `0.7.0` termina con el extractor v1 congelado los análisis que aceptaron.
+  - `0.7.0` sobre el nivel 5 ⇒ `schema_outdated`.
+- **Orden de bloqueos:** el de A07, con el rango 14 = `pdf_derivatives`.

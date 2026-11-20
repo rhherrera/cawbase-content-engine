@@ -92,8 +92,8 @@ def test_static_boundaries_experiments_not_imported_and_no_protection_operations
     from cawbase_content_engine.engine import ScopedOperations
 
     names = {n.lower() for n in dir(ScopedOperations)}
-    # A06 (0.5.0) adds exactly the two text operations and A07 (0.6.0) exactly its DOCX operations (contract 8.1);
-    # nothing else of that family exists. Assertion widened in A07 (justified in docs/a07-implementation-report.md)
+    # A06 (0.5.0) adds exactly the two text operations, A07 (0.6.0) exactly its DOCX operations and A08 (0.7.0)
+    # exactly its PDF ones; nothing else of that family exists. Widened in A07 and A08 (see their reports)
     assert {n for n in names if any(w in n for w in ("protect", "redact", "restore", "pseudonym", "mapping"))} == {
         "protect_text",
         "restore_text",
@@ -101,6 +101,10 @@ def test_static_boundaries_experiments_not_imported_and_no_protection_operations
         "get_docx_protection_result",
         "open_docx_protected",
         "open_docx_restored",
+        "submit_pdf_protection",
+        "get_pdf_protection_result",
+        "open_pdf_protected",
+        "open_pdf_restored",
     }
     # ... and the A05 job/document code knows about protection ONLY at the A07 bridge points: the dispatch to the
     # A07 pipeline, the worker's keys, the requirements key, the cleanup bridge and the A07 child modes
@@ -112,6 +116,12 @@ def test_static_boundaries_experiments_not_imported_and_no_protection_operations
         "child.py",
         "docx_transform.py",
         "docx_verify.py",
+        # A08 bridges: the PDF extractor v2 identity, the PDF transformer and its independent verifier
+        "ident.py",
+        "pdf_extract.py",
+        "pdf_transform.py",
+        "pdf_verify.py",
+        "ttf_ink.py",
     }
     for path in [*(SRC / "jobs").rglob("*.py"), *(SRC / "documents").rglob("*.py")]:
         if path.name not in bridges:

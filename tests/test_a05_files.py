@@ -40,11 +40,12 @@ async def eng(migrated, tmp_path):
 
 
 async def valid(eng, ops, file_id):
-    """Marks the validation of the current identity as passed (what a document job would register)."""
-    from cawbase_content_engine.jobs.ident import validation_identity
+    """Marks the validation of the current identity as passed (what a document job would register; A08: the v2
+    identity of new analyses)."""
+    from cawbase_content_engine.jobs.ident import validation_identity_v2
 
     f = await ops.get_file("a", file_id)
-    ident = validation_identity(f.sha256, eng.jobs_setup.limits)
+    ident = validation_identity_v2(f.sha256, eng.jobs_setup.limits)
     import sqlalchemy as sa
 
     from cawbase_content_engine.jobs import db as jdb

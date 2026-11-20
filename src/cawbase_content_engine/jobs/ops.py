@@ -33,7 +33,7 @@ from ..operations.common import insert_ignore
 from ..operations.selection import select_published_version
 from . import db as jdb
 from . import files as fl
-from .ident import EXTRACTOR_ID, EXTRACTOR_VERSION, config_sha, validation_identity
+from .ident import EXTRACTOR_ID, EXTRACTOR_VERSION, config_sha, extractor_set, validation_identity_v2
 from .models import FileRef, JobAccepted, JobInfo
 from .spool import SpooledStream
 
@@ -72,10 +72,26 @@ def requirements_key(engine: ContentEngine, operation: str) -> str:
             TRANSFORMER_VERSION,
             profile,
         )
+    if operation in ("pdf_protection", "pdf_restoration"):  # A08: no inference; PDF extractor v2 + transformer
+        from ..documents.pdf_extract import identity as pdf_identity
+        from ..documents.pdf_transform import TRANSFORMER_ID as PDF_TX
+        from ..documents.pdf_transform import TRANSFORMER_VERSION as PDF_TXV
+
+        docs = engine.documents
+        profile = getattr(docs.runner, "profile", "") if docs else ""
+        ident = pdf_identity(engine.jobs_setup.limits)
+        return jdb.sha256_hex(
+            operation, ident["id"], ident["version"], ident["config_sha256"], PDF_TX, PDF_TXV, profile
+        )
     docs = engine.documents
     profile = getattr(docs.runner, "profile", "") if docs else ""
     lim = engine.jobs_setup.limits
-    return jdb.sha256_hex("document", EXTRACTOR_ID, EXTRACTOR_VERSION, config_sha(lim), conf or "", profile)
+    if operation == "document_analysis_v1":  # A05 key: jobs accepted by 0.4.0-0.6.0 (extractor v1 for every format)
+        return jdb.sha256_hex("document", EXTRACTOR_ID, EXTRACTOR_VERSION, config_sha(lim), conf or "", profile)
+    from .ident import extractor_set
+
+    pinned = extractor_set(lim)  # A08 (P-A08-04): no earlier runtime announces this key
+    return jdb.sha256_hex("document/2", jdb.canonical(pinned), conf or "", profile)
 
 
 def job_info(row: Any, *, cancel_outcome: str | None = None) -> JobInfo:
@@ -324,7 +340,7 @@ async def _accept(
     ctx_row = await need(locked_ctx, document=False) if spec["ctx_id"] else None
     identity: str | None = None
     if operation == "document_analysis":
-        identity = validation_identity(bytes(input_row.sha256).hex(), lim)
+        identity = validation_identity_v2(bytes(input_row.sha256).hex(), lim)
         vr = (
             await conn.execute(
                 sa.select(t.file_validations.c.result).where(
@@ -373,11 +389,16 @@ async def _accept(
             "inference": 1,
             "job": 1,
             "document_structures": "document-structures/1",
+            "document_structures_by_format": {"docx": "document-structures/1", "pdf": "document-structures/2"}
+            if operation == "document_analysis"
+            else None,
             "result": 1,
         },
         "extractor": {"id": EXTRACTOR_ID, "version": EXTRACTOR_VERSION, "config_sha256": config_sha(lim)}
         if operation == "document_analysis"
         else None,
+        # A08 (P-A08-04): the identity of the analysis is the one of the DETECTED format
+        "extractors": extractor_set(lim) if operation == "document_analysis" else None,
         "inference_provenance": desc,
         "inference_timeout_s": inf.timeout_s,
         "isolation_profile": isolation if operation == "document_analysis" else None,

@@ -113,9 +113,9 @@ async def test_pdf_end_to_end_two_pages(eng):
 
     sm = json.loads(b"".join([c async for c in await ops.open_job_artifact("a", job.job_id, "source_map")]))
     segs = sm["units"][0]["segments"]
-    assert any(
-        s["kind"] == "synthesized" and not s["pieces"] for s in segs
-    )  # the separator between lines is synthesized
+    # A08 (D-A08-04): new PDF analyses use the extractor v2; the separator between lines is synthesized by geometry
+    assert sm["schema"] == "document-structures/2" and sm["identity"]["extractor"]["id"] == "cce-pdf-extract"
+    assert any(s["kind"] == "synthesized_line" and not s["pieces"] for s in segs)
     assert segs[0]["pieces"][0]["page_index"] == 0 and segs[0]["pieces"][0]["relation"] == "1:1"
     assert result["units"][0]["text_length"] == len(TEXT) + 1 + len("segunda línea")
 
@@ -225,33 +225,32 @@ def _save(pdf: pikepdf.Pdf, **kw) -> bytes:
 
 
 async def test_pdf_matrix_rejections(eng):
+    """The PDF matrix of NEW analyses is the A08 extractor v2 (docs/pdf-protection.md section 5): it keeps the A04
+    rejections and admits what v1 refused (object streams, /Contents arrays, /Rotate 270, text state); the frozen v1
+    extractor is still tested directly in tests/test_a08_pure.py."""
     ops = await ready_scope(eng)
     base = make_pdf([[TEXT]])
     # encrypted (empty user password: opening must not turn it into a success)
     pdf = pikepdf.open(io.BytesIO(base))
     enc = _save(pdf, encryption=pikepdf.Encryption(user="", owner="o"))
     assert await rejected(eng, ops, enc, "p-enc") == "encrypted"
-    # object streams
+    # admitted by v2: object streams, rotation 270, /Contents as an array, text state (Tc)
+    variants = []
     pdf = pikepdf.open(io.BytesIO(base))
-    assert (
-        await rejected(eng, ops, _save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.generate), "p-objstm")
-        == "unsupported_structure"
-    )
-    # rotation 270 (A04 left it pending: refused in A05)
+    variants.append(_save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.generate))
     pdf = pikepdf.open(io.BytesIO(base))
     pdf.pages[0].obj["/Rotate"] = 270
-    assert (
-        await rejected(eng, ops, _save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable), "p-rot")
-        == "unsupported_structure"
-    )
-    # /Contents as an array
+    variants.append(_save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable))
     pdf = pikepdf.open(io.BytesIO(base))
     pdf.pages[0].obj["/Contents"] = pikepdf.Array([pdf.pages[0].obj["/Contents"]])
-    assert (
-        await rejected(eng, ops, _save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable), "p-arr")
-        == "unsupported_structure"
-    )
-    # Type0 / CID font
+    variants.append(_save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable))
+    pdf = pikepdf.open(io.BytesIO(base))
+    pdf.pages[0].obj["/Contents"].write(b"BT /F1 12 Tf 2 Tc 72 720 Td (hola) Tj ET")
+    variants.append(_save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable))
+    for k, data in enumerate(variants):
+        f, job = await doc_job(eng, ops, data, f"p-v2-{k}")
+        assert job.state == "succeeded", (k, job.failure_code)
+    # a Type0 without Identity-H descendants: refused
     pdf = pikepdf.open(io.BytesIO(base))
     fo = pdf.pages[0].obj["/Resources"]["/Font"]["/F1"]
     fo["/Subtype"] = pikepdf.Name.Type0
@@ -259,12 +258,12 @@ async def test_pdf_matrix_rejections(eng):
         await rejected(eng, ops, _save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable), "p-t0")
         == "font_mapping_insufficient"
     )
-    # text state operator outside the subset (Tc)
+    # hidden text (Tr 3) and clipping modes
     pdf = pikepdf.open(io.BytesIO(base))
-    pdf.pages[0].obj["/Contents"].write(b"BT /F1 12 Tf 2 Tc 72 720 Td (hola) Tj ET")
+    pdf.pages[0].obj["/Contents"].write(b"BT /F1 12 Tf 3 Tr 72 720 Td (hola) Tj ET")
     assert (
-        await rejected(eng, ops, _save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable), "p-tc")
-        == "unsupported_text_state"
+        await rejected(eng, ops, _save(pdf, object_stream_mode=pikepdf.ObjectStreamMode.disable), "p-tr3")
+        == "hidden_text"
     )
     # incremental update
     assert await rejected(eng, ops, base + b"\n%%EOF\n", "p-inc") == "incremental_update"

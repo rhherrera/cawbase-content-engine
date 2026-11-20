@@ -29,6 +29,11 @@ pip install --quiet uv >/dev/null 2>&1
 summary "$(uv --version)"
 uv sync --group dev --frozen > "$OUT/sync.log" 2>&1 || { summary "sync FAILED"; exit 1; }
 
+summary "== render evidence tools (A08: Poppler for tests/test_a08_evidence.py; the test is skipped without it)"
+(apt-get update -qq && apt-get install -y -qq poppler-utils) > "$OUT/poppler.log" 2>&1
+summary "poppler: $(pdftoppm -v 2>&1 | head -n 1 || echo unavailable)"
+export CCE_A08_EVIDENCE_DIR="$OUT/a08-evidence"
+
 summary "== static"
 stage ruff-check uv run ruff check .
 stage ruff-format uv run ruff format --check src tests examples scripts

@@ -20,7 +20,7 @@ async def dump_all(url: str, backend: str, tables) -> dict[str, list[str]]:
     """The A06 dump over the tables that existed before 0005."""
     md = sa.MetaData()
     for tbl in tables.metadata.sorted_tables:
-        if not tbl.name.endswith("docx_derivatives"):
+        if not tbl.name.endswith(("docx_derivatives", "pdf_derivatives")):
             tbl.to_metadata(md)
 
     class _T:
@@ -48,28 +48,28 @@ async def test_upgrade_from_0004_keeps_every_row_and_object(db, tmp_path, monkey
     before_rows = await dump_all(url, backend, tables)
     before_objects = await inventory(url)
     report = await upgrade(cfg)
-    assert report.applied == ("0005",) and report.from_revision == "0004" and report.to_level == 5
+    assert report.applied == ("0005", "0006") and report.from_revision == "0004" and report.to_level == 6
     after_objects = await inventory(url)
     for name, entry in before_objects.items():
         assert after_objects[name] == entry, name
     created = {n for n in set(after_objects) - set(before_objects) if "autoindex" not in n}
-    assert created and all("docx_derivatives" in n for n in created), created
+    assert created and all("docx_derivatives" in n or "pdf_derivatives" in n for n in created), created
     after_rows = await dump_all(url, backend, tables)
     for name, rows in before_rows.items():
-        if name.endswith("engine_state") or name.endswith("docx_derivatives"):
+        if name.endswith("engine_state") or name.endswith(("docx_derivatives", "pdf_derivatives")):
             continue
         assert after_rows[name] == rows, f"data changed in {name}"
     assert (await upgrade(cfg)).already_current
     async with ContentEngine(cfg) as e2:
         st = await e2.schema_status()
-        assert st.compatible and st.schema_level == 5 and st.min_runtime_level == 1
+        assert st.compatible and st.schema_level == 6 and st.min_runtime_level == 1
 
 
 async def test_older_runtimes_and_a_new_one_on_an_old_schema(db, tmp_path, monkeypatch):  # AC-A07-74, 55
     _backend, url = db
     cfg = EngineConfig(database_url=url)
     await upgrade(cfg, target="0004")
-    with pytest.raises(SchemaIncompatibleError):  # 0.6.0 on level 4: outdated
+    with pytest.raises(SchemaIncompatibleError):  # 0.7.0 on level 4: outdated
         await ContentEngine(cfg).start()
     await upgrade(cfg)
     monkeypatch.setattr("cawbase_content_engine.schema.SCHEMA_LEVEL", 4)  # what a 0.5.0 runtime requires

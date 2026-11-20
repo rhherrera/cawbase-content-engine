@@ -32,7 +32,7 @@ from ..errors import (
 from ..models import UpsertResult
 from ..operations.common import insert_ignore
 from . import db as jdb
-from .ident import validation_identity
+from .ident import validation_identity, validation_identity_v2
 from .models import StoredFile
 from .setup import (
     ExternalSourceResolver,
@@ -136,6 +136,8 @@ async def file_model(conn: AsyncConnection, ctx: Ctx, row: Any, *, now: datetime
             )
         ).all()
         cur = validation_identity(bytes(m["sha256"]).hex(), ctx.lim)
+        cur2 = validation_identity_v2(bytes(m["sha256"]).hex(), ctx.lim)  # A08: the newest identity prevails
+        legacy = "pending"
         for v in vr:
             vals.append(
                 {
@@ -145,8 +147,12 @@ async def file_model(conn: AsyncConnection, ctx: Ctx, row: Any, *, now: datetime
                     "validated_at": v.validated_at,
                 }
             )
-            if v.validation_identity == cur:
+            if v.validation_identity == cur2:
                 dv = v.result
+            elif v.validation_identity == cur:
+                legacy = v.result
+        if dv == "pending":
+            dv = legacy
     return StoredFile(
         scope_id=m["scope_id"],
         file_id=m["file_id"],

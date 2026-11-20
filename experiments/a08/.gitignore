@@ -1,0 +1,11 @@
+.venv/
+.ruff_cache/
+__pycache__/
+corpus-private/
+work/
+fonts/*.ttf
+outputs/dev*/
+outputs/cv-base/
+corpus2b-private/
+outputs/dev2b*/
+outputs/cv2b-base/

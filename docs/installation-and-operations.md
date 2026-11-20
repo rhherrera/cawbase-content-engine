@@ -331,3 +331,12 @@ Sin efectos al importar; el módulo de inferencia, el validador y el mock se imp
 - Orden de despliegue: migrar (`0005`) → actualizar todos los runtimes → emitir claves con `docx:*`.
 - Limpieza: `run_cleanup` de A05 purga artefactos (un `docx_restored` descartado es elegible de inmediato, P-A07-04, aplicado por la limpieza de `0.6.0`); `cleanup-docx` marca `ended` los vínculos de contextos terminados y purga sus lápidas.
 - Evidencia de apertura y render: `bash scripts/a07_render_evidence.sh OUT` (LibreOffice + Poppler en Docker).
+
+## 17. A08 — Operación de la protección PDF (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- **Requisitos:** los de A07 (extras `documents` y `protection`, `StorageSetup`, `DocumentSetup` y `ProtectionSetup`). El extra `documents` incluye ahora `pypdf>=7,<8`. El worker de referencia ejecuta también los trabajos de A08 y los análisis heredados (extractor v1 congelado).
+- **Orden de despliegue:** migrar (`0006`) → actualizar todos los runtimes → emitir claves con `pdf:*`. Hasta actualizar, un runtime `0.6.0` sigue ejecutando lo suyo, pero no reclama los análisis nuevos.
+- **Limpieza:** `run_cleanup` de A05 purga los artefactos; un `pdf_restored` descartado es elegible de inmediato, con la limpieza de `0.7.0`. `cleanup-pdf` marca `ended` los vínculos de contextos terminados y purga sus lápidas.
+- **Evidencia de render** (no se ejecuta en runtime): `uv run pytest tests/test_a08_evidence.py` con Poppler (`pdftoppm`) instalado; `CCE_A08_EVIDENCE_DIR` guarda los PDF y un resumen por caso.

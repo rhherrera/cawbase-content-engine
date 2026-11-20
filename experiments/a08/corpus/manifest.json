@@ -1,0 +1,1198 @@
+{
+ "manifest_version": 1,
+ "status": "Revisión 1 — propuesta de congelamiento pendiente de la aprobación del usuario (A08, etapa 1). Datos; no es código.",
+ "protocol": "docs/a08-pdf-corpus-protocol.md",
+ "policy": {
+  "default_action": "pseudonymize",
+  "actions": {
+   "government_id": "redact",
+   "financial_information": "redact",
+   "salary_compensation": "redact"
+  }
+ },
+ "substitutes": {
+  "pseudonymize": "A06 marker [[CCE1:<16 Crockford base32>]] (25 code points)",
+  "redact": "[REDACTED]",
+  "alphabet_sigma": "[]:0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+ },
+ "values": {
+  "V01": {
+   "value": "María José Núñez Ibáñez",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 23
+  },
+  "V02": {
+   "value": "ana.soler@example.test",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 22
+  },
+  "V03": {
+   "value": "Gil",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 3
+  },
+  "V04": {
+   "value": "00000000-X",
+   "type_id": "government_id",
+   "action": "redact",
+   "code_points": 10
+  },
+  "V05": {
+   "value": "ES00 0000 0000 0000 0000 0000",
+   "type_id": "financial_information",
+   "action": "redact",
+   "code_points": 29
+  },
+  "V07": {
+   "value": "Íñigo",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 5
+  },
+  "V08": {
+   "value": "4 200 €",
+   "type_id": "salary_compensation",
+   "action": "redact",
+   "code_points": 7
+  },
+  "V09": {
+   "value": "Calle Ficticia 123, 4.º B",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 25
+  },
+  "V10": {
+   "value": "+00 600 000 000",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 15
+  },
+  "V11": {
+   "value": "José Ángel Pérez-Ruiz",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 21
+  },
+  "V12": {
+   "value": "X0000000",
+   "type_id": "government_id",
+   "action": "redact",
+   "code_points": 8
+  },
+  "V13": {
+   "value": "fidel.ruiz@example.test",
+   "type_id": "personal_data",
+   "action": "pseudonymize",
+   "code_points": 23
+  }
+ },
+ "filler": {
+  "F1": "La cooperativa revisó la solicitud recibida durante el último trimestre y verificó que la documentación presentada cumple los requisitos generales del procedimiento. Este texto es un ejemplo sintético preparado para pruebas técnicas y no describe a ninguna persona real.",
+  "F2": "Las cifras que aparecen en este documento son ficticias. Se incluyen para comprobar cómo se conservan la tipografía, los acentos, las tablas y la paginación cuando el archivo se transforma y se restaura.",
+  "F3": "El comité técnico acordó mantener el calendario previsto, revisar los indicadores cada mes y publicar un resumen breve al cierre de cada período. Ninguna de estas decisiones afecta a los plazos ya comunicados.",
+  "F4": "Durante la jornada se presentaron tres propuestas de mejora: simplificar los formularios, unificar los criterios de archivo y ampliar el horario de atención. Las propuestas se evaluarán según su coste y su impacto en el servicio.",
+  "F5": "La biblioteca municipal organizó un taller de escritura, una exposición de fotografía antigua y una mesa redonda sobre el patrimonio local. La asistencia superó las previsiones y el ayuntamiento estudia repetir la experiencia el año próximo.",
+  "F6": "Los indicadores muestran una evolución estable: el tiempo medio de respuesta disminuyó ligeramente y la satisfacción de las personas usuarias se mantuvo en niveles similares a los del trimestre anterior."
+ },
+ "templates": {
+  "T1": {
+   "title": "Carta",
+   "pages": [
+    [
+     {
+      "type": "header",
+      "text": "Cooperativa Ficticia del Ejemplo · Expediente 2026/017"
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Estimada ",
+        ""
+       ],
+       [
+        "María José",
+        "b"
+       ],
+       [
+        " Núñez Ibáñez:",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F1"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "Según el acta de la reunión, el señor Gil revisó la documentación del trámite y confirmó que el plazo de presentación vence al final del próximo trimestre, sin cambios respecto de lo comunicado.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "Para cualquier consulta, escriba a ana.soler@example.test indicando el número de expediente que figura en el encabezado.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Documento de identidad del titular: 00000000-X.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F2"
+     }
+    ],
+    [
+     {
+      "type": "header",
+      "text": "Cooperativa Ficticia del Ejemplo · Expediente 2026/017"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F3"
+     },
+     {
+      "type": "table",
+      "borders": true,
+      "header_row": true,
+      "rows": [
+       [
+        [
+         [
+          "Concepto",
+          ""
+         ]
+        ],
+        [
+         [
+          "Dato",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Teléfono de contacto",
+          ""
+         ]
+        ],
+        [
+         [
+          "+00 600 000 000",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Horario",
+          ""
+         ]
+        ],
+        [
+         [
+          "De lunes a viernes, de 9 a 14 h",
+          ""
+         ]
+        ]
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Atentamente,",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Departamento de Atención · ana.soler@example.test",
+        ""
+       ]
+      ]
+     }
+    ]
+   ],
+   "footer": "Página {n} de {total}"
+  },
+  "T2": {
+   "title": "Formulario en tabla",
+   "pages": [
+    [
+     {
+      "type": "heading",
+      "level": 1,
+      "text": "Solicitud de alta de proveedor (ejemplo sintético)"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "La solicitud fue presentada por José Ángel Pérez-Ruiz en nombre de la cooperativa y se tramita según el procedimiento general.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F2"
+     },
+     {
+      "type": "table",
+      "borders": true,
+      "header_row": true,
+      "rows": [
+       [
+        [
+         [
+          "Campo",
+          ""
+         ]
+        ],
+        [
+         [
+          "Valor",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Nombre completo",
+          ""
+         ]
+        ],
+        [
+         [
+          "José Ángel",
+          "b"
+         ],
+         [
+          " Pérez-Ruiz",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Alias",
+          ""
+         ]
+        ],
+        [
+         [
+          "Íñigo",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Teléfono",
+          ""
+         ]
+        ],
+        [
+         [
+          "+00 600 000 000",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Correo electrónico",
+          ""
+         ]
+        ],
+        [
+         [
+          "ana.soler@example.test",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Documento",
+          ""
+         ]
+        ],
+        [
+         [
+          "00000000-X",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Cuenta",
+          ""
+         ]
+        ],
+        [
+         [
+          "ES00 0000 0000 0000 0000 0000",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Retribución anual",
+          ""
+         ]
+        ],
+        [
+         [
+          "4 200 €",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "Observaciones",
+          ""
+         ]
+        ],
+        [
+         [
+          "Sin observaciones.",
+          ""
+         ]
+        ]
+       ]
+      ]
+     }
+    ],
+    [
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F3"
+     },
+     {
+      "type": "table",
+      "borders": true,
+      "header_row": true,
+      "rows": [
+       [
+        [
+         [
+          "Fecha",
+          ""
+         ]
+        ],
+        [
+         [
+          "Estado",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "2026-01-15",
+          ""
+         ]
+        ],
+        [
+         [
+          "Recibida",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "2026-02-03",
+          ""
+         ]
+        ],
+        [
+         [
+          "En revisión",
+          ""
+         ]
+        ]
+       ],
+       [
+        [
+         [
+          "2026-03-20",
+          ""
+         ]
+        ],
+        [
+         [
+          "Aprobada",
+          ""
+         ]
+        ]
+       ]
+      ]
+     }
+    ]
+   ],
+   "footer": "Página {n} de {total}"
+  },
+  "T3": {
+   "title": "Boletín a dos columnas",
+   "pages": [
+    [
+     {
+      "type": "heading",
+      "level": 1,
+      "text": "Boletín informativo de ejemplo — número 12",
+      "span": "all_columns"
+     },
+     {
+      "type": "columns",
+      "count": 2,
+      "columns": [
+       [
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "runs": [
+          [
+           "La responsable del proyecto, ",
+           ""
+          ],
+          [
+           "María José",
+           "b"
+          ],
+          [
+           " Núñez Ibáñez, coordinó la jornada y presentó el resumen de actividades del semestre.",
+           ""
+          ]
+         ]
+        },
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "filler": "F4"
+        },
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "runs": [
+          [
+           "La sede provisional se encuentra en Calle Ficticia 123, 4.º B, hasta que finalicen las obras del edificio principal.",
+           ""
+          ]
+         ]
+        }
+       ],
+       [
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "filler": "F5"
+        },
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "runs": [
+          [
+           "En la inscripción se registró el pasaporte X0000000 de uno de los ponentes invitados, según el protocolo habitual.",
+           ""
+          ]
+         ]
+        },
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "runs": [
+          [
+           "El coordinador técnico, el señor Gil, agradeció la participación de las personas voluntarias.",
+           ""
+          ]
+         ]
+        },
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "runs": [
+          [
+           "Recuerde que la correspondencia debe dirigirse a Calle Ficticia 123, 4.º B, a la atención de la secretaría.",
+           ""
+          ]
+         ]
+        }
+       ]
+      ]
+     }
+    ],
+    [
+     {
+      "type": "columns",
+      "count": 2,
+      "columns": [
+       [
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "filler": "F6"
+        }
+       ],
+       [
+        {
+         "type": "paragraph",
+         "align": "justify",
+         "filler": "F3"
+        }
+       ]
+      ]
+     },
+     {
+      "type": "shaded_box",
+      "fill": "#E6E6E6",
+      "content": [
+       {
+        "type": "paragraph",
+        "align": "left",
+        "runs": [
+         [
+          "Contacto de la redacción: +00 600 000 000",
+          ""
+         ]
+        ]
+       }
+      ]
+     }
+    ]
+   ],
+   "footer": null
+  },
+  "T4": {
+   "title": "Informe estructurado",
+   "font": "exporter_default",
+   "pages": [
+    [
+     {
+      "type": "shaded_band",
+      "fill": "#DDE6F0",
+      "content": [
+       {
+        "type": "heading",
+        "level": 1,
+        "text": "Informe trimestral de ejemplo"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "level": 2,
+      "text": "1. Resumen"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F6"
+     },
+     {
+      "type": "heading",
+      "level": 2,
+      "text": "2. Equipo"
+     },
+     {
+      "type": "bullet_list",
+      "items": [
+       [
+        [
+         "Responsable: ",
+         ""
+        ],
+        [
+         "María José",
+         "b"
+        ],
+        [
+         " Núñez Ibáñez",
+         ""
+        ]
+       ],
+       [
+        [
+         "Apoyo técnico: personal de la cooperativa",
+         ""
+        ]
+       ],
+       [
+        [
+         "Revisión: comité de calidad",
+         ""
+        ]
+       ]
+      ]
+     },
+     {
+      "type": "horizontal_rule"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F1"
+     }
+    ],
+    [
+     {
+      "type": "heading",
+      "level": 2,
+      "text": "3. Actividades"
+     },
+     {
+      "type": "numbered_list",
+      "items": [
+       [
+        [
+         "Revisión de formularios",
+         ""
+        ]
+       ],
+       [
+        [
+         "Unificación de criterios",
+         ""
+        ]
+       ],
+       [
+        [
+         "Ampliación del horario",
+         ""
+        ]
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "En la reunión de seguimiento, Íñigo presentó el calendario actualizado y propuso nuevas fechas de revisión para el comité.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "Los gastos se cargaron a la cuenta habitual de la cooperativa.",
+        ""
+       ]
+      ],
+      "note": {
+       "kind": "footnote",
+       "fallback_for_C_M": "page_end_note",
+       "text": "Cuenta de cargo: ES00 0000 0000 0000 0000 0000."
+      }
+     },
+     {
+      "type": "paragraph",
+      "align": "left",
+      "runs": [
+       [
+        "Más información en el ",
+        ""
+       ],
+       [
+        "portal de ayuda",
+        "link:https://example.test/ayuda"
+       ],
+       [
+        ".",
+        ""
+       ]
+      ]
+     }
+    ],
+    [
+     {
+      "type": "heading",
+      "level": 2,
+      "text": "4. Registro"
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "El pasaporte X0000000 se verificó en la ventanilla de atención antes de emitir la credencial.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "Las consultas se atendieron desde fidel.ruiz@example.test durante todo el período.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "runs": [
+       [
+        "En la próxima reunión, Íñigo coordinará la revisión de los indicadores.",
+        ""
+       ]
+      ]
+     },
+     {
+      "type": "paragraph",
+      "align": "justify",
+      "filler": "F2"
+     }
+    ]
+   ],
+   "footer": "Página {n} de {total}"
+  }
+ },
+ "occurrences": {
+  "T1": {
+   "selected": [
+    {
+     "id": "S1",
+     "value_id": "V01",
+     "page": 1,
+     "left_context": "Estimada",
+     "right_context": ":",
+     "ordinal_on_page": 1,
+     "note": "fragmentado: 'María José' en negrita"
+    },
+    {
+     "id": "S2",
+     "value_id": "V03",
+     "page": 1,
+     "left_context": "señor",
+     "right_context": "revisó",
+     "ordinal_on_page": 1,
+     "note": "corto, mitad de línea"
+    },
+    {
+     "id": "S3",
+     "value_id": "V02",
+     "page": 1,
+     "left_context": "escriba a",
+     "right_context": "indicando",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S4",
+     "value_id": "V04",
+     "page": 1,
+     "left_context": "titular:",
+     "right_context": ".",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S5",
+     "value_id": "V10",
+     "page": 2,
+     "left_context": "Teléfono de contacto",
+     "right_context": "Horario",
+     "ordinal_on_page": 1,
+     "note": "celda"
+    }
+   ],
+   "not_selected": [
+    {
+     "id": "O1",
+     "value_id": "V02",
+     "page": 2,
+     "left_context": "Atención ·",
+     "right_context": "",
+     "ordinal_on_page": 1
+    }
+   ]
+  },
+  "T2": {
+   "selected": [
+    {
+     "id": "S1",
+     "value_id": "V11",
+     "page": 1,
+     "left_context": "Nombre completo",
+     "right_context": "Alias",
+     "ordinal_on_page": 2,
+     "note": "celda, fragmentado: 'José Ángel' en negrita"
+    },
+    {
+     "id": "S2",
+     "value_id": "V07",
+     "page": 1,
+     "left_context": "Alias",
+     "right_context": "Teléfono",
+     "ordinal_on_page": 1,
+     "note": "corto, celda"
+    },
+    {
+     "id": "S3",
+     "value_id": "V10",
+     "page": 1,
+     "left_context": "Teléfono",
+     "right_context": "Correo electrónico",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S4",
+     "value_id": "V02",
+     "page": 1,
+     "left_context": "Correo electrónico",
+     "right_context": "Documento",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S5",
+     "value_id": "V04",
+     "page": 1,
+     "left_context": "Documento",
+     "right_context": "Cuenta",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S6",
+     "value_id": "V05",
+     "page": 1,
+     "left_context": "Cuenta",
+     "right_context": "Retribución anual",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S7",
+     "value_id": "V08",
+     "page": 1,
+     "left_context": "Retribución anual",
+     "right_context": "Observaciones",
+     "ordinal_on_page": 1,
+     "note": "corto, celda"
+    }
+   ],
+   "not_selected": [
+    {
+     "id": "O1",
+     "value_id": "V11",
+     "page": 1,
+     "left_context": "presentada por",
+     "right_context": "en nombre",
+     "ordinal_on_page": 1
+    }
+   ]
+  },
+  "T3": {
+   "selected": [
+    {
+     "id": "S1",
+     "value_id": "V01",
+     "page": 1,
+     "left_context": "proyecto,",
+     "right_context": ", coordinó",
+     "ordinal_on_page": 1,
+     "note": "columna 1, fragmentado"
+    },
+    {
+     "id": "S2",
+     "value_id": "V12",
+     "page": 1,
+     "left_context": "pasaporte",
+     "right_context": "de uno",
+     "ordinal_on_page": 1,
+     "note": "mitad de línea"
+    },
+    {
+     "id": "S3",
+     "value_id": "V03",
+     "page": 1,
+     "left_context": "señor",
+     "right_context": ", agradeció",
+     "ordinal_on_page": 1,
+     "note": "corto, mitad de línea, columna 2"
+    },
+    {
+     "id": "S4",
+     "value_id": "V09",
+     "page": 1,
+     "left_context": "encuentra en",
+     "right_context": ", hasta",
+     "ordinal_on_page": 1,
+     "note": "columna 1"
+    },
+    {
+     "id": "S5",
+     "value_id": "V10",
+     "page": 2,
+     "left_context": "redacción:",
+     "right_context": "",
+     "ordinal_on_page": 1,
+     "note": "recuadro sombreado"
+    }
+   ],
+   "not_selected": [
+    {
+     "id": "O1",
+     "value_id": "V09",
+     "page": 1,
+     "left_context": "dirigirse a",
+     "right_context": ", a la atención",
+     "ordinal_on_page": 2
+    }
+   ]
+  },
+  "T4": {
+   "selected": [
+    {
+     "id": "S1",
+     "value_id": "V01",
+     "page": 1,
+     "left_context": "Responsable:",
+     "right_context": "Apoyo técnico",
+     "ordinal_on_page": 1,
+     "note": "lista, fragmentado"
+    },
+    {
+     "id": "S2",
+     "value_id": "V07",
+     "page": 2,
+     "left_context": "seguimiento,",
+     "right_context": "presentó",
+     "ordinal_on_page": 1,
+     "note": "corto, mitad de línea"
+    },
+    {
+     "id": "S3",
+     "value_id": "V05",
+     "page": 2,
+     "left_context": "cargo:",
+     "right_context": ".",
+     "ordinal_on_page": 1,
+     "note": "nota al pie (nota al final de página en C y M)"
+    },
+    {
+     "id": "S4",
+     "value_id": "V12",
+     "page": 3,
+     "left_context": "pasaporte",
+     "right_context": "se verificó",
+     "ordinal_on_page": 1
+    },
+    {
+     "id": "S5",
+     "value_id": "V13",
+     "page": 3,
+     "left_context": "desde",
+     "right_context": "durante",
+     "ordinal_on_page": 1,
+     "note": "ligadura 'fi' posible"
+    }
+   ],
+   "not_selected": [
+    {
+     "id": "O1",
+     "value_id": "V07",
+     "page": 3,
+     "left_context": "reunión,",
+     "right_context": "coordinará",
+     "ordinal_on_page": 1
+    }
+   ]
+  }
+ },
+ "families": {
+  "W": {
+   "name": "Microsoft Word",
+   "source": "docx"
+  },
+  "G": {
+   "name": "Google Docs",
+   "source": "docx (importado y convertido)"
+  },
+  "L": {
+   "name": "LibreOffice Writer",
+   "source": "docx -> odt"
+  },
+  "C": {
+   "name": "Impresión de Chromium",
+   "source": "html"
+  },
+  "M": {
+   "name": "Exportación PDF de macOS",
+   "source": "rtf (M1, M2, M4) / html (M3)"
+  }
+ },
+ "cases": [
+  {
+   "case_id": "W1",
+   "family": "W",
+   "template": "T1"
+  },
+  {
+   "case_id": "W2",
+   "family": "W",
+   "template": "T2"
+  },
+  {
+   "case_id": "W3",
+   "family": "W",
+   "template": "T3"
+  },
+  {
+   "case_id": "W4",
+   "family": "W",
+   "template": "T4"
+  },
+  {
+   "case_id": "G1",
+   "family": "G",
+   "template": "T1"
+  },
+  {
+   "case_id": "G2",
+   "family": "G",
+   "template": "T2"
+  },
+  {
+   "case_id": "G3",
+   "family": "G",
+   "template": "T3"
+  },
+  {
+   "case_id": "G4",
+   "family": "G",
+   "template": "T4"
+  },
+  {
+   "case_id": "L1",
+   "family": "L",
+   "template": "T1"
+  },
+  {
+   "case_id": "L2",
+   "family": "L",
+   "template": "T2"
+  },
+  {
+   "case_id": "L3",
+   "family": "L",
+   "template": "T3"
+  },
+  {
+   "case_id": "L4",
+   "family": "L",
+   "template": "T4"
+  },
+  {
+   "case_id": "C1",
+   "family": "C",
+   "template": "T1"
+  },
+  {
+   "case_id": "C2",
+   "family": "C",
+   "template": "T2"
+  },
+  {
+   "case_id": "C3",
+   "family": "C",
+   "template": "T3"
+  },
+  {
+   "case_id": "C4",
+   "family": "C",
+   "template": "T4"
+  },
+  {
+   "case_id": "M1",
+   "family": "M",
+   "template": "T1"
+  },
+  {
+   "case_id": "M2",
+   "family": "M",
+   "template": "T2"
+  },
+  {
+   "case_id": "M3",
+   "family": "M",
+   "template": "T3"
+  },
+  {
+   "case_id": "M4",
+   "family": "M",
+   "template": "T4"
+  }
+ ],
+ "fonts": {
+  "T1-T3": "Noto Serif (cuerpo) / Noto Sans (títulos, tablas), OFL-1.1",
+  "T4": "fuente predeterminada del exportador",
+  "substitute_candidate": [
+   "Noto Sans Condensed Regular (OFL-1.1)",
+   "IBM Plex Sans Condensed Regular (OFL-1.1)"
+  ]
+ },
+ "page": {
+  "size": "A4",
+  "margins_mm": {
+   "top": 25,
+   "bottom": 25,
+   "left": 25,
+   "right": 25
+  },
+  "body_size_pt": 11,
+  "line_spacing": 1.15
+ }
+}

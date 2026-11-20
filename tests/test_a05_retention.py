@@ -237,7 +237,7 @@ async def test_the_migration_does_not_purge_events(db):
             ),
             {"t": datetime(2020, 1, 1, tzinfo=UTC) if backend == "postgresql" else datetime(2020, 1, 1)},
         )
-    assert (await upgrade(cfg)).applied == ("0003", "0004", "0005")
+    assert (await upgrade(cfg)).applied == ("0003", "0004", "0005", "0006")
     async with eng.connect() as c:
         assert (await c.execute(sa.text(f"SELECT count(*) FROM {ev}"))).scalar_one() == 1
     await eng.dispose()

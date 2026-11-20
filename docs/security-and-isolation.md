@@ -362,3 +362,13 @@ Reglas 404/403 como en A01/A02: `scope_id` ajeno o sin grants ⇒ 404 indistingu
 - El DOCX restaurado es material sensible: se lee solo con `docx:restored:read`, contexto vigente y scope activo, autorizados **después** de verificar el objeto en el spool e inmediatamente antes de entregar el *stream* (P-A07-03).
 - Transformación y verificación en el proceso aislado de A05; verificador independiente (biblioteca estándar) con atribución de cada coincidencia de residuo a su ubicación exacta; fallo cerrado antes de publicar ([§6](docx-protection.md#6-verificación-antes-de-publicar-d5-e-08)).
 - El vínculo de restauración se autentica con HMAC (clave de índice del contexto de A06); sin valores en claro en base, logs, errores ni informes.
+
+## 15. A08 — Permisos PDF, lectores, verificador y residuos (implementado en `0.7.0`)
+
+> **IMPLEMENTADO en `0.7.0` (A08; migración `0006`); la aceptación queda pendiente de la revisión del usuario.** Probado en macOS y en Linux local (Docker), con PostgreSQL y SQLite reales; **no** ejecutado en GitHub Actions. Contrato (alcance de la etapa 3 autorizado por el usuario): [protección y restauración PDF](pdf-protection.md); alcance y matriz: [especificación de A08](features/A08-proteccion-y-restauracion-pdf.md); decisiones: [A08-decisions](decisions/A08-decisions.md); evidencia y limitaciones: [informe de A08](a08-implementation-report.md).
+
+- **Catálogo de 29 permisos:** `pdf:protect`, `pdf:restore`, `pdf:protected:read` y `pdf:restored:read`. Los permisos `docx:*` no habilitan PDF ni al revés, y `pdf:protect` no descarga el original (`files:read`). Restricción de despliegue ampliada: no emitir claves con ellos hasta actualizar todos los runtimes.
+- **Lectura del PDF restaurado:** exige `pdf:restored:read`, contexto vigente y scope activo, autorizados **después** de verificar el objeto en el spool e inmediatamente antes de entregarlo.
+- **Aislamiento:** el PDF es entrada no confiable. Extractor, transformador, restaurador y verificador se ejecutan en el proceso aislado de A05; el padre nunca abre un PDF.
+- **Verificador independiente:** usa `pypdf` estricto y un analizador léxico propio, distinto de `pikepdf`/QPDF. Calcula zonas y geometría desde el original, contrasta cada número del vínculo y barre los residuos en texto, decodificaciones con todas las fuentes, cadenas y nombres del grafo, contenido marcado, comentarios, flujos decodificados y bytes de sintaxis.
+- **Vínculo:** HMAC con la clave de índice del contexto sobre scope, contexto, identidad, ocurrencias y layout. No guarda valores en claro en base, logs, errores ni informes.

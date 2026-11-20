@@ -46,6 +46,25 @@ def source_map_bytes(file_sha256: str, size_bytes: int, fmt: str, lim: Any, unit
     )
 
 
+def pdf_source_map_bytes(file_sha256: str, size_bytes: int, lim: Any, units: list[dict[str, Any]]) -> bytes:
+    """The canonical PDF ``SourceMap`` of the A08 extractor (``document-structures/2``; docs/pdf-protection.md 4.3).
+    A08 rebuilds it from a re-extraction and compares it byte for byte with the published one (S8)."""
+    from ..documents.pdf_extract import DOCUMENT_STRUCTURES, identity
+
+    return _dump(
+        {
+            "schema": DOCUMENT_STRUCTURES,
+            "identity": {
+                "file_sha256": file_sha256,
+                "size_bytes": size_bytes,
+                "format": "pdf",
+                "extractor": identity(lim),
+            },
+            "units": [{"unit_id": u["unit_id"], "segments": u["segments"]} for u in units],
+        }
+    )
+
+
 def extraction_params(lim: Any) -> dict[str, Any]:
     return {
         k: getattr(lim, k)
@@ -120,6 +139,14 @@ async def execute_job(w: JobWorker, c: ClaimedJob) -> str:
     row, snap = await _load(w, c)
     ctx = w.ctx
     e = w.e
+    if row.operation in ("pdf_protection", "pdf_restoration"):  # A08: no inference, own pipeline
+        if row.requirements_key not in w.supported_keys():
+            raise JobFailure("configuration_unavailable")
+        from ..pdf_protection import execute as a08
+
+        if row.operation == "pdf_protection":
+            return await a08.run_protection(w, c, row, snap)
+        return await a08.run_restoration(w, c, row, snap)
     if row.operation in ("docx_protection", "docx_restoration"):  # A07: no inference, own pipeline
         if row.requirements_key not in w.supported_keys():
             raise JobFailure("configuration_unavailable")
@@ -272,6 +299,9 @@ async def _document(
     await _verify_isolation(w)
     data = await _read_input(w, c.scope_id, snap["input"]["file_id"], limit=lim.max_file_bytes)
     params = extraction_params(lim)
+    v2 = bool(snap.get("extractors"))  # A08 (P-A08-04): jobs pinned before A08 keep the frozen A05 extractor
+    if v2:
+        params["pdf_extractor"] = "v2"
     try:
         out = await docs.runner.run(data, params, timeout_s=lim.extraction_timeout_s, limits=lim)
     except TimeoutError:
@@ -321,7 +351,10 @@ async def _document(
             tg.create_task(one(u))
     manifest = _manifest(c, row, snap, units, results, out, requested)
     mdata = _dump(manifest)
-    smap = source_map_bytes(snap["input"]["sha256"], snap["input"]["size_bytes"], out["format"], lim, units)
+    if v2 and out["format"] == "pdf":
+        smap = pdf_source_map_bytes(snap["input"]["sha256"], snap["input"]["size_bytes"], lim, units)
+    else:
+        smap = source_map_bytes(snap["input"]["sha256"], snap["input"]["size_bytes"], out["format"], lim, units)
     if len(mdata) > lim.max_result_bytes or len(smap) > lim.max_source_map_bytes:
         raise JobFailure("limit_exceeded")
     await w.set_phase(c, "publication")
@@ -379,7 +412,7 @@ def _manifest(
         },
         "provenance": {
             "inference": snap["inference_provenance"],
-            "extractor": snap["extractor"],
+            "extractor": snap["extractors"][out["format"]] if snap.get("extractors") else snap["extractor"],
             "isolation_profile": snap["isolation_profile"],
         },
         "units": [
