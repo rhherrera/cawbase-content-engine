@@ -3,7 +3,9 @@
 `sim_host.sh` (a fake llama-server started through the real run-server.sh); SSM Run Command executes the command
 locally; a port-forwarding session just sleeps. Every call is appended to $FAKE_AWS_DIR/calls.jsonl.
 
-Environment: FAKE_AWS_DIR, FAKE_AWS_SIM_DIR, FAKE_AWS_SIM_HOST; FAKE_AWS_STOP_FAIL=1 makes stop-instances fail.
+Like the real service, Run Command is rejected unless the instance is `running` (a stopped instance has no SSM
+agent online). Environment: FAKE_AWS_DIR, FAKE_AWS_SIM_DIR, FAKE_AWS_SIM_HOST; FAKE_AWS_STOP_FAIL=1 makes
+stop-instances fail; FAKE_AWS_RUN_FAIL=SUBSTRING makes Run Command fail for the commands that contain SUBSTRING.
 """
 
 from __future__ import annotations
@@ -62,6 +64,17 @@ def main(argv: list[str]) -> int:
         return 0
     if (service, op) == ("ssm", "send-command"):
         command = json.loads(o["parameters"])["commands"][0]
+        if sim("describe") != "running":
+            print(
+                "An error occurred (InvalidInstanceId) when calling the SendCommand operation: "
+                "Instances not in a valid state for account (simulated)",
+                file=sys.stderr,
+            )
+            return 254
+        fail = os.environ.get("FAKE_AWS_RUN_FAIL")
+        if fail and fail in command:
+            print("An error occurred (InternalServerError) when calling SendCommand (simulated)", file=sys.stderr)
+            return 254
         r = subprocess.run(["bash", "-c", command], capture_output=True, text=True, check=False)
         cid = uuid.uuid4().hex
         (state_dir / f"cmd-{cid}.json").write_text(

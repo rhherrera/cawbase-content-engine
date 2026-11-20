@@ -22,8 +22,11 @@ is not the expected one.
     # from the operator machine: EC2 start -> running -> HTTP up -> weights loaded -> canary, then stop -> stopped
     python3 measure.py ec2-cycle --instance-id i-... --region us-east-1 --profile AWS_PROFILE \
         --base-url http://127.0.0.1:18080 --key-file ./api-key --out cycle.json
-    # profile verdict from the evidence files (criteria fixed before measuring): pass | fail | incomplete
-    python3 measure.py verdict --profile reference-8k-1slot --out verdict.json load.json limits.json r.json
+    # profile verdict from the evidence files (criteria fixed before measuring): pass | fail | incomplete. Every
+    # expected run must be evidenced (c1; cN for N slots; overload for the reference profile): a missing one is
+    # `incomplete`, one that ran and failed (`status: failed`) is `fail`
+    python3 measure.py verdict --profile reference-8k-1slot --slots 1 --reference --out verdict.json \
+        load.json limits.json run-c1.json run-overload.json
 """
 
 from __future__ import annotations
@@ -283,6 +286,7 @@ def cmd_run(a: argparse.Namespace, http: Http) -> dict[str, Any]:
     tps = [r["timings"].get("predicted_per_second") for r in ok if r.get("timings")]
     return {
         "kind": "run",
+        "tag": a.tag or f"c{a.concurrency}",
         "requests": a.requests,
         "concurrency": a.concurrency,
         "prompt_tokens_target": a.prompt_tokens,
@@ -359,19 +363,63 @@ def cmd_ec2_cycle(a: argparse.Namespace, http: Http) -> dict[str, Any]:
     return res
 
 
-def profile_verdict(profile: str, docs: list[dict[str, Any]]) -> dict[str, Any]:
-    """Criteria fixed before measuring (report §4). `pass` only when every criterion passed with evidence; a
-    criterion without evidence (for example memory not sampled on the host) makes the verdict `incomplete`."""
+def expected_runs(slots: int, reference: bool) -> dict[str, int]:
+    """The runs every profile must evidence (tag -> concurrency), fixed before measuring (report §4): `c1`; `cN` at
+    the slot count when the profile has N > 1 slots; `overload` (two requests queued beyond the slots) for the
+    reference profile."""
+    runs = {"c1": 1}
+    if slots > 1:
+        runs[f"c{slots}"] = slots
+    if reference:
+        runs["overload"] = slots + 2
+    return runs
+
+
+def profile_verdict(profile: str, docs: list[dict[str, Any]], *, slots: int, reference: bool = False) -> dict[str, Any]:
+    """Criteria fixed before measuring (report §4). `pass` only when every criterion passed with evidence of every
+    expected run; an expected run without evidence, or a criterion without evidence (for example memory not sampled
+    on the host), makes the verdict `incomplete`; a measurement that ran and failed (`status: failed`) is `fail`."""
     by_kind: dict[str, list[dict[str, Any]]] = {}
     for d in docs:
         by_kind.setdefault(d.get("kind", "?"), []).append(d)
+
+    def failed(d: dict[str, Any]) -> bool:
+        return d.get("status") == "failed"
+
     crit: dict[str, str] = {}
     loads = by_kind.get("load", [])
-    crit["loaded"] = "unavailable" if not loads else ("pass" if all(d.get("ready_s") for d in loads) else "fail")
-    mems = [d.get("memory") or _unavailable("absent") for d in loads + by_kind.get("run", [])]
-    states = {m.get("criterion", "unavailable") for m in mems}
+    crit["loaded"] = (
+        "unavailable" if not loads else ("pass" if all(d.get("ready_s") and not failed(d) for d in loads) else "fail")
+    )
+    seen_slots = {d.get("total_slots") for d in loads if not failed(d)}
+    crit["slots"] = (
+        "unavailable" if not seen_slots or None in seen_slots else "pass" if seen_slots == {slots} else "fail"
+    )
+    expected = expected_runs(slots, reference)
+    runs = by_kind.get("run", [])
+    by_tag: dict[str, list[dict[str, Any]]] = {}
+    for d in runs:
+        by_tag.setdefault(str(d.get("tag") or f"c{d.get('concurrency')}"), []).append(d)
+
+    def run_ok(d: dict[str, Any], conc: int | None) -> bool:
+        if failed(d) or (conc is not None and d.get("concurrency") != conc):
+            return False
+        return d.get("ok") == d.get("requests") == d.get("json_ok") and not d.get("finish_reason_length")
+
+    run_status: dict[str, str] = {}
+    for tag in sorted(set(expected) | set(by_tag)):
+        got = by_tag.get(tag, [])
+        if not got:
+            run_status[tag] = "missing"
+        else:
+            run_status[tag] = "pass" if all(run_ok(d, expected.get(tag)) for d in got) else "fail"
+    states = set(run_status.values())
+    crit["run"] = "fail" if "fail" in states else "unavailable" if "missing" in states else "pass"
+    missing_mem = [_unavailable("missing_run") for tag in expected if tag not in by_tag]
+    mems = [d.get("memory") or _unavailable("absent") for d in loads + runs] + missing_mem
+    mstates = {m.get("criterion", "unavailable") for m in mems}
     crit["memory"] = (
-        "unavailable" if not mems else "fail" if "fail" in states else "pass" if states == {"pass"} else "unavailable"
+        "unavailable" if not mems else "fail" if "fail" in mstates else "pass" if mstates == {"pass"} else "unavailable"
     )
     lims = by_kind.get("limits", [])
 
@@ -379,18 +427,44 @@ def profile_verdict(profile: str, docs: list[dict[str, Any]]) -> dict[str, Any]:
         fit = (d.get("fit") or {}).get("result") or {}
         over = (d.get("over_context") or {}).get("server_result") or {}
         rejected = over.get("error_type") == "exceed_context_size_error"
-        return fit.get("status") == 200 and bool(fit.get("json_ok")) and rejected
+        return not failed(d) and fit.get("status") == 200 and bool(fit.get("json_ok")) and rejected
 
     crit["limits"] = "unavailable" if not lims else ("pass" if all(limits_ok(d) for d in lims) else "fail")
-    runs = by_kind.get("run", [])
-
-    def run_ok(d: dict[str, Any]) -> bool:
-        return d.get("ok") == d.get("requests") == d.get("json_ok") and not d.get("finish_reason_length")
-
-    crit["run"] = "unavailable" if not runs else ("pass" if all(run_ok(d) for d in runs) else "fail")
     values = set(crit.values())
     verdict = "fail" if "fail" in values else "pass" if values == {"pass"} else "incomplete"
-    return {"kind": "verdict", "profile": profile, "criteria": crit, "verdict": verdict}
+    failures = [
+        {k: d.get(k) for k in ("kind", "tag", "label", "exit", "error") if d.get(k) is not None}
+        for d in docs
+        if failed(d)
+    ]
+    return {
+        "kind": "verdict",
+        "profile": profile,
+        "expected_slots": slots,
+        "reference": reference,
+        "expected_runs": expected,
+        "runs": run_status,
+        "failures": failures,
+        "criteria": crit,
+        "verdict": verdict,
+    }
+
+
+def read_evidence(paths: list[str]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Evidence files for `verdict`; a file that does not exist or is not a JSON object is listed as unreadable and
+    counts as missing evidence (never as a pass)."""
+    docs, unreadable = [], []
+    for f in paths:
+        try:
+            d = json.loads(Path(f).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            unreadable.append(f)
+            continue
+        if isinstance(d, dict):
+            docs.append(d)
+        else:
+            unreadable.append(f)
+    return docs, unreadable
 
 
 def main() -> int:
@@ -399,6 +473,8 @@ def main() -> int:
     v = sub.add_parser("verdict")
     v.add_argument("--profile", required=True)
     v.add_argument("--out", required=True)
+    v.add_argument("--slots", type=int, required=True, help="slots of the profile definition (expected runs)")
+    v.add_argument("--reference", action="store_true", help="the reference profile (also requires `overload`)")
     v.add_argument("evidence", nargs="+")
     for name in ("load", "run", "limits", "ec2-cycle"):
         p = sub.add_parser(name)
@@ -422,6 +498,7 @@ def main() -> int:
         if name in ("run", "limits"):
             p.add_argument("--max-tokens", type=int, default=3072)
         if name == "run":
+            p.add_argument("--tag", help="run identity for the verdict (default: c<concurrency>)")
             p.add_argument("--requests", type=int, default=10)
             p.add_argument("--concurrency", type=int, default=1)
             p.add_argument("--prompt-tokens", type=int, default=1800)
@@ -431,8 +508,10 @@ def main() -> int:
             p.add_argument("--profile")
     a = ap.parse_args()
     if a.cmd == "verdict":
-        docs = [json.loads(Path(f).read_text(encoding="utf-8")) for f in a.evidence]
-        res = profile_verdict(a.profile, docs)
+        docs, unreadable = read_evidence(a.evidence)
+        res = {**profile_verdict(a.profile, docs, slots=a.slots, reference=a.reference), "unreadable": unreadable}
+        if unreadable and res["verdict"] == "pass":
+            res["verdict"] = "incomplete"  # evidence that cannot be read is never a pass
         Path(a.out).write_text(json.dumps(res, indent=2), encoding="utf-8")
         print(json.dumps(res))
         return {"pass": 0, "fail": 1}.get(res["verdict"], 3)

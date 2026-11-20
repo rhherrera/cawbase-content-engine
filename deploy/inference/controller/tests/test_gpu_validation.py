@@ -1,7 +1,9 @@
 """The GPU-validation sequence (A09-1 review, finding 3), run end to end with simulated tools and no AWS resource:
 a fake `aws` CLI, SSM commands executed locally, the simulated host of `sim_host.sh` (fake llama-server through the
 real run-server.sh) and the real controller CLI. It must start from `stopped`, be started by a durable job, run the
-profiles while the host is up and always end with the instance verified `stopped`, or say loudly that it is not."""
+profiles while the host is up, restore the original profile while the instance is still running, and always end
+with the instance verified `stopped`, or say loudly that it is not. The fake `aws` rejects Run Command on an instance
+that is not running, as the real service does."""
 
 from __future__ import annotations
 
@@ -64,6 +66,8 @@ stop = "{SIM_HOST} {tmp} stop"
         self.env = {
             **os.environ,
             "CCE_AWS_BIN": str(aws),
+            "CCE_MEASURE_SCRIPT": str(HERE / "fake_measure.py"),
+            "FAKE_MEASURE_DIR": str(tmp),
             "CCE_HOST_SRC": str(DEPLOY),
             "CCE_HOST_SUDO": "",
             "CCE_POLL_S": "0.2",
@@ -155,10 +159,19 @@ def test_job_driven_cycle_profiles_and_verified_stop(sim: Sim):
         mem = sim.evidence(name)["memory"]
         assert mem["status"] == "measured" and mem["host"]["instance_id"] == IID and mem["samples"]["vram_samples"] > 0
     assert sim.evidence("run-reference-8k-1slot-overload.json")["ok"] == 3
-    assert summary["steps"]["controller_stop"]["exit"] == 0
+    assert summary["verdicts"]["reference-8k-1slot"]["runs"] == {"c1": "pass", "overload": "pass"}
+    assert summary["verdicts"]["candidate-16k-2slot"]["runs"] == {"c1": "pass", "c2": "pass"}
+    # restored and verified through Run Command BEFORE the controller stop (the fake rejects it on a stopped host)
+    assert summary["steps"]["profile_restore"] == "restored" and summary["steps"]["controller_stop"]["exit"] == 0
     final = sim.evidence("final-state.json")
-    assert final == {"instance_id": IID, "state": "stopped", "fallback_stop": False, "errors": []}
+    assert final["errors"] == [] and final["state"] == "stopped" and final["instance_stopped"] is True
+    assert final["fallback_stop"] is False  # stopped by the controller, not by the cleanup
+    profile = final["profile"]
+    assert profile["status"] == "restored" and profile["original"] == profile["current"] == "reference-8k-1slot"
+    assert len(profile["attempts"]) == 1
     assert sim.host_state() == "stopped" and sim.profile() == "reference-8k-1slot"  # original profile restored
+    py = sim.evidence("preflight.json")["python"]
+    assert py["executable"] == sys.executable  # every child runs on the controller interpreter
     assert (sim.ev / "host-facts.json").exists() and (sim.ev / "boot-timings.json").exists()
 
 
@@ -172,12 +185,63 @@ def test_memory_without_samples_does_not_pass_the_profile(sim: Sim):
     assert sim.evidence("final-state.json")["state"] == "stopped" and sim.host_state() == "stopped"
 
 
-def test_failure_in_the_campaign_still_stops_and_restores_the_profile(sim: Sim):
-    r = sim.run("--profiles", "reference-8k-1slot no-such-profile")
+def test_a_run_that_fails_is_recorded_and_fails_the_verdict(sim: Sim):
+    """The c2 run of the two-slot profile runs and fails: its failure is recorded, never omitted from the verdict
+    (de3e8e2 left it out and the profile passed on c1 alone)."""
+    r = sim.run(
+        "--profiles",
+        "reference-8k-1slot candidate-16k-2slot",
+        env={"FAKE_MEASURE_FAIL": "run:run-candidate-16k-2slot-c2"},
+    )
     assert r.returncode == 1, r.stdout + r.stderr
-    assert "FAILED" in r.stderr and "load no-such-profile" in r.stderr
+    rec = sim.evidence("run-candidate-16k-2slot-c2.json")
+    assert rec["status"] == "failed" and rec["exit"] == 1 and rec["tag"] == "c2" and "simulated" in rec["error"]
+    verdict = sim.evidence("summary.json")["verdicts"]["candidate-16k-2slot"]
+    assert verdict["verdict"] == "fail" and verdict["runs"] == {"c1": "pass", "c2": "fail"}
+    assert verdict["failures"][0]["label"] == "run-candidate-16k-2slot-c2"
+    assert "FAILED" in r.stderr and "D-A09-05" in r.stderr
+    # the profile was changed: the cleanup restored it while the host was running, then stopped the instance
     final = sim.evidence("final-state.json")
     assert final["state"] == "stopped" and final["fallback_stop"] is True  # stopped by the cleanup, not the controller
+    assert final["profile"]["status"] == "restored" and final["errors"] == []
+    assert sim.host_state() == "stopped" and sim.profile() == "reference-8k-1slot"
+
+
+def test_profile_restore_failure_still_stops_and_is_never_validated(sim: Sim):
+    r = sim.run("--profiles", "reference-8k-1slot candidate-16k-1slot", env={"FAKE_AWS_RUN_FAIL": "--no-restart"})
+    assert r.returncode == 1, r.stdout + r.stderr
+    summary = sim.evidence("summary.json")
+    assert {v["verdict"] for v in summary["verdicts"].values()} == {"pass"}  # the measurements themselves passed
+    assert summary["outcome"].startswith("failed: profile restore")
+    final = sim.evidence("final-state.json")
+    # recorded apart: EC2 stopped (by the cleanup, the run never reached the controller stop), profile not restored
+    assert final["instance_stopped"] is True and final["state"] == "stopped" and final["fallback_stop"] is True
+    assert final["profile"]["status"] == "not_restored" and len(final["profile"]["attempts"]) == 2
+    assert any(e.startswith("profile_restore_failed") for e in final["errors"])
+    assert "controller_stop" not in summary["steps"] and sim.host_state() == "stopped"
+    assert sim.profile() == "candidate-16k-1slot"  # visible: the host keeps the last profile measured
+
+
+def test_interruption_during_the_campaign_restores_then_stops(sim: Sim):
+    env = {**sim.env, "FAKE_MEASURE_HANG": "limits:candidate-16k-1slot"}
+    p = subprocess.Popen(
+        sim.argv("--profiles", "reference-8k-1slot candidate-16k-1slot"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+    try:
+        wait_until(lambda: (sim.tmp / "hang").exists(), timeout=120)
+        assert sim.profile() == "candidate-16k-1slot"
+        p.send_signal(signal.SIGTERM)
+        out, err = p.communicate(timeout=120)
+    finally:
+        if p.poll() is None:
+            p.kill()
+    assert p.returncode == 130, out + err
+    final = sim.evidence("final-state.json")
+    assert final["profile"]["status"] == "restored" and final["instance_stopped"] is True and final["errors"] == []
     assert sim.host_state() == "stopped" and sim.profile() == "reference-8k-1slot"
 
 
@@ -233,6 +297,14 @@ def test_refuses_to_start_unless_the_instance_is_stopped(sim: Sim):
     r = sim.run()
     assert r.returncode == 2 and "must be stopped" in r.stderr
     assert sim.host_state() == "running" and sim.calls("stop-instances") == 0  # nothing was touched
+
+
+def test_refuses_unknown_profiles_and_another_interpreter(sim: Sim):
+    r = sim.run("--profiles", "reference-8k-1slot no-such-profile")
+    assert r.returncode == 2 and "unknown profile 'no-such-profile'" in r.stderr
+    r = sim.run(env={"CCE_PYTHON": "/usr/bin/false"})
+    assert r.returncode == 2 and "controller interpreter" in r.stderr
+    assert sim.host_state() == "stopped" and sim.calls("stop-instances") == 0 and not sim.ev.exists()
 
 
 def test_refuses_evidence_inside_the_repository(sim: Sim):

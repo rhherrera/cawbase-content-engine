@@ -1,6 +1,7 @@
 """Memory evidence of measure.py (A09-1 review, finding 2), without a GPU: the sampler runs on the measured host
 (`mem-sample.sh`), the result records the host and the sample counts, and missing samples are `unavailable`, never a
-fictitious 0 that would pass the memory criterion."""
+fictitious 0 that would pass the memory criterion. The verdict needs evidence of every expected run of the profile
+(A09-1 review 2): a missing run is `incomplete`, a run that ran and failed is `fail`."""
 
 from __future__ import annotations
 
@@ -115,7 +116,8 @@ def test_memory_local_mode_and_no_gpu_is_unavailable_not_zero(tmp_path: Path, fa
     assert mem["status"] == "unavailable" and mem["reason"] == "no_samples" and mem["criterion"] == "unavailable"
     assert mem["samples"]["vram_samples"] == 0 and mem["samples"]["ram_samples"] >= 1
     assert "vram_peak_mib" not in mem and "vram_free_min_mib" not in mem
-    verdict = measure.profile_verdict("p", [{"kind": "load", "ready_s": 3.0, "memory": mem}, res])
+    load = {"kind": "load", "ready_s": 3.0, "total_slots": 1, "memory": mem}
+    verdict = measure.profile_verdict("p", [load, res], slots=1)
     assert verdict["criteria"]["memory"] == "unavailable" and verdict["verdict"] == "incomplete"
 
 
@@ -167,18 +169,94 @@ def test_memory_criterion_uses_the_free_vram_at_the_peak():
     assert roomy["criterion"] == "pass"
 
 
+MEM_OK = measure.memory_evidence(summary(vram_peak_mib=20000), WINDOW, None)
+LIMITS = {
+    "kind": "limits",
+    "fit": {"result": {"status": 200, "json_ok": True}},
+    "over_context": {"server_result": {"status": 400, "error_type": "exceed_context_size_error"}},
+}
+
+
+def load_doc(slots: int) -> dict:
+    return {"kind": "load", "ready_s": 80.0, "total_slots": slots, "memory": MEM_OK}
+
+
+def run_doc(tag: str, conc: int, **over) -> dict:
+    base = {"kind": "run", "tag": tag, "concurrency": conc, "requests": 5, "ok": 5, "json_ok": 5, "memory": MEM_OK}
+    return {**base, "finish_reason_length": 0, **over}
+
+
+def failed_doc(kind: str, tag: str | None = None) -> dict:
+    return {"kind": kind, "tag": tag, "label": f"{kind}-{tag}", "status": "failed", "exit": 1, "error": "boom"}
+
+
 def test_verdict_passes_only_with_every_criterion_evidenced():
-    mem_ok = measure.memory_evidence(summary(vram_peak_mib=20000), WINDOW, None)
-    load = {"kind": "load", "ready_s": 80.0, "memory": mem_ok}
-    limits = {
-        "kind": "limits",
-        "fit": {"result": {"status": 200, "json_ok": True}},
-        "over_context": {"server_result": {"status": 400, "error_type": "exceed_context_size_error"}},
-    }
-    run = {"kind": "run", "requests": 5, "ok": 5, "json_ok": 5, "finish_reason_length": 0, "memory": mem_ok}
-    assert measure.profile_verdict("p", [load, limits, run])["verdict"] == "pass"
+    load, run = load_doc(1), run_doc("c1", 1)
+    assert measure.profile_verdict("p", [load, LIMITS, run], slots=1)["verdict"] == "pass"
     no_mem = {**run, "memory": measure.memory_evidence(None, WINDOW, None, reason="not_requested")}
-    assert measure.profile_verdict("p", [load, limits, no_mem])["verdict"] == "incomplete"
-    assert measure.profile_verdict("p", [load, limits])["verdict"] == "incomplete"  # no run at all
+    assert measure.profile_verdict("p", [load, LIMITS, no_mem], slots=1)["verdict"] == "incomplete"
+    assert measure.profile_verdict("p", [load, LIMITS], slots=1)["verdict"] == "incomplete"  # no run at all
     truncated = {**run, "finish_reason_length": 1}
-    assert measure.profile_verdict("p", [load, limits, truncated])["verdict"] == "fail"
+    assert measure.profile_verdict("p", [load, LIMITS, truncated], slots=1)["verdict"] == "fail"
+
+
+def test_expected_runs_per_profile():
+    assert measure.expected_runs(1, False) == {"c1": 1}
+    assert measure.expected_runs(2, False) == {"c1": 1, "c2": 2}
+    assert measure.expected_runs(1, True) == {"c1": 1, "overload": 3}
+
+
+def run_verdict_cli(tmp_path: Path, docs: list[dict], *flags: str) -> tuple[int, dict]:
+    files = []
+    for i, d in enumerate(docs):
+        f = tmp_path / f"e{i}.json"
+        f.write_text(json.dumps(d))
+        files.append(str(f))
+    out = tmp_path / "verdict.json"
+    cmd = [sys.executable, str(BENCH / "measure.py"), "verdict", "--profile", "p", *flags, "--out", str(out), *files]
+    r = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    assert out.exists(), r.stderr
+    return r.returncode, json.loads(out.read_text())
+
+
+def test_two_slot_profile_with_concurrency_1_only_is_incomplete(tmp_path: Path):
+    """Regression (review 2): on de3e8e2 this evidence gave `pass` (exit 0) for a two-slot profile."""
+    code, v = run_verdict_cli(tmp_path, [load_doc(2), LIMITS, run_doc("c1", 1)], "--slots", "2")
+    assert (code, v["verdict"], v["criteria"]["run"]) == (3, "incomplete", "unavailable")
+    assert v["runs"] == {"c1": "pass", "c2": "missing"} and v["expected_runs"] == {"c1": 1, "c2": 2}
+    code, v = run_verdict_cli(tmp_path, [load_doc(2), LIMITS, run_doc("c1", 1), run_doc("c2", 2)], "--slots", "2")
+    assert (code, v["verdict"]) == (0, "pass")
+
+
+def test_reference_profile_needs_the_overload_run(tmp_path: Path):
+    code, v = run_verdict_cli(tmp_path, [load_doc(1), LIMITS, run_doc("c1", 1)], "--slots", "1", "--reference")
+    assert (code, v["verdict"], v["runs"]) == (3, "incomplete", {"c1": "pass", "overload": "missing"})
+    docs = [load_doc(1), LIMITS, run_doc("c1", 1), run_doc("overload", 3, requests=3, ok=3, json_ok=3)]
+    assert run_verdict_cli(tmp_path, docs, "--slots", "1", "--reference")[1]["verdict"] == "pass"
+
+
+def test_a_run_that_ran_and_failed_is_a_recorded_fail(tmp_path: Path):
+    """Regression (review 2): a failed measurement is a `status: failed` record that fails the verdict."""
+    docs = [load_doc(2), LIMITS, run_doc("c1", 1), failed_doc("run", "c2")]
+    code, v = run_verdict_cli(tmp_path, docs, "--slots", "2")
+    assert (code, v["verdict"], v["runs"]) == (1, "fail", {"c1": "pass", "c2": "fail"})
+    assert v["failures"] == [{"kind": "run", "tag": "c2", "label": "run-c2", "exit": 1, "error": "boom"}]
+    _, v = run_verdict_cli(tmp_path, [load_doc(1), failed_doc("limits"), run_doc("c1", 1)], "--slots", "1")
+    assert v["criteria"]["limits"] == "fail" and v["verdict"] == "fail"
+    _, v = run_verdict_cli(tmp_path, [failed_doc("load")], "--slots", "1")
+    assert v["criteria"]["loaded"] == "fail" and v["verdict"] == "fail"
+
+
+def test_wrong_concurrency_slots_or_unreadable_evidence_never_pass(tmp_path: Path):
+    docs = [load_doc(2), LIMITS, run_doc("c1", 1), run_doc("c2", 1)]  # "c2" measured at concurrency 1
+    assert run_verdict_cli(tmp_path, docs, "--slots", "2")[1]["runs"]["c2"] == "fail"
+    docs = [load_doc(1), LIMITS, run_doc("c1", 1), run_doc("c2", 2)]  # the server runs 1 slot, the profile says 2
+    assert run_verdict_cli(tmp_path, docs, "--slots", "2")[1]["criteria"]["slots"] == "fail"
+    files = [tmp_path / "a.json", tmp_path / "b.json", tmp_path / "c.json"]
+    for f, d in zip(files, [load_doc(1), LIMITS, run_doc("c1", 1)], strict=True):
+        f.write_text(json.dumps(d))
+    out = tmp_path / "v.json"
+    cmd = [sys.executable, str(BENCH / "measure.py"), "verdict", "--profile", "p", "--slots", "1", "--out", str(out)]
+    r = subprocess.run([*cmd, *map(str, files), str(tmp_path / "missing.json")], capture_output=True, check=False)
+    v = json.loads(out.read_text())
+    assert r.returncode == 3 and v["verdict"] == "incomplete" and v["unreadable"] == [str(tmp_path / "missing.json")]

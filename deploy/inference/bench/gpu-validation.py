@@ -2,32 +2,41 @@
 """A09-1 validation on the real L4, run from the operator machine (standard library only). Reproducible sequence:
 
   0. preflight, with no side effects: the instance is `stopped`, the controller state is fresh (auto, no work), the
-     evidence directory is outside the repository;
+     evidence directory is outside the repository, every profile is defined in this checkout, and the interpreter is
+     the controller environment's (it also runs every child: `cce-inference` through CCE_PYTHON and measure.py);
   1. job-driven cycle: tunnel keeper + controller `serve` + one worker in the background, then ONE durable job is
      submitted; the evidence must show the start requested by demand (no manual start), the EC2 start, the verified
      readiness and the job succeeded with a structured result;
   2. host evidence through SSM (host facts, boot timeline of this cold start);
   3. profile campaign while the instance is up (controller stopped so it cannot idle-stop under the measurements):
-     per profile, `load` (switch + restart, memory sampled ON the host), `limits`, `run` (memory on the host) and the
-     verdict; the campaign stops at the first profile that does not pass (D-A09-05: escalate to the user);
-  4. final stop through the controller (`stop --wait`: pause, drain, stop);
-  always (finally, also on failure, Ctrl-C, SIGTERM or SIGHUP): stop the background processes, restore the original
-  profile in server.env, stop the instance if it is not stopped, verify `stopped` and write `final-state.json`.
+     per profile, `load` (switch + restart, memory sampled ON the host), `limits`, every expected run (`c1`; `cN`
+     for N slots; `overload` for the first, reference profile; memory on the host) and the verdict over ALL of them:
+     a measurement that ran and failed leaves a `status: failed` record, never a gap; the campaign stops at the first
+     profile that does not pass (D-A09-05: escalate to the user);
+  4. while the instance is still `running`: restore the original profile in server.env through Run Command and
+     verify it (`switch-profile.sh --current`); it takes effect at the next start;
+  5. final stop through the controller (`stop --wait`: pause, drain, stop);
+  always (finally, also on failure, Ctrl-C, SIGTERM or SIGHUP): stop the background processes; if the profile is
+  not restored yet and the instance is `running`, restore and verify it (a failure is recorded, never blocks the
+  stop); stop the instance if it is not stopped, verify `stopped` and write `final-state.json`, which records apart
+  whether the profile was restored and whether EC2 is stopped.
 
-Exit status: 0 validated; 1 validation failed or incomplete (instance verified stopped); 2 refused by the preflight
-(nothing touched); 130 interrupted (instance verified stopped); 4 CLEANUP FAILED: the instance is NOT verified
-stopped (printed on stderr; stop it by hand).
+Exit status: 0 validated (every profile passed, profile restored, instance verified stopped); 1 validation failed or
+incomplete, or the profile was not restored (instance verified stopped); 2 refused by the preflight (nothing
+touched); 130 interrupted (instance verified stopped); 4 CLEANUP FAILED: the instance is NOT verified stopped
+(printed on stderr; stop it by hand).
 
     export AWS_PROFILE=... AWS_REGION=us-east-1
-    python3 deploy/inference/bench/gpu-validation.py --config "$EV/controller.toml" --instance-id "$IID" \\
+    "$CCE_PYTHON" deploy/inference/bench/gpu-validation.py --config "$EV/controller.toml" --instance-id "$IID" \\
         --key-file "$EV/api-key" --evidence "$EV/run-1"
 
-Tool overrides (tests only): CCE_AWS_BIN, CCE_HOST_SRC, CCE_HOST_SUDO, CCE_POLL_S.
+Tool overrides (tests only): CCE_AWS_BIN, CCE_HOST_SRC, CCE_HOST_SUDO, CCE_POLL_S, CCE_MEASURE_SCRIPT.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shlex
@@ -43,6 +52,7 @@ DEPLOY = BENCH.parent
 CLI = DEPLOY / "bin" / "cce-inference"
 MEASURE = BENCH / "measure.py"
 SSM_RUN = BENCH / "ssm-run.sh"
+PROFILES_DIR = DEPLOY / "server" / "profiles"
 DEFAULT_PROFILES = "reference-8k-1slot candidate-16k-1slot candidate-16k-2slot"
 
 
@@ -67,6 +77,26 @@ def repo_root() -> Path:
     return Path(r.stdout.strip()).resolve() if r.returncode == 0 and r.stdout.strip() else DEPLOY
 
 
+def _load_measure() -> Any:
+    """measure.py as a module: one source of truth for the expected runs of each profile."""
+    spec = importlib.util.spec_from_file_location("cce_measure", MEASURE)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def profile_slots(name: str) -> int:
+    """Slots of a profile from its definition in this checkout (the same file the host runs)."""
+    path = PROFILES_DIR / f"{name}.env"
+    if not path.is_file():
+        raise Refused(f"unknown profile {name!r}: no {path.name} in {PROFILES_DIR}")
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("CCE_PARALLEL="):
+            return int(line.split("=", 1)[1].strip().strip('"'))
+    raise Refused(f"profile {name!r}: CCE_PARALLEL is not defined")
+
+
 def _raise_interrupted(signum: int, _frame: Any) -> None:
     raise Interrupted(signal.Signals(signum).name)
 
@@ -79,11 +109,17 @@ class Validation:
         self.host_src = os.environ.get("CCE_HOST_SRC", "/opt/cce-inference/src")
         self.sudo = os.environ.get("CCE_HOST_SUDO", "sudo")
         self.poll = float(os.environ.get("CCE_POLL_S", "5"))
-        self.env = {**os.environ, "CCE_INFERENCE_CONFIG": str(Path(a.config).resolve())}
+        # every child runs on this interpreter (the controller environment's): cce-inference and measure.py
+        self.env = {**os.environ, "CCE_INFERENCE_CONFIG": str(Path(a.config).resolve()), "CCE_PYTHON": sys.executable}
+        self.measure_script = os.environ.get("CCE_MEASURE_SCRIPT", str(MEASURE))
         self.bg: dict[str, subprocess.Popen[bytes]] = {}
         self.summary: dict[str, Any] = {"instance_id": a.instance_id, "steps": {}, "verdicts": {}}
+        self.profiles = a.profiles.split()
+        self.slots: dict[str, int] = {}
         self.original_profile: str | None = None
         self.profile_changed = False
+        # recorded apart from the instance state: not_changed | restored | not_restored
+        self.profile: dict[str, Any] = {"status": "not_changed", "original": None, "current": None, "attempts": []}
 
     # --- tools -----------------------------------------------------------------------------------------------
 
@@ -157,7 +193,28 @@ class Validation:
         (self.ev / name).write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
 
     def measure(self, *args: str, timeout: float = 3600) -> subprocess.CompletedProcess[str]:
-        return self.run([sys.executable, str(MEASURE), *args], timeout=timeout, check=False)
+        return self.run([sys.executable, self.measure_script, *args], timeout=timeout, check=False)
+
+    def measured(self, kind: str, out: Path, args: list[str], *, label: str, tag: str | None = None) -> dict[str, Any]:
+        """One measurement whose evidence file always exists afterwards: the measurement itself, or, when it ran and
+        failed (non-zero exit, timeout, no readable output), a `status: failed` record. Never omitted."""
+        out.unlink(missing_ok=True)  # a file from an earlier run is never taken for this one
+        timeout = self.a.load_timeout + 600 if kind == "load" else 3600
+        try:
+            r = self.measure(kind, *args, "--label", label, "--out", str(out), timeout=timeout)
+            code: int | str = r.returncode
+            err = r.stderr.strip()[-400:]
+        except subprocess.TimeoutExpired:
+            code, err = "timeout", f"no result after {timeout:.0f}s"
+        try:
+            doc = json.loads(out.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            doc = None
+        if code != 0 or not isinstance(doc, dict):
+            doc = {"kind": kind, "tag": tag, "label": label, "status": "failed", "exit": code, "error": err}
+            self.save(out.name, doc)
+            self.log(f"{label}: measurement FAILED (exit {code}); recorded in {out.name}")
+        return doc
 
     # --- 0. preflight (no side effects) --------------------------------------------------------------------------
 
@@ -165,6 +222,14 @@ class Validation:
         repo = repo_root()
         if self.ev == repo or repo in self.ev.parents:
             raise Refused(f"the evidence directory must be outside the repository: {self.ev}")
+        given = os.environ.get("CCE_PYTHON")
+        if given and os.path.abspath(given) != os.path.abspath(sys.executable):
+            raise Refused(f"run this script with the controller interpreter CCE_PYTHON={given} (not {sys.executable})")
+        if sys.version_info < (3, 13):  # noqa: UP036 - the operator may launch it with an older python3
+            raise Refused(f"the controller needs Python >= 3.13 (this is {sys.version.split()[0]})")
+        if not self.profiles:
+            raise Refused("no profile to validate")
+        self.slots = {p: profile_slots(p) for p in self.profiles}
         if not Path(self.a.key_file).is_file():
             raise Refused("missing --key-file")
         state = self.ec2_state()
@@ -181,7 +246,8 @@ class Validation:
         if not fresh:
             raise Refused("the controller state must be fresh (auto, stopped, no work): use a new db_path")
         self.ev.mkdir(parents=True, exist_ok=True)
-        self.save("preflight.json", {"instance_state": state, "controller": st})
+        python = {"executable": sys.executable, "version": sys.version.split()[0]}
+        self.save("preflight.json", {"instance_state": state, "controller": st, "python": python, "slots": self.slots})
 
     # --- 1. job-driven cycle ---------------------------------------------------------------------------------------
 
@@ -302,77 +368,106 @@ class Validation:
     def campaign(self) -> None:
         self.stop_bg("controller", "worker")  # the controller must not idle-stop under the measurements
         self.original_profile = self.on_host("server/switch-profile.sh", "--current", timeout=60).strip()
-        self.summary["original_profile"] = self.original_profile
+        self.profile["original"] = self.summary["original_profile"] = self.original_profile
+        expected_runs = _load_measure().expected_runs
         common = ["--base-url", self.a.base_url, "--key-file", self.a.key_file]
-        for i, prof in enumerate(self.a.profiles.split()):
-            self.log(f"profile {prof}: load, limits, run")
+        for i, prof in enumerate(self.profiles):
+            reference, slots = i == 0, self.slots[prof]
+            self.log(f"profile {prof} ({slots} slot(s)): load, limits, runs")
             self.profile_changed = True
-            files = []
-            out = self.ev / f"load-{prof}.json"
-            r = self.measure(
+            files = [self.ev / f"load-{prof}.json"]
+            load = self.measured(
                 "load",
-                *common,
-                "--label",
-                prof,
-                "--timeout",
-                str(self.a.load_timeout),
-                "--restart-cmd",
-                self.ssm_cmd("server/switch-profile.sh", prof),
-                *self.memory_hooks(f"load-{prof}"),
-                "--out",
-                str(out),
+                files[0],
+                [
+                    *common,
+                    "--timeout",
+                    str(self.a.load_timeout),
+                    "--restart-cmd",
+                    self.ssm_cmd("server/switch-profile.sh", prof),
+                    *self.memory_hooks(f"load-{prof}"),
+                ],
+                label=prof,
             )
-            if r.returncode != 0:
-                raise ValidationFailed(f"load {prof}: exit {r.returncode}: {r.stderr[-400:]}")
-            files.append(out)
-            slots = int(json.loads(out.read_text(encoding="utf-8")).get("total_slots") or 1)
-            out = self.ev / f"limits-{prof}.json"
-            if self.measure("limits", *common, "--label", prof, "--out", str(out)).returncode == 0:
-                files.append(out)
-            runs = [("c1", self.a.requests, 1)]
-            if slots > 1:
-                runs.append((f"c{slots}", self.a.requests, slots))
-            if i == 0:
-                runs.append(("overload", max(3, self.a.requests // 3), 3))  # queue beyond the slot
-            for tag, n, conc in runs:
-                out = self.ev / f"run-{prof}-{tag}.json"
-                args = ["--requests", str(n), "--concurrency", str(conc), "--prompt-tokens", str(self.a.prompt_tokens)]
-                label = f"run-{prof}-{tag}"
-                if (
-                    self.measure(
-                        "run", *common, *args, "--label", label, *self.memory_hooks(label), "--out", str(out)
-                    ).returncode
-                    == 0
-                ):
-                    files.append(out)
-            if i == 0 and self.a.parity_pkg:
-                self.run(
-                    [
-                        str(BENCH / "parity.sh"),
-                        "--pkg",
-                        self.a.parity_pkg,
-                        "--base-url",
-                        self.a.base_url,
-                        "--key-file",
-                        self.a.key_file,
-                        "--out",
-                        str(self.ev / f"parity-{prof}"),
-                    ],
-                    timeout=4 * 3600,
-                    check=False,
-                )
+            if load.get("status") != "failed":  # without the profile loaded, any further number would be another's
+                files.append(self.ev / f"limits-{prof}.json")
+                self.measured("limits", files[-1], common, label=prof)
+                for tag, conc in expected_runs(slots, reference).items():
+                    n = max(3, self.a.requests // 3) if tag == "overload" else self.a.requests
+                    args = [
+                        "--tag",
+                        tag,
+                        "--requests",
+                        str(n),
+                        "--concurrency",
+                        str(conc),
+                        "--prompt-tokens",
+                        str(self.a.prompt_tokens),
+                    ]
+                    label = f"run-{prof}-{tag}"
+                    files.append(self.ev / f"{label}.json")
+                    self.measured("run", files[-1], [*common, *args, *self.memory_hooks(label)], label=label, tag=tag)
+                if reference and self.a.parity_pkg:
+                    self.run(
+                        [
+                            str(BENCH / "parity.sh"),
+                            "--pkg",
+                            self.a.parity_pkg,
+                            "--base-url",
+                            self.a.base_url,
+                            "--key-file",
+                            self.a.key_file,
+                            "--out",
+                            str(self.ev / f"parity-{prof}"),
+                        ],
+                        timeout=4 * 3600,
+                        check=False,
+                    )
             vout = self.ev / f"verdict-{prof}.json"
-            self.measure("verdict", "--profile", prof, "--out", str(vout), *map(str, files))
-            verdict = json.loads(vout.read_text(encoding="utf-8"))
+            vout.unlink(missing_ok=True)
+            flags = ["--reference"] if reference else []
+            vargs = ["--profile", prof, "--slots", str(slots), *flags, "--out", str(vout)]
+            self.measure("verdict", *vargs, *map(str, files))
+            try:
+                verdict = json.loads(vout.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise ValidationFailed(f"verdict {prof}: no verdict written ({exc})") from exc
             self.summary["verdicts"][prof] = verdict
-            self.log(f"profile {prof}: {verdict['verdict']} {verdict['criteria']}")
+            self.log(f"profile {prof}: {verdict['verdict']} {verdict['criteria']} runs={verdict['runs']}")
             if verdict["verdict"] != "pass":
-                self.summary["escalation"] = f"{prof} did not pass ({verdict['criteria']}): D-A09-05, ask the user"
+                self.summary["escalation"] = (
+                    f"{prof} did not pass ({verdict['criteria']}, runs {verdict['runs']}, failures "
+                    f"{verdict['failures']}): D-A09-05, ask the user"
+                )
                 break
         if not self.summary["verdicts"] or any(v["verdict"] != "pass" for v in self.summary["verdicts"].values()):
             raise ValidationFailed(self.summary.get("escalation", "no profile verdict"))
 
-    # --- 4. final stop and cleanup ----------------------------------------------------------------------------------
+    # --- 4. restore the original profile while the instance is running ---------------------------------------------
+
+    def restore_profile(self) -> None:
+        """Persist the original profile in server.env through Run Command and verify it, while the instance is still
+        running (Run Command needs the SSM agent online). No restart: it takes effect at the next start."""
+        if not (self.profile_changed and self.original_profile) or self.profile["status"] == "restored":
+            return
+        attempt: dict[str, Any] = {"ts": time.time()}
+        self.profile["attempts"].append(attempt)
+        self.profile["status"] = "not_restored"
+        try:
+            self.on_host("server/switch-profile.sh", self.original_profile, "--no-restart", timeout=60)
+            current = self.on_host("server/switch-profile.sh", "--current", timeout=60).strip()
+        except Exception as exc:
+            attempt["error"] = str(exc)[-400:]
+            raise ValidationFailed(f"profile restore: {exc}") from exc
+        self.profile["current"] = attempt["current"] = current
+        if current != self.original_profile:
+            attempt["error"] = f"server.env has {current!r}, expected {self.original_profile!r}"
+            raise ValidationFailed(f"profile restore: {attempt['error']}")
+        self.profile["status"] = "restored"
+        self.summary["steps"]["profile_restore"] = "restored"
+        self.log(f"profile {self.original_profile} restored and verified in server.env")
+
+    # --- 5. final stop and cleanup ----------------------------------------------------------------------------------
 
     def final_stop(self) -> None:
         r = self.cli("stop", "--wait", str(self.a.stop_timeout), check=False, timeout=self.a.stop_timeout + 60)
@@ -384,11 +479,17 @@ class Validation:
         """Always runs. Returns True only when the instance is verified `stopped`."""
         errors: list[str] = []
         self.stop_bg()
-        if self.profile_changed and self.original_profile:
-            try:  # persist the original profile for the next boot (no restart: the host is about to stop)
-                self.on_host("server/switch-profile.sh", self.original_profile, "--no-restart", timeout=60)
-            except Exception as exc:  # noqa: BLE001 - reported, never hides the stop below
-                errors.append(f"profile_restore_failed: {exc}")
+        if self.profile_changed and self.original_profile and self.profile["status"] != "restored":
+            # before the stop: Run Command only reaches a running instance; a failure never skips the stop below
+            state = self.ec2_state()
+            if state == "running":
+                try:
+                    self.restore_profile()
+                except Exception as exc:  # noqa: BLE001 - recorded, never hides the stop below
+                    errors.append(f"profile_restore_failed: {exc}")
+            else:
+                self.profile["status"] = "not_restored"
+                errors.append(f"profile_restore_skipped: instance {state}, Run Command needs it running")
         state = self.ec2_state()
         fallback = False
         if state in ("pending", "running", "stopping"):
@@ -405,7 +506,14 @@ class Validation:
             while time.monotonic() < deadline and (state := self.ec2_state()) != "stopped":
                 time.sleep(self.poll)
         final = self.ec2_state()
-        record = {"instance_id": self.a.instance_id, "state": final, "fallback_stop": fallback, "errors": errors}
+        record = {
+            "instance_id": self.a.instance_id,
+            "state": final,
+            "instance_stopped": final == "stopped",
+            "fallback_stop": fallback,
+            "profile": self.profile,
+            "errors": errors,
+        }
         self.summary["final"] = record
         try:
             self.save("final-state.json", record)
@@ -418,7 +526,7 @@ class Validation:
     def main(self) -> int:
         try:
             self.preflight()
-        except Refused as exc:
+        except (Refused, ValidationFailed) as exc:
             print(f"REFUSED: {exc}", file=sys.stderr)
             return 2
         for sig in (signal.SIGTERM, signal.SIGHUP):
@@ -428,6 +536,7 @@ class Validation:
             self.job_cycle()
             self.host_evidence()
             self.campaign()
+            self.restore_profile()
             self.final_stop()
         except (KeyboardInterrupt, Interrupted) as exc:
             self.summary["outcome"] = f"interrupted: {exc or 'SIGINT'}"
@@ -443,6 +552,10 @@ class Validation:
                 signal.signal(sig, signal.SIG_IGN)  # never abort the cleanup half-way
             self.log("cleanup: stopping background processes and verifying the instance is stopped")
             stopped = self.cleanup()
+            if code == 0 and self.profile["status"] not in ("restored", "not_changed"):
+                self.summary["outcome"] = "failed: original profile not restored"  # never declared validated
+                code = 1
+            self.summary["profile"] = self.profile
             self.summary["exit"] = code if stopped else 4
             try:
                 self.save("summary.json", self.summary)
@@ -454,7 +567,10 @@ class Validation:
                     f"Stop it by hand: aws ec2 stop-instances --instance-ids {self.a.instance_id}",
                     file=sys.stderr,
                 )
-        self.log(f"outcome: {self.summary['outcome']}; final state: {self.summary['final']['state']}")
+        self.log(
+            f"outcome: {self.summary['outcome']}; profile: {self.profile['status']}; "
+            f"final state: {self.summary['final']['state']}"
+        )
         return int(self.summary["exit"])
 
 
