@@ -159,4 +159,4 @@ python3 deploy/inference/aws/build_template.py --check     # la plantilla genera
 shellcheck -S warning deploy/inference/*/*.sh deploy/inference/bin/cce-inference
 ```
 
-La prueba de la guardia de inactividad necesita Linux (`/proc/uptime`); en macOS se omite y no cuenta como aprobada. La evidencia en GPU real sigue la receta del [informe de A09-1](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real). Contrato: [despliegue de inferencia y operación](inference-deployment.md).
+La prueba de la guardia de inactividad necesita Linux (`/proc/uptime`); en macOS se omite y no cuenta como aprobada. La secuencia de validación en GPU (`bench/gpu-validation.py`) y la evidencia de memoria (`bench/measure.py`, `bench/mem-sample.sh`) se prueban con herramientas simuladas (`tests/fake_aws.py`, `nvidia-smi` falso, host simulado): ninguna prueba usa AWS ni GPU. La evidencia en GPU real sigue la receta del [informe de A09-1](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real). Contrato: [despliegue de inferencia y operación](inference-deployment.md).

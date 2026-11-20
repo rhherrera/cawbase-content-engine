@@ -1,6 +1,6 @@
 # A09-1 — Despliegue de inferencia y operación
 
-> **Estado: IMPLEMENTADA (infraestructura, controlador y ejecutor de prueba); validación en GPU real PENDIENTE; aceptación pendiente del usuario.**
+> **Estado: IMPLEMENTADA (infraestructura, controlador y ejecutor de prueba), con las correcciones de la revisión 1 (readiness y despacho, evidencia de memoria y secuencia de validación); validación en GPU real PENDIENTE; aceptación pendiente del usuario.**
 >
 > - **Documentos.** Contrato: [inference-deployment.md](../inference-deployment.md); decisiones: [A09-decisions](../decisions/A09-decisions.md); evidencia: [informe de A09-1](../a09-1-implementation-report.md); plan: [A09](../a09-plan.md).
 > - **Ambientes.** Simulación probada en macOS y en Linux local (Docker). Artefactos reales del runtime verificados en Linux x64 local. **Sin** prueba en GPU real: la cuota de instancias G de la cuenta es 0 vCPU (Q-A09-01). **No** ejecutada en GitHub Actions.
@@ -13,7 +13,7 @@
 
 **Objetivo.** Un servidor de inferencia estructurada reproducible (AWS y on-premise) con el modelo y el runtime fijados, y un controlador externo que lo enciende ante trabajo durable, espera su readiness real, despacha solo cuando está listo y lo apaga tras 60 minutos continuos sin trabajo.
 
-**Incluye:** manifiesto fijado; instaladores verificados; perfiles del servidor; unidad systemd; plantilla CloudFormation (`g6.xlarge`, endpoint privado, pesos en EBS); instalación on-premise; controlador con estado durable, lease y comandos `start`/`stop`/`status`; ejecutor de prueba con trabajos durables; guardia de inactividad en la instancia; herramientas de medición y paridad; pruebas con reloj controlado.
+**Incluye:** manifiesto fijado; instaladores verificados; perfiles del servidor; unidad systemd; plantilla CloudFormation (`g6.xlarge`, endpoint privado, pesos en EBS); instalación on-premise; controlador con estado durable, lease y comandos `start`/`stop`/`status`; ejecutor de prueba con trabajos durables; guardia de inactividad en la instancia; herramientas de medición (memoria muestreada en el host) y paridad; secuencia de validación en GPU con parada protegida; pruebas con reloj controlado y con herramientas AWS simuladas.
 
 **Excluye:** adaptador del motor, prompts, segmentación, posiciones y evaluación formal (A09-2); cola y workers reales de CAWbase (B01); distribución de los despliegues de referencia (A10); cambios en `src/`; TLS del endpoint; multi-instancia o autoescalado.
 
@@ -27,7 +27,7 @@ Niveles de evidencia: **S** = simulación (pruebas automáticas con servidor y b
 | AC-A09-1-02 | Runtime `b12329` Linux x64 CUDA fijado con procedencia y SHA-256; instalación verificada; dependencias del sistema detectadas; driver registrado | A (Linux x64), G (driver) |
 | AC-A09-1-03 | Perfil de referencia reproducido: argumentos del servidor y forma de la solicitud (`response_format` por solicitud, temperatura 0, 3072 tokens) | S |
 | AC-A09-1-04 | Evidencia externa conservada fuera de Git y reproducible desde las salidas crudas con el evaluador sin cambios | A |
-| AC-A09-1-05 | Readiness real: health + alias + canario estructurado; una clave incorrecta o pesos cargando no son «listo»; los sondeos no son actividad | S |
+| AC-A09-1-05 | Readiness real: health + alias + canario estructurado; una clave incorrecta o pesos cargando no son «listo»; los sondeos no son actividad. El despacho se abre solo con readiness **verificada** antes del plazo del intento (un canario tardío o de un intento anterior no cuenta); el primer sondeo fallido lo cierra y solo un sondeo completo exitoso lo reabre, también al reanudar durante el drenaje; el umbral de fallos decide el reinicio | S, G (canario real) |
 | AC-A09-1-06 | Varias solicitudes y varios controladores concurrentes coordinan **un solo** arranque | S |
 | AC-A09-1-07 | La API no espera el arranque en frío; los trabajos se conservan mientras se espera readiness | S |
 | AC-A09-1-08 | Timeout y fallo de readiness: parada, reintento con *backoff*, bloqueo tras N intentos y desbloqueo manual; los trabajos siguen pendientes | S |
@@ -35,16 +35,18 @@ Niveles de evidencia: **S** = simulación (pruebas automáticas con servidor y b
 | AC-A09-1-10 | Autoapagado exactamente a los 60 min continuos sin pendientes ni activos; el health check no reinicia ni extiende el reloj; la última terminación de trabajo sí | S (reloj controlado) |
 | AC-A09-1-11 | Apagado coordinado con llegadas: nunca hay trabajo activo en un host que se apaga por inactividad; lo que llega durante el apagado queda durable y vuelve a arrancar | S |
 | AC-A09-1-12 | Recuperación tras reinicio o fallo del controlador (arranque o parada perdidos); un líder anterior no puede actuar | S |
-| AC-A09-1-13 | `stop` pausa el autoarranque y drena; los pendientes siguen durables; `start` reanuda; `status` informa EC2, readiness y pausa | S (reglas + CLI con host simulado) |
+| AC-A09-1-13 | `stop` pausa el autoarranque y drena; los pendientes siguen durables; `start` reanuda (durante el drenaje, revalidando readiness sin cortar el trabajo activo); `status` informa EC2, readiness, pausa y sondeos fallidos | S (reglas + CLI con host simulado) |
 | AC-A09-1-14 | Cola durable para el exceso de capacidad; rechazo explícito de entradas que exceden el contexto admitido; contexto por slot con dos slots | S, G |
 | AC-A09-1-15 | Despliegue AWS reproducible: plantilla válida, endpoint privado, pesos persistentes en EBS, servidor al iniciar EC2, mínimo privilegio | A (validación de plantilla), G (stack real) |
 | AC-A09-1-16 | Instalación on-premise con el mismo contrato, pesos locales y sin AWS | D, G |
 | AC-A09-1-17 | Guardia de inactividad en la instancia (respaldo) | S (Linux) |
-| AC-A09-1-18 | Mediciones en la L4: arranque EC2, carga de pesos y tiempo hasta readiness por separado; VRAM/RAM; latencia; throughput; un slot primero; elección del predeterminado | G |
+| AC-A09-1-18 | Mediciones en la L4: arranque EC2, carga de pesos y tiempo hasta readiness por separado; VRAM/RAM medidas en el host (AC-A09-1-23); latencia; throughput; un slot primero; elección del predeterminado | G |
 | AC-A09-1-19 | Prueba real de inferencia estructurada con el modelo de referencia (canario y paridad) | G |
 | AC-A09-1-20 | Permisos y costos residuales documentados | D, A (API de precios) |
-| AC-A09-1-21 | Tras cualquier prueba con GPU, la instancia queda detenida | G (no aplica sin prueba) |
+| AC-A09-1-21 | Tras cualquier prueba con GPU, la instancia queda detenida: la secuencia de validación la detiene y la verifica también ante fallo o interrupción, y un fallo de la limpieza es visible | S (secuencia simulada), G (no aplica sin prueba) |
 | AC-A09-1-22 | El paquete del motor no cambia y sus checks siguen en verde | S |
+| AC-A09-1-23 | La VRAM/RAM se muestrea en el host medido durante la misma carga; se registran el host y la cantidad de muestras; sin muestras (o ventana no cubierta, u otro host) el resultado es «medición no disponible» y el criterio de memoria no aprueba el perfil | S, G |
+| AC-A09-1-24 | Secuencia de validación reproducible: parte de `stopped`, un trabajo durable dispara el arranque y se verifican readiness y resultado; los perfiles se prueban con la instancia disponible; la parada final está protegida ante fallos e interrupciones y se verifica `stopped` | S (herramientas simuladas), G |
 
 ## 3. Reglas
 

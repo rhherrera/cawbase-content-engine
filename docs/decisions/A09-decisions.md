@@ -1,6 +1,6 @@
 # A09 — Registro de decisiones
 
-> **Estado: revisión 1 — A09-1 implementada (infraestructura, controlador y ejecutor de prueba), pendiente de la validación en GPU real y de la aceptación del usuario.** A09-2 no empezó.
+> **Estado: revisión 2 — A09-1 implementada, con las correcciones de la revisión de código 1 (infraestructura, controlador y ejecutor de prueba), pendiente de la validación en GPU real y de la aceptación del usuario.** A09-2 no empezó.
 >
 > - **Mandato.** El usuario pidió en una sola sesión implementar A09-1 usando como alcance el [plan versionado](../a09-plan.md) (commit `cf8fbb7`), probar, documentar y entregar commits locales. Ese pedido autoriza la implementación sin una ronda documental previa; el contrato se entrega junto con el código y queda para su revisión.
 > - **Documentos.** Contrato: [despliegue de inferencia y operación](../inference-deployment.md); alcance y matriz: [especificación de A09-1](../features/A09-1-despliegue-de-inferencia-y-operacion.md); evidencia: [informe de A09-1](../a09-1-implementation-report.md).
@@ -12,6 +12,7 @@ Categorías (no mezclarlas): **requisitos fijados por el usuario** (§2) · **el
 | Rev. | Contenido |
 |---|---|
 | 1 | A09-1 implementada sobre `cf8fbb7` en `feature/a09-1-inference-infrastructure`. D-A09-01 a 07 registran lo que el usuario fijó en el encargo. E-A09-01 a 14. P-A09-01 a 05 pendientes. Q-A09-01 a 05 abiertas (Q-A09-01 bloquea la validación en GPU). |
+| 2 | Correcciones de la revisión del usuario sobre `889e2fe` (tres hallazgos): E-A09-06 precisada; E-A09-15 (compuerta de despacho por readiness verificada), E-A09-16 (memoria muestreada en el host medido) y E-A09-17 (secuencia de validación con parada protegida). Sin cambios en D-, P- ni Q-. Instancia, modelo, autoapagado de 60 min y alcance se conservan. |
 
 ## 1. Base
 
@@ -59,7 +60,7 @@ Usar la cuenta o perfil `rodrigo` si corresponde, nunca `fede`. Si faltan cuenta
 | E-A09-03 | CloudFormation con el paquete del host (tar.gz determinista en base64) en el *user data*, generado y verificado por `build_template.py` | Una sola plantilla autocontenida, sin bucket intermedio; `--check` evita desincronización |
 | E-A09-04 | `--fit off` además de `-ngl all` y `-c` explícito | En `b12329` `--fit` (activo por defecto) ajusta argumentos no fijados; apagado, lo que no entra falla de forma explícita (D-A09-05) |
 | E-A09-05 | Estado del controlador en SQLite (WAL, `BEGIN IMMEDIATE`), una fila con fase, generación y lease del líder; reglas puras en `decide.py` | Serializa la decisión de apagado con la reclamación de trabajos; prueba determinista con reloj controlado |
-| E-A09-06 | Readiness = `/health` 200 + alias + **canario estructurado** al arrancar; liveness = solo `/health` | «Readiness real del modelo» y sondeos que nunca decodifican |
+| E-A09-06 | Readiness = `/health` 200 + alias + **canario estructurado** al arrancar y para reabrir el despacho tras un fallo (solo ese sondeo es «verificado»); liveness = solo `/health` | «Readiness real del modelo» y sondeos que nunca decodifican |
 | E-A09-07 | Admisión por tokens con `/apply-template` + `/tokenize` y `n_ctx` por slot de `/props`, antes de enviar | Rechazo explícito y sin reintento; el 400 del servidor queda como respaldo con el mismo código |
 | E-A09-08 | Reloj de inactividad = `max(ready_at, última terminación de trabajo)`; pendiente incluye reintentos y leases vencidos | Un trabajo completo entre dos pasadas también reinicia el reloj; un worker muerto no mantiene el host |
 | E-A09-09 | Llegada durante `stopping`: se completa la parada y luego se vuelve a arrancar | Comportamiento simple y verificable; costo: un ciclo |
@@ -68,6 +69,9 @@ Usar la cuenta o perfil `rodrigo` si corresponde, nunca `fede`. Si faltan cuenta
 | E-A09-12 | API key en SSM Parameter Store (SecureString), leída en cada arranque; on-premise, archivo 0600 | Ningún secreto en *user data*, plantilla ni repositorio |
 | E-A09-13 | Endpoint privado por grupo de seguridad (8080 solo desde el SG o la CIDR de los clientes), sin SSH; IP pública opcional solo para salida sin NAT | «Endpoint privado» sin exigir NAT gateway |
 | E-A09-14 | Todo en `deploy/inference/` con `pyproject.toml`/`uv.lock` propios; fuera de la wheel y del sdist | El controlador no es parte del núcleo (regla 2 de CLAUDE.md) |
+| E-A09-15 | Despacho abierto = `ready` ∧ ningún sondeo fallido desde la última verificación. El primer fallo lo cierra; solo un sondeo completo exitoso lo reabre; `start` durante el drenaje vuelve a `starting`; el plazo de readiness se evalúa antes que el resultado del sondeo y con la hora posterior a él; un sondeo de un estado que cambió mientras corría se descarta | Revisión 1, hallazgo 1: el despacho seguía abierto hasta el umbral de fallos y la reanudación podía saltar el canario. El umbral (3) se conserva solo para volver a `starting` |
+| E-A09-16 | VRAM/RAM muestreadas por `mem-sample.sh` **en el host medido**, arrancado y detenido por SSM alrededor de la misma carga; el resultado registra host, muestras y ventana, y es `unavailable` sin cifras si falta evidencia; el veredicto del perfil es `incomplete` en ese caso | Revisión 1, hallazgo 2: el muestreador leía la máquina del operador y devolvía 0 sin GPU |
+| E-A09-17 | `bench/gpu-validation.py` (Python estándar, con `finally` y señales ignoradas durante la limpieza) ejecuta la validación de punta a punta desde `stopped`, disparada por un trabajo durable, y siempre verifica `stopped` (salida 4 visible si no) | Revisión 1, hallazgo 3: la receta anterior no tenía ciclo disparado por trabajo ni parada protegida y probaba perfiles con la instancia detenida |
 
 ## 4. Propuestas pendientes de revisión del usuario
 

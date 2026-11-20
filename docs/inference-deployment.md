@@ -40,6 +40,12 @@ Servidor: `llama-server` de llama.cpp `b12329` (binario oficial Linux x64 CUDA 1
 
 `listo` = `/health` 200 **y** el alias presente en `/v1/models` **y**, al arrancar, **un canario estructurado** (esquema `{"ok": boolean}`, `max_tokens` 1024) cuya salida parsea. Un 503 o un error transitorio del canario es `loading`; un 401 o una salida inválida es `unhealthy` (una clave equivocada **no** declara el servicio listo). Mientras está listo, la vida se comprueba solo con `/health`, que no decodifica: **los sondeos nunca cuentan como actividad**.
 
+Solo un **sondeo completo** (alias + canario) produce una readiness **verificada** (`Readiness.verified`); el sondeo de vida puede responder `ready` pero nunca verifica. Reglas de despacho (corregidas tras la revisión 1, §3.1):
+
+- Entrar en `ready` exige una readiness verificada **observada antes del plazo del intento**: el plazo se evalúa primero y con la hora tomada **después** de que el sondeo respondió, de modo que un canario que termina después del plazo no habilita el despacho de ese intento vencido.
+- El **primer** sondeo fallido en `ready` **cierra el despacho**; solo un sondeo completo exitoso lo reabre (el controlador pide el sondeo completo mientras haya fallos). El umbral de fallos seguidos (`unhealthy_threshold`) solo decide cuándo volver a `starting`.
+- Un sondeo tomado para un estado que cambió mientras corría (por ejemplo `stop` + `start` manuales que inician otro intento) se **descarta** (evento `stale_probe_discarded`).
+
 ### 2.2 Límites, contexto y cola
 
 - **Contexto total y por slot**: `-c` es el contexto total; con `--parallel N` y KV no unificado, el contexto por slot es `c / N` (la referencia registra `n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'`).
@@ -63,25 +69,27 @@ Estado durable (una fila): `mode` (`auto` | `paused`), `phase`, `generation` y l
 | Fase | Despacho | Sale a | Cuándo |
 |---|---|---|---|
 | `stopped` | no | `starting` | `mode = auto`, hay trabajo pendiente o `start` manual, sin bloqueo y pasado el *backoff*. En `auto`, una instancia encendida desde fuera se **adopta** (queda sujeta a readiness y autoapagado). En `paused` el controlador no toca la instancia |
-| `starting` | no | `ready` | instancia `running` y readiness real (§2.1) |
+| `starting` | no | `ready` | instancia `running` y readiness **verificada** (§2.1) antes del plazo |
 | | | `stopping` | venció `readiness_timeout_s` (intento fallido: *backoff* 300 s, 600 s, 1200 s…; tras `max_start_attempts` = 3 queda **bloqueado** hasta un `start` manual). Si la instancia sigue detenida (llamada perdida, reinicio del controlador) se **reemite** el arranque |
-| `ready` | **sí** | `stopping` | `mode = auto`, **sin trabajo pendiente ni activo** y 60 min continuos desde `max(ready_at, última terminación de trabajo)` |
-| | | `starting` | `unhealthy_threshold` = 3 sondeos fallidos seguidos (el servidor se reinicia por systemd); el despacho se suspende |
+| `ready` | **sí**, salvo tras un sondeo fallido | `stopping` | `mode = auto`, **sin trabajo pendiente ni activo** y 60 min continuos desde `max(ready_at, última terminación de trabajo)` |
+| | | *(sigue en `ready`, despacho cerrado)* | el primer sondeo fallido cierra el despacho (`failed_probes > 0`, evento `dispatch_closed`); un sondeo completo exitoso lo reabre (`dispatch_reopened`). El trabajo activo conserva su lease |
+| | | `starting` | `unhealthy_threshold` = 3 sondeos fallidos seguidos (el servidor se reinicia por systemd); la instancia no se detiene |
 | | | `stopped`/`stopping` | la instancia se detuvo desde fuera (consola, guardia de la instancia) |
 | `draining` | no | `stopping` | sin trabajo activo, o venció `drain_timeout_s` (1800 s; el trabajo activo pierde su lease y vuelve a la cola) |
+| | | `starting` | `start` manual (reanudación): el modelo se **verifica de nuevo** antes de reabrir el despacho, porque el drenaje pudo empezar con el modelo aún cargando. El trabajo activo sigue con su lease y el host no se detiene; si vence el nuevo plazo de readiness se detiene igual y ese trabajo vuelve a la cola al vencer su lease |
 | `stopping` | no | `stopped` | la instancia llegó a `stopped`; si sigue encendida se **reemite** la detención |
 
 - **Trabajo pendiente** incluye el que espera reintento y el de leases vencidos; **activo** es el que corre con lease vigente.
 - **Un solo arranque**: los envíos no llaman a la nube; la transición `stopped → starting` la decide un único líder dentro de una transacción serializada, y la llamada `StartInstances` ocurre después del commit (idempotente).
-- **Apagado coordinado con llegadas**: la decisión de autoapagado relee la demanda **en la misma transacción serializada** (`BEGIN IMMEDIATE`) en la que se cambia la fase; la reclamación de un trabajo exige `phase = ready` en otra transacción serializada. Por eso nunca se apaga por inactividad un host con trabajo activo ni se despacha a un host que se está apagando. Un trabajo que llega durante `stopping` queda `pending`; al llegar a `stopped`, la regla de `stopped` vuelve a arrancar (coste: un ciclo de parada y arranque).
+- **Apagado coordinado con llegadas**: la decisión de autoapagado relee la demanda **en la misma transacción serializada** (`BEGIN IMMEDIATE`) en la que se cambia la fase; la reclamación de un trabajo exige el despacho abierto (`phase = ready` y ningún sondeo fallido desde la última verificación) en otra transacción serializada. Por eso nunca se apaga por inactividad un host con trabajo activo ni se despacha a un host que se está apagando. Un trabajo que llega durante `stopping` queda `pending`; al llegar a `stopped`, la regla de `stopped` vuelve a arrancar (coste: un ciclo de parada y arranque).
 - **Recuperación tras reinicios o fallos**: la fase es durable y cada pasada reconcilia el estado real de la instancia hacia ella. Un segundo controlador espera mientras el lease (60 s) del líder esté vigente y lo toma al vencer; un líder anterior que vuelve ya no puede confirmar decisiones (*fencing* por dueño del lease).
 
 ### 3.2 Comandos (`deploy/inference/bin/cce-inference`)
 
 | Comando | Efecto |
 |---|---|
-| `status [--json]` | estado de la instancia (EC2), readiness (solo `/health`), **autoarranque pausado o no**, fase, despacho permitido, bloqueo, pendientes/activos, inactividad y tiempo hasta el autoapagado, líder |
-| `start [--wait S]` | reanuda el autoarranque (`mode = auto`), limpia un bloqueo y pide capacidad: arranca el host, o, si estaba drenando, vuelve a `ready` |
+| `status [--json]` | estado de la instancia (EC2), readiness (solo `/health`), **autoarranque pausado o no**, fase, despacho permitido, sondeos fallidos (`failed_probes`), bloqueo, pendientes/activos, inactividad y tiempo hasta el autoapagado, líder |
+| `start [--wait S]` | reanuda el autoarranque (`mode = auto`), limpia un bloqueo y pide capacidad: arranca el host, o, si estaba drenando, vuelve a `starting` y reabre el despacho solo con readiness verificada |
 | `stop [--wait S]` | **pausa el autoarranque** y **drena**: no se despacha más, se espera al trabajo activo y se detiene el host. Los pendientes **siguen durables** y no encienden el host mientras esté pausado |
 | `serve` | bucle del controlador (cada 10 s; elección de líder por lease) |
 | `tick`, `probe [--full]`, `events` | una pasada, sondeo de readiness, bitácora de eventos |
@@ -118,6 +126,7 @@ Plantilla [`deploy/inference/aws/cloudformation.yaml`](../deploy/inference/aws/c
 | Controlador (fuera de la GPU) | `ec2:StartInstances` y `ec2:StopInstances` **solo** sobre la instancia del stack; `ec2:DescribeInstances` (no admite restricción por recurso); `ssm:GetParameter` sobre el parámetro de la API key. Política gestionada `ControllerPolicyArn` |
 | Host GPU (rol de instancia) | `AmazonSSMManagedInstanceCore`; `ssm:GetParameter` sobre el parámetro de la API key |
 | Operador que despliega | crear el stack (`CAPABILITY_IAM`: rol, perfil de instancia y política gestionada), crear el parámetro SecureString |
+| Operador que valida (`gpu-validation.py`) | los del controlador, más `ssm:SendCommand` (documento `AWS-RunShellScript`), `ssm:GetCommandInvocation` y `ssm:StartSession` (documento `AWS-StartPortForwardingSession`) sobre la instancia del stack. No se agregan a `ControllerPolicyArn`: el controlador productivo no los necesita |
 
 ### 4.2 Costos (precios públicos `us-east-1` consultados el 2026-11-20 con la API de precios de AWS)
 
@@ -138,16 +147,34 @@ Plantilla [`deploy/inference/aws/cloudformation.yaml`](../deploy/inference/aws/c
 
 ## 6. Mediciones y elección del perfil
 
-Herramientas: `bench/measure.py` (`load`, `run`, `limits`, `ec2-cycle`), `bench/host-facts.sh` (GPU, driver, CUDA, AMI, runtime y modelo instalados) y `bench/parity.sh` (paridad con la referencia usando sin cambios `benchmark.py` y `proxy_esquema.py` del ZIP, que queda fuera de Git). Orden obligatorio (receta exacta en el [informe §4](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real)):
+Herramientas: `bench/measure.py` (`load`, `run`, `limits`, `ec2-cycle`, `verdict`), `bench/mem-sample.sh` (muestreo de memoria **en el host medido**), `bench/ssm-run.sh` (comando en la instancia por SSM, sin SSH), `server/switch-profile.sh` (cambio de perfil persistente con reinicio), `bench/host-facts.sh` (GPU, driver, CUDA, AMI, runtime y modelo instalados), `bench/boot-timings.sh` (línea de tiempo del arranque) y `bench/parity.sh` (paridad con la referencia usando sin cambios `benchmark.py` y `proxy_esquema.py` del ZIP, que queda fuera de Git). La secuencia completa la ejecuta `bench/gpu-validation.py` (§6.2; receta en el [informe §4](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real)). Orden obligatorio:
 
 1. `reference-8k-1slot`: arranque EC2, carga de pesos y tiempo hasta readiness por separado; pico de VRAM/RAM; latencia y throughput con 1 slot; límites de contexto; paridad.
 2. Solo si hay margen de VRAM: `candidate-16k-1slot` (más contexto por solicitud) y luego `candidate-16k-2slot` (dos slots). `candidate-32k-2slot` solo si los anteriores entran con margen.
 3. Se registra por perfil: contexto total y efectivo por slot, espacio de salida y razonamiento (3072 / 512), pico de VRAM y RAM, latencia (mediana, p95), throughput, respuesta a sobrecarga (cola) y a entradas fuera de límite.
 4. El predeterminado se elige con esas mediciones. **Si la configuración base no entra o no cumple, se documenta el límite y se eleva la decisión al usuario** antes de cambiar instancia, cuantización o introducir offload a CPU (D-A09-05). Q8_0 (≈ 2× los pesos) no entra en la L4 y queda documentado solo para hardware con más VRAM.
 
+### 6.1 Evidencia de memoria
+
+La VRAM y la RAM se muestrean **en el host medido** mientras corre **la misma carga**: `measure.py load|run` ejecuta `--memory-start-cmd` antes de la carga y `--memory-stop-cmd` después; desde el operador ambos corren `mem-sample.sh start|stop` en EC2 por `ssm-run.sh` (en el propio host, `--memory-local`). El resumen registra el **host** (hostname, `instance_id`, tipo, GPU), la **cantidad de muestras** de VRAM y de RAM y la ventana de muestreo. La memoria queda `measured` solo si hay muestras de ambas, la ventana cubre la carga (tolerancia 2 s) y, con `--expect-instance-id`, el host es el esperado; en cualquier otro caso es `unavailable` con un motivo (`not_requested`, `no_samples`, `host_mismatch`, `window_not_covered`, …) y **sin cifras**: una muestra ausente nunca se informa como 0.
+
+Criterios del perfil (`measure.py verdict`, fijados antes de medir): carga con `--fit off` hasta readiness; **≥ 1024 MiB de VRAM libre en el pico medido** en todas las cargas; `limits` (prompt admitido con 3072 de salida responde; fuera de contexto, 400 `exceed_context_size_error`); `run` sin errores, JSON válido y sin `finish_reason = length`. El veredicto es `pass` solo si todos los criterios pasan **con evidencia**; un criterio sin evidencia (por ejemplo, memoria `unavailable`) da `incomplete`, que no aprueba el perfil.
+
+### 6.2 Secuencia de validación en GPU (`bench/gpu-validation.py`)
+
+Desde la máquina del operador, con herramientas reemplazables para la prueba simulada:
+
+1. **Verificación previa sin efectos**: la instancia está `stopped`, el estado del controlador es nuevo (`auto`, sin trabajo) y el directorio de evidencia está fuera del repositorio; si no, se rechaza sin tocar nada (salida 2).
+2. **Ciclo disparado por trabajo**: túnel SSM, `serve` y un worker en segundo plano; se encola **un** trabajo durable y se exige en la evidencia el arranque pedido por demanda (sin `start` manual), la instancia en `running`, la readiness verificada y el trabajo `succeeded` con salida estructurada. Se registra la línea de tiempo (envío, pedido de arranque, `running` observado, `ready`, fin del trabajo).
+3. **Evidencia del host** (hechos y línea de tiempo del arranque en frío) por SSM.
+4. **Campaña de perfiles con la instancia disponible**: el controlador se detiene para que no apague por inactividad bajo las mediciones; por perfil, `load` (cambio + reinicio), `limits`, `run` (y concurrencia = slots; sobrecarga con 3 en el primero) con memoria en el host, y `verdict`. La campaña se detiene en el primer perfil que no pasa (D-A09-05).
+5. **Parada final por el controlador** (`stop --wait`: pausa, drenaje, parada).
+
+**Siempre** (también ante fallo, Ctrl-C, SIGTERM o SIGHUP, con las señales ignoradas durante la limpieza): se detienen los procesos de fondo, se restituye el perfil original en `server.env`, se detiene la instancia si no lo está, se **verifica `stopped`** y se escribe `final-state.json`. Si no queda verificada, imprime `CLEANUP FAILED` con el comando para detenerla y sale con 4. Salidas: 0 validado; 1 falló o quedó incompleta (instancia detenida); 2 rechazada sin efectos; 130 interrumpida (instancia detenida).
+
 ## 7. Límites declarados
 
-- Sin GPU real todavía: tiempos de arranque, carga, VRAM, latencia, throughput y paridad están **pendientes**. Los riesgos conocidos a medir: 19,4 GB de pesos frente a 22 888 MiB de VRAM (la referencia usó +19 123 MiB en la 5090 con 8192 de contexto) y 16 GiB de RAM del host frente a un archivo de 18 GiB cargado por `mmap` (y la caché de prompts de `llama-server`, 8192 MiB por defecto).
+- Sin GPU real todavía: tiempos de arranque, carga, VRAM, latencia, throughput y paridad están **pendientes**. También queda por comprobar en la L4 que el muestreador lanzado por SSM sobrevive al fin del comando (`setsid nohup`); si no sobreviviera, la medición queda `unavailable` (`no_samples` o `window_not_covered`), no aprobada. Los riesgos conocidos a medir: 19,4 GB de pesos frente a 22 888 MiB de VRAM (la referencia usó +19 123 MiB en la 5090 con 8192 de contexto) y 16 GiB de RAM del host frente a un archivo de 18 GiB cargado por `mmap` (y la caché de prompts de `llama-server`, 8192 MiB por defecto).
 - El estado del controlador vive en SQLite en un único host; el ejecutor de prueba comparte ese archivo para serializar la decisión de apagado con el despacho. B01 debe dar la misma garantía con la cola real.
 - Las horas de las decisiones son del reloj del host del controlador (un único líder); no dependen de relojes de los workers.
 - No se detiene cómputo remoto ya iniciado al vencer un timeout; el trabajo se reintenta.
