@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import socket
-import stat
 import subprocess
 import sys
 import time
@@ -14,26 +11,13 @@ from pathlib import Path
 
 import pytest
 
-HERE = Path(__file__).parent
-DEPLOY = HERE.parent.parent  # deploy/inference
-SERVER = DEPLOY / "server"
+from conftest import DEPLOY, HERE, SERVER, free_port, server_env
+
 CLI = [str(DEPLOY / "bin" / "cce-inference")]
 
 
 def sh(*args: str, env: dict[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(list(args), capture_output=True, text=True, env={**os.environ, **(env or {})}, check=check)
-
-
-@pytest.fixture
-def fake_model(tmp_path: Path) -> dict[str, str]:
-    src = tmp_path / "src.gguf"
-    src.write_bytes(b"GGUF" + os.urandom(4096))
-    return {
-        "path": str(src),
-        "CCE_MODEL_FILE": "tiny.gguf",
-        "CCE_MODEL_SHA256": hashlib.sha256(src.read_bytes()).hexdigest(),
-        "CCE_MODEL_BYTES": str(src.stat().st_size),
-    }
 
 
 def test_install_model_verifies_hash_size_and_is_atomic(tmp_path: Path, fake_model: dict[str, str]):
@@ -53,31 +37,6 @@ def test_install_model_verifies_hash_size_and_is_atomic(tmp_path: Path, fake_mod
         fh.write(b"XXXX")
     r = sh(str(SERVER / "install-model.sh"), "--dir", str(d), "--verify", env=env, check=False)
     assert r.returncode != 0
-
-
-def server_env(tmp_path: Path, model: str, port: int, profile: str = "reference-8k-1slot") -> Path:
-    key = tmp_path / "api-key"
-    key.write_text("cli-test-key\n")
-    key.chmod(0o600)
-    fake_bin = tmp_path / "fake-llama-server"
-    fake_bin.write_text(f'#!/bin/sh\nexec {sys.executable} {HERE / "fake_llama_server.py"} "$@"\n')
-    fake_bin.chmod(fake_bin.stat().st_mode | stat.S_IEXEC)
-    env = tmp_path / "server.env"
-    env.write_text(
-        "\n".join(
-            [
-                f"CCE_MODEL_PATH={model}",
-                "CCE_MODEL_ALIAS=qwen3.6-27b-q4km",
-                f"CCE_PROFILE={SERVER / 'profiles' / (profile + '.env')}",
-                "CCE_HOST=127.0.0.1",
-                f"CCE_PORT={port}",
-                f"CCE_API_KEY_FILE={key}",
-                f"CCE_LLAMA_SERVER_BIN={fake_bin}",
-            ]
-        )
-        + "\n"
-    )
-    return env
 
 
 def test_run_server_command_line_is_the_reference_profile(tmp_path: Path, fake_model: dict[str, str]):
@@ -102,12 +61,6 @@ def test_run_server_command_line_is_the_reference_profile(tmp_path: Path, fake_m
         sh(str(SERVER / "run-server.sh"), "--print-command", env={"CCE_SERVER_ENV": str(two)}).stdout.split()
     )
     assert "-c 16384" in joined and "--parallel 2" in joined
-
-
-def free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return int(s.getsockname()[1])
 
 
 def test_cli_start_stop_status_cycle_with_a_simulated_host(tmp_path: Path, fake_model: dict[str, str]):

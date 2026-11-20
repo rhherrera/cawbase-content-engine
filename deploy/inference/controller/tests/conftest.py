@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import os
+import socket
+import stat
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -86,3 +90,46 @@ def rig(tmp_path: Path) -> Rig:
         queue=JobQueue(store, clock, ExecutorPolicy(max_in_flight=1)),
         policy=policy,
     )
+
+
+@pytest.fixture
+def fake_model(tmp_path: Path) -> dict[str, str]:
+    src = tmp_path / "src.gguf"
+    src.write_bytes(b"GGUF" + os.urandom(4096))
+    return {
+        "path": str(src),
+        "CCE_MODEL_FILE": "tiny.gguf",
+        "CCE_MODEL_SHA256": hashlib.sha256(src.read_bytes()).hexdigest(),
+        "CCE_MODEL_BYTES": str(src.stat().st_size),
+    }
+
+
+def server_env(tmp_path: Path, model: str, port: int, profile: str = "reference-8k-1slot") -> Path:
+    key = tmp_path / "api-key"
+    key.write_text("cli-test-key\n")
+    key.chmod(0o600)
+    fake_bin = tmp_path / "fake-llama-server"
+    fake_bin.write_text(f'#!/bin/sh\nexec {sys.executable} {HERE / "fake_llama_server.py"} "$@"\n')
+    fake_bin.chmod(fake_bin.stat().st_mode | stat.S_IEXEC)
+    env = tmp_path / "server.env"
+    env.write_text(
+        "\n".join(
+            [
+                f"CCE_MODEL_PATH={model}",
+                "CCE_MODEL_ALIAS=qwen3.6-27b-q4km",
+                f"CCE_PROFILE={SERVER / 'profiles' / (profile + '.env')}",
+                "CCE_HOST=127.0.0.1",
+                f"CCE_PORT={port}",
+                f"CCE_API_KEY_FILE={key}",
+                f"CCE_LLAMA_SERVER_BIN={fake_bin}",
+            ]
+        )
+        + "\n"
+    )
+    return env
+
+
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return int(s.getsockname()[1])
