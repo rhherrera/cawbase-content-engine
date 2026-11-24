@@ -110,7 +110,7 @@ Rama `ci/a09-1-aws-gpu-validation`, creada desde `origin/main` en `1c7385b` (mer
 
 **Evidencia A (servicios reales, solo lectura, perfil `rodrigo`, 2026-11-24).** `aws cloudformation validate-template` aceptó `github-validation-access.yaml` (`CAPABILITY_NAMED_IAM`) y la plantilla regenerada del host (`CAPABILITY_IAM`, con `HostPermissionsBoundaryArn`); la cuenta ya tiene el proveedor OIDC de GitHub (`token.actions.githubusercontent.com`, se reutiliza); la cuota G/VT `L-DB2E81BA` en `us-east-1` se leyó en **4 vCPU** (antes 0; Q-A09-01). `aws-actions/configure-aws-credentials` v6.3.0 = commit `e1253824…`, comprobado con `git ls-remote --tags`. No se creó ningún recurso.
 
-**No verificado (G y GitHub).** Ninguna ejecución en GitHub Actions ni contra AWS real; la habilitación inicial no se aplicó; la semántica real de las políticas IAM (`validate-template` no la evalúa), el `sub` real del repositorio, EventBridge Scheduler, la propagación de las etiquetas del stack, el borrado real y `session-manager-plugin` en `ubuntu-latest` se comprueban en la primera corrida. La primera solicitud con gasto va en una PR aparte, cuando el usuario autorice la red y el gasto.
+**No verificado (G y GitHub).** Ninguna ejecución en GitHub Actions ni contra AWS real; la habilitación inicial no se había aplicado (se aplicó después: §2.9); la semántica real de las políticas IAM (`validate-template` no la evalúa), el `sub` real del repositorio, EventBridge Scheduler, la propagación de las etiquetas del stack, el borrado real y `session-manager-plugin` en `ubuntu-latest` se comprueban en la primera corrida. La primera solicitud con gasto va en una PR aparte, cuando el usuario autorice la red y el gasto.
 
 ### 2.8 Revisión 1 de la validación automatizada (sobre `09c9429`)
 
@@ -131,6 +131,13 @@ Rama `ci/a09-1-aws-gpu-validation`; los commits previos se conservan.
 | AWS, solo lectura (perfil `rodrigo`, 2026-11-24) | `aws cloudformation validate-template` de `github-validation-access.yaml` y de la plantilla del host regenerada | válidas (`CAPABILITY_NAMED_IAM`, `CAPABILITY_IAM`); *user data* sin cambios (13 849 de 16 384 bytes) |
 
 **No verificado**: igual que §2.7, más el recurso `AWS::Scheduler::Schedule` real dentro del stack (formato de fechas, rollback) y la operación de habilitación contra AWS y GitHub reales. No se creó ningún recurso ni se escribió ninguna variable.
+
+### 2.9 Habilitación inicial aplicada (2026-11-24)
+
+Autorizada por el usuario (stack de acceso y variable del repositorio; la corrida con GPU se autoriza aparte). Ejecutada sobre `main` en `f7bf33d` con `deploy/inference/ci/enable_access.py` (perfil `rodrigo`, `us-east-1`, `gh` autenticado, Python 3.13): `plan` (salida 0, `create`), `apply` (salida 0, `enabled_and_verified`) y una repetición de `apply` (salida 0, `no_changes`). Detalle en el [§5.1 del contrato](a09-1-aws-validation-automation.md#51-habilitación-aplicada-2026-11-24).
+
+- **Evidencia A (servicios reales, con cambios autorizados):** diagnóstico OIDC `45459844898` exitoso en `main`; `sub` observado `repo:rhherrera@1641310/cawbase-content-engine@1454429155:ref:refs/heads/main` (formato con identificadores inmutables, aceptado por el patrón de la IaC); proveedor OIDC de la cuenta reutilizado; red VPC por defecto `vpc-06b68c7fb3834181b`, subred `subnet-0ccdf328252d0fa4c` en `us-east-1a` (salida por IGW; única VPC de la cuenta); stack `cce-a09-github-access` en `CREATE_COMPLETE` con el trust exacto `aud` + `sub` comprobado aparte con `iam get-role`; variable `CCE_A09_AWS_ROLE_ARN` registrada y releída con `gh variable list`. Informes `enablement.json` fuera del repositorio.
+- **Sigue sin verificar:** `AssumeRoleWithWebIdentity` desde el workflow de validación, la semántica real de las políticas IAM y todo lo que depende de la primera corrida (§2.7). Ninguna solicitud creada ni instancia encendida.
 
 ## 3. Trazabilidad AC-A09-1
 
@@ -260,4 +267,5 @@ No se ejecutaron `pytest -m dist` ni las validaciones Linux en Docker del motor 
 - El perfil original se restituye en `server.env` sin reiniciar el servidor (`--no-restart`): rige desde el próximo arranque; hasta la parada, el proceso en marcha conserva el último perfil medido. Si la limpieza no logra detener la instancia (salida 4), puede quedar encendida con ese perfil en memoria.
 - `gpu-validation.py` detiene el controlador durante la campaña de perfiles para que no apague por inactividad bajo las mediciones (que no pasan por la cola); en ese tramo la parada la garantiza el propio script. El autoapagado real a los 60 min no se mide en la L4: se prueba con reloj controlado (AC-A09-1-10).
 - Si la máquina del operador se apaga o pierde la red durante la corrida, la limpieza del script no puede ejecutarse; quedan como respaldo la guardia de inactividad de la instancia (120 min) y la comprobación independiente del final de la receta B. Con la validación automatizada (§2.7) se suman el job `cleanup` y el watchdog en AWS.
+- La red de la validación automatizada es pública (subred por defecto con salida por IGW, §2.9): el host recibe IP pública para la salida, con el puerto 8080 cerrado salvo `client_*`; cambiarla exige repetir la habilitación.
 - Validación automatizada: GitHub conserva un solo run pendiente por grupo de concurrencia (uno más antiguo se cancela sin gasto y hay que reejecutarlo); quien puede mergear a `main` dispara gasto acotado por la solicitud (Q-A09-06); entre la creación de la instancia y el armado del watchdog hay unos segundos cubiertos solo por el runner, el job `cleanup` y la guardia de la instancia; si el stack no se borra, el EBS sigue costando hasta corregirlo (el job `cleanup` falla visible).

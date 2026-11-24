@@ -1,6 +1,6 @@
 # Validación AWS de A09-1 automatizada con GitHub Actions
 
-> **Estado: IMPLEMENTADA y probada con AWS y GitHub SIMULADOS (macOS y Linux local), con las correcciones de la revisión 1 (limpieza solo de lo propio, parada en AWS desde la creación de la instancia, habilitación inicial como operación idempotente); NO ejecutada en GitHub Actions ni contra AWS real; la habilitación inicial (stack de acceso, variable del repositorio) NO se aplicó.** Las políticas IAM se validaron como plantilla con la API de AWS (`validate-template`), no con llamadas reales `AssumeRoleWithWebIdentity`/`CreateStack`. La primera solicitud con gasto va en una PR aparte, cuando el usuario autorice la red y el gasto. Pertenece a A09-1 ([contrato](inference-deployment.md), [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md), [decisiones](decisions/A09-decisions.md), [informe](a09-1-implementation-report.md)). A09-2 y B01 quedan fuera.
+> **Estado: IMPLEMENTADA y probada con AWS y GitHub SIMULADOS (macOS y Linux local), con las correcciones de la revisión 1 (limpieza solo de lo propio, parada en AWS desde la creación de la instancia, habilitación inicial como operación idempotente); NO ejecutada en GitHub Actions ni contra AWS real; la habilitación inicial (stack de acceso, variable del repositorio) se APLICÓ y verificó contra AWS y GitHub reales el 2026-11-24 ([§5.1](#51-habilitación-aplicada-2026-11-24)), pero el rol aún no se asumió desde Actions.** Las políticas IAM se validaron como plantilla con la API de AWS (`validate-template`), no con llamadas reales `AssumeRoleWithWebIdentity`/`CreateStack`. La primera solicitud con gasto va en una PR aparte, cuando el usuario autorice la red y el gasto. Pertenece a A09-1 ([contrato](inference-deployment.md), [especificación](features/A09-1-despliegue-de-inferencia-y-operacion.md), [decisiones](decisions/A09-decisions.md), [informe](a09-1-implementation-report.md)). A09-2 y B01 quedan fuera.
 
 Automatiza los pasos A (preparación) y B (validación) del [§4 del informe](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real): el usuario **mergea una solicitud versionada** y el workflow hace el resto, sin ejecutar CloudFormation ni pasos de despliegue a mano. Reutiliza `deploy/inference/aws/cloudformation.yaml` y `deploy/inference/bench/gpu-validation.py`, y conserva el objetivo de D-A09-08: `g6e.xlarge` en `us-east-1`, Qwen3.6-27B Q8_0 con todos los pesos en GPU y el endpoint de inferencia privado.
 
@@ -100,7 +100,7 @@ Separada de las corridas y sin costo propio (roles, política, grupo de schedule
    python3 deploy/inference/ci/enable_access.py apply --repo OWNER/REPO --vpc-id vpc-… --subnet-id subnet-… --availability-zone us-east-1a --out /ruta/fuera/del/repo
    ```
 
-   Requisitos del agente: Python ≥ 3.11, AWS CLI v2 con el perfil `rodrigo`, `gh` autenticado con permiso para leer los runs y escribir variables del repositorio. Opcionales: `--dispatch` (si el diagnóstico nunca corrió, lo dispara en `main` y espera), `--diagnostic-run ID`, `--parity-object-arn`, `--stack-name`.
+   Requisitos del agente: Python ≥ 3.11 (si `python3` es anterior, como el 3.9 del sistema en macOS, usar otro intérprete, p. ej. `python3.13`), AWS CLI v2 con el perfil `rodrigo`, `gh` autenticado con permiso para leer los runs y escribir variables del repositorio. Opcionales: `--dispatch` (si el diagnóstico nunca corrió, lo dispara en `main` y espera), `--diagnostic-run ID`, `--parity-object-arn`, `--stack-name`.
 
 | Paso | Qué hace y verifica | Si falla |
 |---|---|---|
@@ -123,6 +123,22 @@ Repetirla no cambia nada (stack sin cambios, variable igual) y vuelve a verifica
 No se guarda ninguna credencial de AWS en GitHub. En cada corrida, `oidc-claims.json` registra el `sub` que presentó el job; un `AccessDenied` en `configure-aws-credentials` con un `sub` distinto se corrige repitiendo la operación con un diagnóstico nuevo (nunca ampliando el trust con comodines).
 
 **Endurecimiento opcional, no verificado (P-A09-06)**: personalizar la plantilla del `sub` para incluir `job_workflow_ref` haría que solo el workflow de validación pueda asumir el rol; necesita observar el `sub` del workflow de validación (no el del diagnóstico), por eso la operación lo rechaza hoy.
+
+### 5.1 Habilitación aplicada (2026-11-24)
+
+Con la autorización del usuario (stack de acceso y variable; sin solicitud de validación ni GPU), un agente ejecutó la operación con el perfil `rodrigo` en `us-east-1`, `gh` autenticado y Python 3.13. Informes `enablement.json` fuera del repositorio (`plan`, `apply` y una repetición), sin secretos.
+
+| Paso | Resultado |
+|---|---|
+| Diagnóstico OIDC | run `45459844898` en `main` (push de `f7bf33d`, merge de la PR #10), `success`; no hizo falta `--dispatch` |
+| `sub` observado | `repo:rhherrera@1641310/cawbase-content-engine@1454429155:ref:refs/heads/main`. GitHub emite el formato con identificadores inmutables (`repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:…`), no `repo:<owner>/<repo>:ref:…`; `SUB_PATTERN` y el `AllowedPattern` de la IaC lo admiten tal cual. Sin `job_workflow_ref` en el `sub` (sí como claim aparte) |
+| Proveedor OIDC | el existente de la cuenta (`token.actions.githubusercontent.com`, audiencia `sts.amazonaws.com`), reutilizado |
+| Red elegida | VPC por defecto `vpc-06b68c7fb3834181b`, subred `subnet-0ccdf328252d0fa4c` en `us-east-1a`. Era la única opción realista: la cuenta tiene solo la VPC por defecto, sin NAT ni endpoints; salida por la tabla principal con `0.0.0.0/0` → IGW activa; `g6e.xlarge` se ofrece en `us-east-1a` a `1d`, con las mismas consecuencias, y se tomó la AZ del ejemplo. Como la salida es por IGW, cada solicitud necesita `assign_public_ip: true` (el puerto 8080 sigue cerrado sin `client_*`) |
+| `plan` | salida 0; stack ausente → `create` |
+| `apply` | salida 0, `enabled_and_verified`: stack `cce-a09-github-access` en `CREATE_COMPLETE`; trust de `cce-a09-github-validation` con una sola sentencia, `StringEquals` exactamente `aud` + el `sub` observado, sesión máxima 12 h; salidas `AllowedVpcId`/`AllowedSubnetId` = la red elegida; variable `CCE_A09_AWS_ROLE_ARN` escrita y releída |
+| Repetición de `apply` | salida 0, `no_changes`; variable sin cambios |
+
+Comprobado aparte con `iam get-role`, `cloudformation describe-stacks` y `gh variable list`. Ninguna instancia encendida ni solicitud creada. Cambiar la red exige repetir la operación (sin costo) y usar la misma red en las solicitudes.
 
 ## 6. Permisos (mínimo privilegio, acotado por recurso y etiqueta)
 
@@ -162,11 +178,12 @@ Peor caso de instancia por solicitud = 1,861 USD/h (`manifest.json aws.on_demand
 
 **Probado con AWS simulado** (`deploy/inference/controller/tests/test_ci_validation.py`, con el `aws` falso de `tests/fake_aws.py` y el host simulado; revisión 1: solicitud no reservada sobre un stack preexistente, stack ajeno recreado con el mismo nombre, stack adoptado por otra solicitud, reintento antiguo que preserva lo adoptado y deja que el dueño actual limpie, `reuse` de un stack sin registro, runner perdido apenas AWS aceptó `CreateStack` y la instancia detenida solo por el schedule del stack; `test_enable_access.py` con el `gh` falso de `tests/fake_gh.py`: plan sin cambios, aplicación verificada e idempotente, diagnóstico disparado, doce rechazos sin cambios, trust que no coincide sin escribir la variable, cambio de red): detección sobre historia git real (merge normal, README, solicitud nueva, modificada, renombrada, dos a la vez, push sin commit previo); esquema y techo de gasto; claims OIDC sin token; corrida completa `delete` (stack con los parámetros de la solicitud y el rol de ejecución, watchdog, bootstrap, primera carga en GPU, instancia detenida, `gpu-validation.py`, borrado verificado, API key borrada, watchdog desarmado; el host simulado lee la API key de SSM como el real); `keep-stopped`, reintento del mismo id sin gasto y una solicitud nueva que reutiliza el stack; doce rechazos del preflight sin reservar ni crear nada; fallo de validación con limpieza verificada (separados); offload parcial; fallo de limpieza (salida 5, watchdog armado); SIGTERM durante el bootstrap; runner muerto con SIGKILL y el watchdog que detiene la instancia; redacción. Contrato estático del workflow y de la IaC en `tests/test_a09_aws_validation_ci.py`; `actionlint` (con shellcheck) sin hallazgos; ambas plantillas aceptadas por `aws cloudformation validate-template`.
 
-**No verificado** (requiere la habilitación y la primera corrida real):
+**Verificado contra servicios reales (2026-11-24, [§5.1](#51-habilitación-aplicada-2026-11-24))**: la operación de habilitación contra AWS y GitHub reales (formato del log de `gh run view --log`, `gh variable list`, `iam get-role`, `cloudformation deploy` del stack de acceso), el `sub` real del repositorio y el trust creado con él.
+
+**No verificado** (requiere la primera corrida real):
 
 - que las políticas IAM alcancen (o no sobren) en una creación real: `validate-template` no evalúa la semántica de IAM; un faltante se vería como `AccessDenied` temprano (antes de la GPU o con la instancia detenida por la limpieza);
-- el `sub` real del repositorio y el trust con `AssumeRoleWithWebIdentity`;
+- el trust con una llamada real `AssumeRoleWithWebIdentity` desde el workflow de validación;
 - que `session-manager-plugin` esté en la imagen `ubuntu-latest` (el preflight lo exige y rechaza sin gasto; queda en `runner-tools.txt`);
 - EventBridge Scheduler real (universal target `ec2:stopInstances`), el recurso `AWS::Scheduler::Schedule` creado por CloudFormation (formato de `StartDate`/`EndDate`, rollback si falla), la propagación de las etiquetas del stack a la instancia y el borrado real del stack;
-- la operación de habilitación contra AWS y GitHub reales (formato real del log de `gh run view --log`, `gh variable list`, `iam get-role`);
 - GitHub Actions (nunca ejecutado) y el comportamiento real de cancelación/timeout del runner.
