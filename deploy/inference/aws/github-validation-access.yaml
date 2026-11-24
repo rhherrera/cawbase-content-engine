@@ -1,0 +1,433 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CAWbase content engine A09-1: access for the GitHub Actions validation workflow
+  (.github/workflows/a09-1-aws-gpu-validation.yml). INITIAL ENABLEMENT, deployed ONCE by an identity that is already
+  authorized in the account (never by the workflow, which cannot modify this stack): a dedicated OIDC role trusted
+  only for the verified subject of this repository's main branch (temporary credentials), the CloudFormation execution
+  role that creates the validation stacks (cce-inference-*), the permissions boundary of their host role, and the
+  role and schedule group of the AWS-side watchdog that stops a validation instance if the runner disappears.
+  Reuses the account's existing GitHub OIDC provider. Contract: docs/a09-1-aws-validation-automation.md.
+
+Parameters:
+  GitHubOidcProviderArn:
+    Type: String
+    AllowedPattern: "^arn:aws:iam::[0-9]{12}:oidc-provider/token\\.actions\\.githubusercontent\\.com$"
+    Description: >-
+      The account's EXISTING provider (reused, not created here). aws iam list-open-id-connect-providers
+  GitHubSubject:
+    Type: String
+    MinLength: 1
+    MaxLength: 400
+    AllowedPattern: "^repo:[^*?\\s:]+:ref:refs/heads/main(:job_workflow_ref:[^*?\\s]+)?$"
+    ConstraintDescription: >-
+      the exact `sub` OBSERVED by .github/workflows/a09-1-oidc-diagnostic.yml for main (no wildcard, never a
+      pull_request subject)
+    Description: >-
+      EXACT `sub` claim of this repository's main branch, as printed by the OIDC diagnostic workflow. Never inferred:
+      its format depends on the repository (name-based or immutable-ID, optionally a custom template).
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC of the validation host (authorized by the user). The roles can create security groups only here.
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet of the validation host (authorized by the user). Instances can be launched only here.
+  InstanceType:
+    Type: String
+    Default: g6e.xlarge
+    AllowedValues: [g6e.xlarge]
+    Description: The only instance type the validation stacks may launch (manifest.json aws.instance_type).
+  ParityObjectArn:
+    Type: String
+    Default: ""
+    AllowedPattern: "^(arn:aws:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]/[^*?\\s]+\\.zip)?$"
+    Description: >-
+      Optional: the results ZIP for the parity run (outside Git), e.g. arn:aws:s3:::BUCKET/a09/results.zip.
+      Empty: the workflow cannot read any S3 object and parity stays pending.
+
+Rules:
+  OnlyUsEast1:
+    Assertions:
+      - Assert: !Equals [!Ref AWS::Region, us-east-1]
+        AssertDescription: the A09-1 validation runs in us-east-1 only
+
+Conditions:
+  HasParity: !Not [!Equals [!Ref ParityObjectArn, ""]]
+
+Resources:
+  # --- what the recurring runs assume: OIDC, temporary credentials, main branch of this repository only ---------
+  ValidationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cce-a09-github-validation
+      Description: GitHub Actions A09-1 validation (OIDC, main branch of this repository only)
+      MaxSessionDuration: 43200 # the job's time limit (<= 480 min) plus margin; credentials are temporary
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Federated: !Ref GitHubOidcProviderArn}
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Ref GitHubSubject
+      Policies:
+        - PolicyName: a09-validation
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadOnlyDiscovery
+                Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceTypeOfferings
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeRouteTables
+                  - ec2:DescribeImages
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeAvailabilityZones
+                  - servicequotas:GetServiceQuota
+                  - ssm:DescribeInstanceInformation
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                  - cloudformation:ValidateTemplate
+                Resource: "*" # Describe/List/Get actions without resource-level permissions
+              - Sid: CreateValidationStacksOnlyThroughTheExecutionRole
+                Effect: Allow
+                Action: cloudformation:CreateStack
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cce-inference-*/*"
+                Condition:
+                  StringEquals:
+                    cloudformation:RoleArn: !GetAtt CfnExecutionRole.Arn
+              - Sid: OperateValidationStacks # no UpdateStack: a request never modifies a stack
+                Effect: Allow
+                Action:
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:ListStackResources
+                  - cloudformation:TagResource
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cce-inference-*/*"
+              - Sid: ReadThisAccessStack # read only: the workflow cannot change its own access
+                Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: !Ref AWS::StackId
+              - Sid: PassTheExecutionRoleToCloudFormation
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CfnExecutionRole.Arn
+                Condition:
+                  StringEquals: {iam:PassedToService: cloudformation.amazonaws.com}
+              - Sid: PassTheWatchdogRoleToScheduler
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt WatchdogRole.Arn
+                Condition:
+                  StringEquals: {iam:PassedToService: scheduler.amazonaws.com}
+              - Sid: StartStopValidationInstances # the controller under test and the cleanup
+                Effect: Allow
+                Action: [ec2:StartInstances, ec2:StopInstances]
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals: {aws:ResourceTag/cce:role: inference}
+                  "Null": {aws:ResourceTag/cce:validation-id: "false"}
+              - Sid: RunCommandAndTunnelOnValidationInstances
+                Effect: Allow
+                Action: [ssm:SendCommand, ssm:StartSession]
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringLike: {ssm:resourceTag/cce:validation-id: "*"}
+              - Sid: OnlyTheseTwoDocuments
+                Effect: Allow
+                Action: [ssm:SendCommand, ssm:StartSession]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartPortForwardingSession"
+              - Sid: OwnSessions
+                Effect: Allow
+                Action: [ssm:TerminateSession, ssm:ResumeSession]
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:session/a09-*"
+              - Sid: ResolveTheDlamiId
+                Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::parameter/aws/service/deeplearning/*"
+              - Sid: RequestLedger # claim (create without overwrite) and status; no delete: an id is never reused
+                Effect: Allow
+                Action: [ssm:PutParameter, ssm:GetParameter]
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cce/inference/validation-runs/*"
+              - Sid: StackOwnershipRecords # which request owns (created or adopted by reuse) each stack
+                Effect: Allow
+                Action: [ssm:PutParameter, ssm:GetParameter, ssm:DeleteParameter]
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cce/inference/validation-stacks/cce-inference-*"
+              - Sid: PerStackApiKey
+                Effect: Allow
+                Action: [ssm:PutParameter, ssm:GetParameter, ssm:DeleteParameter]
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cce/inference/validation/cce-inference-*"
+              - Sid: SecureStringThroughSsmOnly
+                Effect: Allow
+                Action: [kms:Encrypt, kms:Decrypt, kms:GenerateDataKey]
+                Resource: "*"
+                Condition:
+                  StringEquals: {kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"}
+              - Sid: WatchdogOfReusedStacks # a reused stack's instance already exists: the runner arms it before any start
+                Effect: Allow
+                Action: [scheduler:CreateSchedule, scheduler:DeleteSchedule]
+                Resource: !Sub "arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${WatchdogScheduleGroup}/cce-a09-*"
+              - Sid: ReadWatchdogs # also the in-stack schedule created by CloudFormation with the instance
+                Effect: Allow
+                Action: scheduler:GetSchedule
+                Resource: !Sub "arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${WatchdogScheduleGroup}/*"
+              - !If
+                - HasParity
+                - Sid: ReadTheParityZip
+                  Effect: Allow
+                  Action: s3:GetObject
+                  Resource: !Ref ParityObjectArn
+                - !Ref AWS::NoValue
+
+  # --- what CloudFormation uses to create and delete a validation stack (cloudformation.yaml) -------------------
+  CfnExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cce-a09-cfn-execution
+      Description: CloudFormation execution role for the A09-1 validation stacks (cce-inference-*)
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: cloudformation.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: {aws:SourceAccount: !Ref AWS::AccountId}
+      Policies:
+        - PolicyName: a09-validation-stack-resources
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Describe
+                Effect: Allow
+                Action: ec2:Describe*
+                Resource: "*"
+              - Sid: SecurityGroupInTheAuthorizedVpc
+                Effect: Allow
+                Action: ec2:CreateSecurityGroup
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VpcId}"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+              - Sid: SecurityGroupRules
+                Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupEgress
+                  - ec2:ModifySecurityGroupRules
+                  - ec2:UpdateSecurityGroupRuleDescriptionsIngress
+                  - ec2:UpdateSecurityGroupRuleDescriptionsEgress
+                  - ec2:DeleteSecurityGroup
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+                Condition:
+                  StringEquals:
+                    ec2:Vpc: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VpcId}"
+              - Sid: Tags
+                Effect: Allow
+                Action: [ec2:CreateTags, ec2:DeleteTags]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+              - Sid: EncryptedWeightsVolume
+                Effect: Allow
+                Action: ec2:CreateVolume
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                Condition:
+                  Bool: {ec2:Encrypted: "true"}
+              - Sid: Volumes
+                Effect: Allow
+                Action: [ec2:AttachVolume, ec2:DetachVolume, ec2:DeleteVolume]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+              - Sid: RunOnlyTheAuthorizedInstanceType
+                Effect: Allow
+                Action: ec2:RunInstances
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals: {ec2:InstanceType: !Ref InstanceType}
+              - Sid: RunOnlyInTheAuthorizedSubnet
+                Effect: Allow
+                Action: ec2:RunInstances
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${SubnetId}"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*"
+              - Sid: InferenceInstancesOnly
+                Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                  - ec2:ModifyInstanceAttribute
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals: {aws:ResourceTag/cce:role: inference}
+              - Sid: HostRoleOnlyWithTheBoundary
+                Effect: Allow
+                Action: iam:CreateRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cce-inference-*"
+                Condition:
+                  StringEquals: {iam:PermissionsBoundary: !Ref HostPermissionsBoundary}
+              - Sid: HostRole # no Put/DeleteRolePermissionsBoundary: the boundary cannot be removed
+                Effect: Allow
+                Action:
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListInstanceProfilesForRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cce-inference-*"
+              - Sid: OnlyTheSsmManagedPolicy
+                Effect: Allow
+                Action: [iam:AttachRolePolicy, iam:DetachRolePolicy]
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cce-inference-*"
+                Condition:
+                  ArnEquals: {iam:PolicyARN: !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"}
+              - Sid: HostInstanceProfile
+                Effect: Allow
+                Action:
+                  - iam:CreateInstanceProfile
+                  - iam:DeleteInstanceProfile
+                  - iam:GetInstanceProfile
+                  - iam:AddRoleToInstanceProfile
+                  - iam:RemoveRoleFromInstanceProfile
+                  - iam:TagInstanceProfile
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/cce-inference-*"
+              - Sid: PassTheHostRoleToEc2
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cce-inference-*"
+                Condition:
+                  StringEqualsIfExists: {iam:PassedToService: ec2.amazonaws.com}
+              - Sid: InStackWatchdog # created with the instance: no window without an AWS-side stop
+                Effect: Allow
+                Action: [scheduler:CreateSchedule, scheduler:GetSchedule, scheduler:UpdateSchedule, scheduler:DeleteSchedule]
+                Resource: !Sub "arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${WatchdogScheduleGroup}/cce-inference-*"
+              - Sid: PassTheWatchdogRoleToScheduler
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt WatchdogRole.Arn
+                Condition:
+                  StringEquals: {iam:PassedToService: scheduler.amazonaws.com}
+              - Sid: ControllerManagedPolicy
+                Effect: Allow
+                Action:
+                  - iam:CreatePolicy
+                  - iam:DeletePolicy
+                  - iam:GetPolicy
+                  - iam:GetPolicyVersion
+                  - iam:ListPolicyVersions
+                  - iam:CreatePolicyVersion
+                  - iam:DeletePolicyVersion
+                  - iam:ListEntitiesForPolicy
+                  - iam:TagPolicy
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/cce-inference-*"
+
+  # --- the most the host role of a validation stack can ever do (it runs the SSM agent and reads its API key) ----
+  HostPermissionsBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: cce-a09-host-boundary
+      Description: Permissions boundary of the A09-1 validation host role (SSM agent and its API key parameter)
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SsmAgent
+            Effect: Allow
+            Action:
+              - ssm:DescribeAssociation
+              - ssm:GetDeployablePatchSnapshotForInstance
+              - ssm:GetDocument
+              - ssm:DescribeDocument
+              - ssm:GetManifest
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:ListAssociations
+              - ssm:ListInstanceAssociations
+              - ssm:PutInventory
+              - ssm:PutComplianceItems
+              - ssm:PutConfigurePackageResult
+              - ssm:UpdateAssociationStatus
+              - ssm:UpdateInstanceAssociationStatus
+              - ssm:UpdateInstanceInformation
+              - ssmmessages:*
+              - ec2messages:*
+            Resource: "*"
+          - Sid: DecryptTheApiKeyThroughSsm
+            Effect: Allow
+            Action: kms:Decrypt
+            Resource: "*"
+            Condition:
+              StringEquals: {kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"}
+
+  # --- AWS-side watchdog: stops a validation instance even if the runner and the cleanup job never run --------
+  WatchdogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cce-a09-watchdog
+      Description: EventBridge Scheduler stops A09-1 validation instances after the job's time limit
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: scheduler.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: {aws:SourceAccount: !Ref AWS::AccountId}
+      Policies:
+        - PolicyName: stop-validation-instances
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ec2:StopInstances
+                Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+                Condition:
+                  StringEquals: {aws:ResourceTag/cce:role: inference}
+                  "Null": {aws:ResourceTag/cce:validation-id: "false"}
+
+  WatchdogScheduleGroup:
+    Type: AWS::Scheduler::ScheduleGroup
+    Properties:
+      Name: cce-inference-watchdog
+
+Outputs:
+  ValidationRoleArn:
+    Description: Repository variable CCE_A09_AWS_ROLE_ARN of the workflow
+    Value: !GetAtt ValidationRole.Arn
+  CfnExecutionRoleArn:
+    Value: !GetAtt CfnExecutionRole.Arn
+  HostPermissionsBoundaryArn:
+    Value: !Ref HostPermissionsBoundary
+  WatchdogRoleArn:
+    Value: !GetAtt WatchdogRole.Arn
+  WatchdogScheduleGroup:
+    Value: !Ref WatchdogScheduleGroup
+  AllowedVpcId:
+    Value: !Ref VpcId
+  AllowedSubnetId:
+    Value: !Ref SubnetId
+  GitHubSubject:
+    Description: The trusted subject (must equal the observed one)
+    Value: !Ref GitHubSubject

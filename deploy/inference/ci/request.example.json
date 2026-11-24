@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "a09-1-g6e-q8-001",
+  "purpose": "Primera validación real de A09-1: g6e.xlarge (L40S) + Qwen3.6-27B Q8_0 con todos los pesos en GPU (D-A09-08), pasos A y B del §4 del informe.",
+  "authorization": {
+    "spend_approved": true,
+    "network_approved": true,
+    "approved_by": "REEMPLAZAR: quien autoriza el gasto y la red",
+    "approved_on": "2026-11-24",
+    "max_spend_usd": 10
+  },
+  "aws": {
+    "region": "us-east-1",
+    "instance_type": "g6e.xlarge"
+  },
+  "model": "qwen3.6-27b-q8_0",
+  "network": {
+    "vpc_id": "vpc-0123456789abcdef0",
+    "subnet_id": "subnet-0123456789abcdef0",
+    "availability_zone": "us-east-1a",
+    "assign_public_ip": true,
+    "client_cidr": ""
+  },
+  "ami": "resolve-latest",
+  "stack": {
+    "name": "cce-inference-a09-1-001",
+    "mode": "create",
+    "after_run": "keep-stopped"
+  },
+  "limits": {
+    "max_runtime_minutes": 240,
+    "bootstrap_timeout_minutes": 60
+  },
+  "validation": {
+    "profiles": ["reference-8k-1slot", "candidate-16k-1slot", "candidate-16k-2slot"],
+    "server_profile": "reference-8k-1slot"
+  },
+  "parity": null
+}

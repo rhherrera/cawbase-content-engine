@@ -287,6 +287,8 @@ def main(argv: list[str] | None = None) -> int:
         host=args.host,
         port=args.port,
     ).start()
+    # what llama.cpp's load_tensors prints per model load (FAKE_LLAMA_OFFLOAD="40/65" simulates a partial offload)
+    print(f"load_tensors: offloaded {os.environ.get('FAKE_LLAMA_OFFLOAD', '65/65')} layers to GPU", flush=True)
     print(f"fake llama-server listening on {fake.base_url}", flush=True)
     stop = threading.Event()
     import signal

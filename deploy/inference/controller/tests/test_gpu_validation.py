@@ -81,6 +81,7 @@ stop = "{SIM_HOST} {tmp} stop"
             "CCE_MEMINFO": str(tmp / "meminfo"),
             "CCE_DMI_DIR": str(tmp / "dmi"),
             "CCE_IMDS_BASE": "http://127.0.0.1:9",
+            "CCE_SERVER_LOG_CMD": f"cat {tmp / 'server.log'}",  # the journal of the simulated host
             "FAKE_AWS_DIR": str(tmp / "fake-aws"),
             "CCE_MANIFEST": fake_model["manifest"],
             "FAKE_AWS_SIM_DIR": str(tmp),
@@ -186,6 +187,11 @@ def test_job_driven_cycle_profiles_and_verified_stop(sim: Sim):
     for v in summary["verdicts"].values():
         assert v["expected_model"] == Q8 and v["criteria"]["model"] == "pass"
     assert (sim.ev / "host-facts.json").exists() and (sim.ev / "boot-timings.json").exists()
+    # the server journal of the boot proves every load put all layers on the GPU (cold start and campaign)
+    offload = summary["steps"]["gpu_offload"]
+    assert offload["job-cycle"]["status"] == "verified" and offload["job-cycle"]["offloaded"] == ["65/65"]
+    assert offload["campaign"]["all_layers_on_gpu"] is True
+    assert "offloaded 65/65 layers to GPU" in (sim.ev / "server-journal-job-cycle.log").read_text()
 
 
 def test_memory_without_samples_does_not_pass_the_profile(sim: Sim):
@@ -348,3 +354,36 @@ def test_refuses_evidence_inside_the_repository(sim: Sim):
     r = subprocess.run(argv, capture_output=True, text=True, env=sim.env, check=False)
     assert r.returncode == 2 and "outside the repository" in r.stderr
     assert not (DEPLOY / "evidence-should-not-be-here").exists()
+
+
+def test_a_load_that_does_not_offload_every_layer_fails_and_stops(sim: Sim):
+    """D-A09-08: all weights on the GPU. A server log that shows a partial offload fails the run (the instance is
+    still stopped and verified)."""
+    r = sim.run("--profiles", "reference-8k-1slot", env={"FAKE_LLAMA_OFFLOAD": "40/65"})
+    assert r.returncode == 1, r.stdout + r.stderr
+    offload = sim.evidence("gpu-offload-job-cycle.json")
+    assert (
+        offload["status"] == "partial" and offload["all_layers_on_gpu"] is False and offload["offloaded"] == ["40/65"]
+    )
+    summary = sim.evidence("summary.json")
+    assert summary["outcome"].startswith("failed: GPU offload") and "verdicts" in summary and not summary["verdicts"]
+    assert sim.evidence("final-state.json")["instance_stopped"] is True and sim.host_state() == "stopped"
+
+
+@pytest.mark.parametrize(
+    ("text", "status"),
+    [
+        ("load_tensors: offloaded 65/65 layers to GPU\nload_tensors: offloaded 65/65 layers to GPU", "verified"),
+        ("load_tensors: offloaded 65/65 layers to GPU\nload_tensors: offloaded 64/65 layers to GPU", "partial"),
+        ("main: server is listening", "no_evidence"),
+    ],
+)
+def test_gpu_offload_evidence_requires_every_load_complete(text: str, status: str):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("gv", SCRIPT)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    got = mod.gpu_offload(text)
+    assert got["status"] == status and got["all_layers_on_gpu"] is (status == "verified")

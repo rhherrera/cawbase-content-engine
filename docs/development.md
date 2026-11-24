@@ -157,6 +157,12 @@ El controlador y las herramientas de despliegue viven fuera del paquete, con su 
 cd deploy/inference/controller && uv sync --group dev && uv run pytest -q -rs && uv run mypy && uv run ruff check . && uv run ruff format --check .
 python3 deploy/inference/aws/build_template.py --check     # la plantilla generada coincide con sus fuentes
 shellcheck -S warning deploy/inference/*/*.sh deploy/inference/bin/cce-inference
+actionlint .github/workflows/a09-1-*.yml                     # workflows de la validación AWS automatizada
+python3 deploy/inference/ci/aws_validation.py check          # solicitudes versionadas (sin AWS; Python >= 3.11)
+uv run pytest -q tests/test_a09_aws_validation_ci.py         # (raíz) contrato del workflow, del diagnóstico OIDC y de la IaC
+cd deploy/inference/controller && uv run mypy --strict ../ci/aws_validation.py ../ci/enable_access.py
 ```
+
+La validación AWS automatizada (`deploy/inference/ci/aws_validation.py`, workflows `a09-1-aws-gpu-validation` y `a09-1-oidc-diagnostic`) se prueba con AWS simulado en `tests/test_ci_validation.py` del controlador, y la habilitación (`deploy/inference/ci/enable_access.py`) con AWS y `gh` simulados en `tests/test_enable_access.py`; no se ejecutó en GitHub Actions ni contra AWS real. Contrato y habilitación: [validación AWS automatizada](a09-1-aws-validation-automation.md).
 
 La prueba de la guardia de inactividad necesita Linux (`/proc/uptime`); en macOS se omite y no cuenta como aprobada. La secuencia de validación en GPU (`bench/gpu-validation.py`) y la evidencia de memoria (`bench/measure.py`, `bench/mem-sample.sh`) se prueban con herramientas simuladas (`tests/fake_aws.py`, `nvidia-smi` falso, host simulado): ninguna prueba usa AWS ni GPU. La evidencia en GPU real sigue la receta del [informe de A09-1](a09-1-implementation-report.md#4-validación-pendiente-en-gpu-real). Contrato: [despliegue de inferencia y operación](inference-deployment.md).

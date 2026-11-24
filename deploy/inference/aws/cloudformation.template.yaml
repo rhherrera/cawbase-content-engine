@@ -66,6 +66,32 @@ Parameters:
     MinValue: 125
     MaxValue: 1000
     Description: gp3 MiB/s of the weights volume (cold weight load time vs. monthly cost).
+  HostPermissionsBoundaryArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional permissions boundary of the host role. The GitHub validation (deploy/inference/ci) passes the
+      boundary of its access stack, whose CloudFormation execution role can only create roles bounded by it.
+      Empty (manual deployment): no boundary.
+  WatchdogStart:
+    Type: String
+    Default: ""
+    AllowedPattern: "^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$"
+    Description: >-
+      Optional AWS-side stop (GitHub validation, deploy/inference/ci): from this UTC time an EventBridge schedule,
+      created by CloudFormation together with the instance (no runner involved), stops it every 10 minutes until
+      WatchdogEnd. If the schedule cannot be created the stack rolls back and the instance is removed. Empty: none.
+  WatchdogEnd:
+    Type: String
+    Default: ""
+    AllowedPattern: "^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$"
+  WatchdogRoleArn:
+    Type: String
+    Default: ""
+    Description: Role EventBridge Scheduler uses to stop the instance (access stack of the GitHub validation).
+  WatchdogScheduleGroup:
+    Type: String
+    Default: cce-inference-watchdog
   GuardIdleMinutes:
     Type: Number
     Default: 120
@@ -76,6 +102,8 @@ Parameters:
 Conditions:
   HasClientSg: !Not [!Equals [!Ref ClientSecurityGroupId, ""]]
   HasClientCidr: !Not [!Equals [!Ref ClientCidr, ""]]
+  HasHostBoundary: !Not [!Equals [!Ref HostPermissionsBoundaryArn, ""]]
+  HasWatchdog: !Not [!Equals [!Ref WatchdogStart, ""]]
 
 Resources:
   EndpointSecurityGroup:
@@ -125,6 +153,7 @@ Resources:
   HostRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasHostBoundary, !Ref HostPermissionsBoundaryArn, !Ref AWS::NoValue]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -196,6 +225,25 @@ Resources:
               --guard-idle-min ${GuardIdleMinutes}
           - Bundle: __BUNDLE_B64__
 
+  Watchdog:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasWatchdog
+    Properties:
+      Name: !Sub "${AWS::StackName}-watchdog"
+      GroupName: !Ref WatchdogScheduleGroup
+      Description: Stops the validation instance after the job's time limit, independently of the runner
+      ScheduleExpression: rate(10 minutes)
+      ScheduleExpressionTimezone: UTC
+      StartDate: !Ref WatchdogStart
+      EndDate: !Ref WatchdogEnd
+      FlexibleTimeWindow: {Mode: "OFF"}
+      State: ENABLED
+      Target:
+        Arn: arn:aws:scheduler:::aws-sdk:ec2:stopInstances
+        RoleArn: !Ref WatchdogRoleArn
+        Input: !Sub '{"InstanceIds": ["${Host}"]}'
+        RetryPolicy: {MaximumRetryAttempts: 5, MaximumEventAgeInSeconds: 3600}
+
   WeightsAttachment:
     Type: AWS::EC2::VolumeAttachment
     Properties:
@@ -235,3 +283,6 @@ Outputs:
     Value: !Ref WeightsVolume
   ControllerPolicyArn:
     Value: !Ref ControllerPolicy
+  WatchdogScheduleName:
+    Condition: HasWatchdog
+    Value: !Sub "${AWS::StackName}-watchdog"
