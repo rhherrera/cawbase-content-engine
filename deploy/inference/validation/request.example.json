@@ -1,17 +1,19 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "a09-1-g6e-q8-001",
-  "purpose": "Primera validación real de A09-1: g6e.xlarge (L40S) + Qwen3.6-27B Q8_0 con todos los pesos en GPU (D-A09-08), pasos A y B del §4 del informe.",
+  "purpose": "Primera validación real de A09-1: g6e.xlarge (L40S) + Qwen3.6-27B Q8_0 con todos los pesos en GPU (D-A09-08), pasos A y B del §4 del informe. EJEMPLO FICTICIO: copiarlo FUERA del checkout y completar la cuenta, la red y la autorización reales.",
   "authorization": {
     "spend_approved": true,
     "network_approved": true,
     "approved_by": "REEMPLAZAR: quien autoriza el gasto y la red",
-    "approved_on": "2026-11-24",
+    "approved_on": "2026-01-01",
     "max_spend_usd": 10
   },
   "aws": {
+    "account_id": "123456789012",
     "region": "us-east-1",
-    "instance_type": "g6e.xlarge"
+    "instance_type": "g6e.xlarge",
+    "base_stack": "cce-a09-validation-base"
   },
   "model": "qwen3.6-27b-q8_0",
   "network": {

@@ -119,6 +119,7 @@ def test_wheel_and_sdist_contents(artifacts):
         s = set(t.getnames())
     assert any(n.endswith("migrations/versions/0001_initial.py") for n in s) and any("/tests/" in n for n in s)
     assert not any(n.endswith((".DS_Store", ".env")) for n in s)
+    assert not any("/deploy/inference/" in n for n in s)
 
 
 def test_base_install_is_light_and_separate_from_http(artifacts, tmp_path):  # AC-01, AC-02

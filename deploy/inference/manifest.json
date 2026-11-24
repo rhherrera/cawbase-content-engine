@@ -112,7 +112,7 @@
     "memory_mib": 32768,
     "on_demand_usd_per_hour": {
       "value": 1.861,
-      "source": "AWS Price List API, us-east-1, Linux on-demand, effective 2026-11-01, checked 2026-11-20 (docs/inference-deployment.md §4.2); used by deploy/inference/ci for the spend ceiling of a validation request"
+      "source": "AWS Price List API, us-east-1, Linux on-demand, effective 2026-11-01, checked 2026-11-20 (docs/inference-deployment.md §4.2); used by deploy/inference/validation for the spend ceiling of a validation request"
     },
     "model": "qwen3.6-27b-q8_0",
     "status": "target PENDING real validation (user decision 2026-11-20)",

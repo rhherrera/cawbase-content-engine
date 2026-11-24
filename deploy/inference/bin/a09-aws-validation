@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# A09-1 validation on AWS from the operator's machine: check | plan | setup [--apply] | run | cleanup.
+# Runs deploy/inference/validation/aws_validation.py inside the controller environment (Python >= 3.13 with boto3),
+# so the AWS CLI, boto3 and every child process see the same identity. Credentials: the standard AWS chain (env,
+# AWS_PROFILE, SSO, temporary credentials) or --profile NAME. Needs uv, AWS CLI v2 and session-manager-plugin.
+# Contract: docs/a09-1-aws-validation-automation.md.
+set -euo pipefail
+HERE=$(cd "$(dirname "$0")/.." && pwd)
+exec uv run --quiet --project "$HERE/controller" --extra aws --frozen \
+  python "$HERE/validation/aws_validation.py" "$@"

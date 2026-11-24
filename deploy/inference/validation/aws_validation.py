@@ -1,37 +1,42 @@
 #!/usr/bin/env python3
-"""A09-1 validation on AWS driven by GitHub Actions (standard library only; AWS through the `aws` CLI with the
-temporary credentials of the workflow's OIDC role). Contract: docs/a09-1-aws-validation-automation.md.
+"""A09-1 validation on AWS run LOCALLY by an operator with their own AWS identity (standard library only; AWS through
+the `aws` CLI, plus a boto3 identity probe in the controller interpreter). No GitHub, no OIDC, no CI identity.
+Contract: docs/a09-1-aws-validation-automation.md. Entry point: deploy/inference/bin/a09-aws-validation.
 
-A validation runs when a push to main ADDS one versioned request `deploy/inference/validation-requests/<id>.json`.
-Modifying, renaming or re-running an existing request never spends again: the request id is claimed atomically in
-SSM Parameter Store (`/cce/inference/validation-runs/<id>`, created without --overwrite) before anything is created.
+    a09-aws-validation check [FILE...]                     offline validation of request files (no AWS)
+    a09-aws-validation plan    --request F [--profile P]   read-only: identity, base stack, preflight of the run
+    a09-aws-validation setup   --request F [--profile P] [--apply]
+                                                           base stack (execution role, host boundary, watchdog):
+                                                           plan by default; --apply creates or updates it
+    a09-aws-validation run     --request F [--profile P] [--parity-zip ZIP]
+                                                           the whole campaign: preflight, claim, step A, step B, cleanup
+    a09-aws-validation cleanup --request F [--profile P]   the same cleanup, idempotent (after a lost process)
 
-    aws_validation.py check FILE...                      offline validation of request files (no AWS)
-    aws_validation.py detect --before SHA --after SHA    the request added by a push, if any (no AWS)
-    aws_validation.py oidc-claims                        safe subset of this job's OIDC claims (never the token)
-    aws_validation.py run --request F --evidence DIR --workdir DIR --python PY
-    aws_validation.py cleanup --request F --evidence DIR
-    aws_validation.py redact DIR [--secret-file F]       remove secrets from the evidence before upload
-    aws_validation.py summary DIR...                     markdown summary for $GITHUB_STEP_SUMMARY
+The request is a LOCAL file outside the checkout (it holds the account, the network and the budget); the evidence and
+the work directory are local too (default: $XDG_STATE_HOME or ~/.local/state, `cce-inference/a09-validation/<id>/`).
+AWS credentials come from the standard chain (environment, AWS_PROFILE, SSO, temporary credentials) or `--profile`;
+the same identity and region (us-east-1) are passed to the AWS CLI, to boto3 and to every child process. Before any
+write, STS must report the same identity through the CLI and through boto3, in the request's `aws.account_id`.
 
-`run`: preflight with no side effects (quota, network, AMI, configuration, spend ceiling, optional parity ZIP) ->
-claim the id -> step A (stack, watchdog in AWS, bootstrap, SSM, first load, instance STOPPED) -> step B
-(bench/gpu-validation.py from the runner through an SSM tunnel) -> cleanup as the request says (keep-stopped |
-delete) and its verification. `cleanup` is the same cleanup, idempotent, for the workflow's separate cleanup job
-(failure, timeout, cancellation).
+`run`: preflight with no side effects (identity and account, base stack, quota, network, AMI, configuration, spend
+ceiling, optional parity ZIP) -> claim the id -> step A (stack with its AWS-side watchdog, bootstrap, SSM, first load
+with every layer on the GPU, instance STOPPED) -> step B (bench/gpu-validation.py through an SSM tunnel) -> cleanup as
+the request says (keep-stopped | delete) and its verification, also after a failure or an interruption.
 
-Exit status of `run` (validation): 0 validated; 1 validation failed or incomplete (also a failed provisioning);
-2 refused by the preflight (nothing claimed, nothing created); 3 request id already claimed (no new spend);
-130 interrupted. Exit status of `cleanup`: 0 cleanup verified; 5 CLEANUP FAILED (resources not verified).
+Exit status of `run`: 0 validated; 1 validation failed or incomplete (also a failed provisioning); 2 refused before any
+write (invalid request, identity, account, preflight: nothing claimed, nothing created); 3 request id already claimed
+(no new spend); 130 interrupted; 5 CLEANUP FAILED (whatever the validation said: resources not verified). The
+validation result and the cleanup result are printed and recorded apart (`outcome.json`, `cleanup-run.json`).
+`cleanup`: 0 cleanup verified; 5 CLEANUP FAILED. `plan`/`setup`: 0 ready (or plan written); 2 refused; 1 setup not
+verified.
 
 Tool overrides (tests only): CCE_AWS_BIN, CCE_POLL_S, CCE_CI_CONTROLLER_TEMPLATE, CCE_CI_HOST_<NAME>_CMD,
-CCE_SERVER_LOG_CMD, CCE_MANIFEST. Needs Python >= 3.11 (the runner's python3; the controller environment for tests).
+CCE_SERVER_LOG_CMD, CCE_MANIFEST. Needs Python >= 3.11; the wrapper runs it in the controller environment (boto3).
 """
 
 from __future__ import annotations
 
 import argparse
-import base64
 import datetime as dt
 import hashlib
 import importlib.util
@@ -45,39 +50,40 @@ import signal
 import subprocess
 import sys
 import time
-import urllib.request
+import urllib.parse
 import zipfile
 from pathlib import Path
 from typing import Any
 
-CI = Path(__file__).resolve().parent
-DEPLOY = CI.parent  # deploy/inference
+HERE = Path(__file__).resolve().parent
+DEPLOY = HERE.parent  # deploy/inference
 REPO = DEPLOY.parent.parent
-REQUESTS_REL = "deploy/inference/validation-requests"
-REQUESTS_DIR = REPO / REQUESTS_REL
 MANIFEST = DEPLOY / "manifest.json"
 PROFILES_DIR = DEPLOY / "server" / "profiles"
 TEMPLATE = DEPLOY / "aws" / "cloudformation.yaml"
+BASE_TEMPLATE = DEPLOY / "aws" / "validation-base.yaml"
 BUILD_TEMPLATE = DEPLOY / "aws" / "build_template.py"
 GPU_VALIDATION = DEPLOY / "bench" / "gpu-validation.py"
 SSM_RUN = DEPLOY / "bench" / "ssm-run.sh"
 CONTROLLER_EXAMPLE = DEPLOY / "controller" / "controller.aws.example.toml"
+EXAMPLE_REQUEST = HERE / "request.example.json"
 
 REGION = "us-east-1"
-ACCESS_STACK_DEFAULT = "cce-a09-github-access"
+BASE_STACK_DEFAULT = "cce-a09-validation-base"
+BASE_OUTPUTS = ("CfnExecutionRoleArn", "WatchdogRoleArn", "WatchdogScheduleGroup", "HostPermissionsBoundaryArn")
 LEDGER_PREFIX = "/cce/inference/validation-runs/"
 API_KEY_PREFIX = "/cce/inference/validation/"
 OWNER_PREFIX = "/cce/inference/validation-stacks/"  # which request owns each stack (created it, or adopted it by reuse)
 AMI_PARAM = "/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id"
 AMI_NAME = "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04)"
 G_QUOTA_CODE = "L-DB2E81BA"  # Running On-Demand G and VT instances (vCPU)
-WATCHDOG_GRACE_MIN = 15  # the watchdog starts this long after the job's time limit
+WATCHDOG_GRACE_MIN = 15  # the watchdog starts this long after the run's time limit
 WATCHDOG_RATE_MIN = 10
 WATCHDOG_WINDOW_H = 3
 CLEANUP_RESERVE_S = 25 * 60  # kept out of the gpu-validation budget for the in-run cleanup
-MAX_ROLE_SESSION_S = 43200
 BOOT_DONE = "units installed; server started"
 DEFAULT_PROFILES = ["reference-8k-1slot", "candidate-16k-1slot", "candidate-16k-2slot"]
+CREDENTIAL_ENV = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
 
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$")
 STACK_RE = re.compile(r"^cce-inference-[a-z0-9](?:[a-z0-9-]{0,34}[a-z0-9])?$")
@@ -87,7 +93,8 @@ SG_RE = re.compile(r"^sg-[0-9a-f]{8,17}$")
 AMI_RE = re.compile(r"^ami-[0-9a-f]{8,17}$")
 AZ_RE = re.compile(r"^us-east-1[a-f]$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-S3_RE = re.compile(r"^s3://([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])/([A-Za-z0-9!_.*'()/-]+\.zip)$")
+ACCOUNT_RE = re.compile(r"^[0-9]{12}$")
+BASE_STACK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]{0,127}$")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 # host-side commands (run as root through SSM Run Command); each is overridable for tests: CCE_CI_HOST_<NAME>_CMD
@@ -98,7 +105,7 @@ HOST_CMDS = {
     "HEALTH": "curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:8080/health || true",
 }
 SERVER_LOG_CMD = "journalctl -u cce-inference -b --no-pager -o short-iso"
-# parity outputs that reproduce the private corpus content: kept on the runner, never uploaded (hash recorded)
+# parity outputs that reproduce the private corpus content: moved out of the evidence (hash recorded)
 WITHHELD = re.compile(r"(^|/)parity-[^/]+/(evaluacion-r\d+-i\d+\.jsonl|proxy\.log)$")
 
 
@@ -202,12 +209,12 @@ def _int(obj: dict[str, Any], key: str, lo: int, hi: int, where: str, errors: li
 
 
 def worst_case_usd(req: dict[str, Any]) -> float:
-    """Instance cost if it ran until the watchdog's first stop after the job's time limit (EBS apart)."""
+    """Instance cost if it ran until the watchdog's first stop after the run's time limit (EBS apart)."""
     minutes = int(req["limits"]["max_runtime_minutes"]) + WATCHDOG_GRACE_MIN + WATCHDOG_RATE_MIN
     return round(float(aws_target()["usd_per_hour"]) * minutes / 60, 2)
 
 
-def validate_request(doc: Any, filename: str | None = None) -> list[str]:
+def validate_request(doc: Any) -> list[str]:
     """Offline validation (no AWS). Every key is explicit; nothing about spend or cleanup has a silent default."""
     e: list[str] = []
     top = _keys(
@@ -220,13 +227,11 @@ def validate_request(doc: Any, filename: str | None = None) -> list[str]:
     if not top:
         return e
     target = aws_target()
-    if top.get("schema_version") != 1:
-        e.append("schema_version: must be 1")
+    if top.get("schema_version") != 2:
+        e.append("schema_version: must be 2 (local request: aws.account_id, parity.zip_path)")
     rid = top.get("id")
     if not isinstance(rid, str) or not ID_RE.match(rid):
         e.append("id: 3-32 characters [a-z0-9-], starting and ending with a letter or digit")
-    elif filename is not None and filename != f"{rid}.json":
-        e.append(f"id: the file must be named {rid}.json (found {filename})")
     if not isinstance(top.get("purpose"), str) or not top["purpose"].strip():
         e.append("purpose: non-empty text")
     auth = _keys(
@@ -246,8 +251,15 @@ def validate_request(doc: Any, filename: str | None = None) -> list[str]:
         spend = auth.get("max_spend_usd")
         if not isinstance(spend, int | float) or isinstance(spend, bool) or not 0 < spend <= 100:
             e.append("authorization.max_spend_usd: number in (0, 100]")
-    aws = _keys(top.get("aws"), "aws", {"region", "instance_type"}, set(), e)
+    aws = _keys(top.get("aws"), "aws", {"account_id", "region", "instance_type"}, {"base_stack"}, e)
     if aws:
+        if not isinstance(aws.get("account_id"), str) or not ACCOUNT_RE.match(aws["account_id"]):
+            e.append(
+                "aws.account_id: the 12 digits of the expected account, as text (checked with STS before any write)"
+            )
+        base = aws.get("base_stack", BASE_STACK_DEFAULT)
+        if not isinstance(base, str) or not BASE_STACK_RE.match(base):
+            e.append("aws.base_stack: a CloudFormation stack name")
         if aws.get("region") != REGION:
             e.append(f"aws.region: must be {REGION}")
         if aws.get("instance_type") != target["instance_type"]:
@@ -317,12 +329,14 @@ def validate_request(doc: Any, filename: str | None = None) -> list[str]:
     _int(val, "requests", 1, 200, "validation", e)
     _int(val, "prompt_tokens", 100, 6000, "validation", e)
     if "parity" in top and top["parity"] is not None:
-        par = _keys(top["parity"], "parity", {"s3_uri", "sha256"}, set(), e)
+        par = _keys(top["parity"], "parity", {"zip_path"}, {"sha256"}, e)
         if par:
-            if not isinstance(par.get("s3_uri"), str) or not S3_RE.match(par["s3_uri"]):
-                e.append("parity.s3_uri: s3://bucket/key.zip")
-            if not isinstance(par.get("sha256"), str) or not SHA_RE.match(par["sha256"]):
-                e.append("parity.sha256: 64 lowercase hex characters")
+            zp = par.get("zip_path")
+            if not isinstance(zp, str) or not zp.endswith(".zip") or not Path(zp).expanduser().is_absolute():
+                e.append("parity.zip_path: absolute local path of the results ZIP (outside Git)")
+            sha = par.get("sha256")
+            if sha is not None and (not isinstance(sha, str) or not SHA_RE.match(sha)):
+                e.append("parity.sha256: 64 lowercase hex characters (optional)")
     if not e and auth and limits:
         cost = worst_case_usd(top)
         if cost > auth["max_spend_usd"]:
@@ -333,18 +347,30 @@ def validate_request(doc: Any, filename: str | None = None) -> list[str]:
     return e
 
 
-def load_request(path: Path) -> dict[str, Any]:
+def inside_checkout(path: Path) -> bool:
+    repo = REPO.resolve()
+    p = path.expanduser().resolve()
+    return p == repo or repo in p.parents
+
+
+def load_request(path: Path, *, local: bool = True) -> dict[str, Any]:
+    """A request file. `local`: it must live outside the checkout (it names the account and the network); only the
+    fictitious example inside the repository is checked with local=False."""
+    if local and inside_checkout(path):
+        raise RequestError(
+            f"{path}: requests hold the account, network and budget: keep them OUTSIDE the checkout "
+            "(e.g. ~/.config/cce-inference/a09-validation/<id>.json)"
+        )
     try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc = json.loads(path.expanduser().read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise RequestError(f"{path.name}: not readable JSON ({exc})") from exc
-    # the file name must be the id inside the requests directory (an example elsewhere may be named freely)
-    in_dir = path.resolve().parent == REQUESTS_DIR.resolve()
-    errors = validate_request(doc, path.name if in_dir else None)
+    errors = validate_request(doc)
     if errors:
         raise RequestError(f"{path.name}: " + "; ".join(errors))
     req: dict[str, Any] = doc
     req.setdefault("validation", {})
+    req["aws"].setdefault("base_stack", BASE_STACK_DEFAULT)
     req["limits"].setdefault("bootstrap_timeout_minutes", 60)
     req["network"].setdefault("client_cidr", "")
     req["network"].setdefault("client_security_group_id", "")
@@ -352,94 +378,30 @@ def load_request(path: Path) -> dict[str, Any]:
     return req
 
 
-def check_unique_ids(directory: Path) -> list[str]:
-    seen: dict[str, str] = {}
-    errors: list[str] = []
-    for f in sorted(directory.glob("*.json")):
-        try:
-            rid = json.loads(f.read_text(encoding="utf-8")).get("id")
-        except (OSError, ValueError):
-            continue
-        if rid in seen:
-            errors.append(f"duplicated id {rid!r}: {seen[rid]} and {f.name}")
-        seen[str(rid)] = f.name
-    return errors
-
-
-# --- detect (which request a push added) ---------------------------------------------------------------------------
-
-
-def detect(before: str, after: str, repo: Path = REPO) -> tuple[Path | None, list[str]]:
-    """The request file ADDED between two commits (None if none), and notes about ignored changes. A push that is
-    not a fast-forward of a known commit, or that adds more than one request, is refused."""
-    if not re.fullmatch(r"[0-9a-f]{40}", before or "") or set(before) == {"0"}:
-        raise RequestError(f"no previous commit for this push (before={before!r}); nothing is run")
-    r = subprocess.run(
-        ["git", "-C", str(repo), "diff", "--name-status", "--no-renames", before, after, "--", REQUESTS_REL],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if r.returncode != 0:
-        raise RequestError(f"git diff {before[:8]}..{after[:8]} failed: {r.stderr.strip()}")
-    added: list[str] = []
-    notes: list[str] = []
-    for line in r.stdout.splitlines():
-        status, path = line.split("\t", 1)
-        if not re.fullmatch(re.escape(REQUESTS_REL) + r"/[^/]+\.json", path):
-            continue  # README and anything else in the directory never runs
-        if status == "A":
-            added.append(path)
-        else:
-            notes.append(f"{path}: {status} (only a newly ADDED request runs; a change never runs again)")
-    if len(added) > 1:
-        raise RequestError(f"one request per push: {added} were added together; nothing is run")
-    return (repo / added[0] if added else None), notes
-
-
-def detect_outputs(req: dict[str, Any], path: Path) -> dict[str, str]:
-    limit = req["limits"]["max_runtime_minutes"]
-    return {
-        "request": str(path.relative_to(REPO)),
-        "id": req["id"],
-        "stack": req["stack"]["name"],
-        "after_run": req["stack"]["after_run"],
-        "timeout_minutes": str(limit),
-        "role_duration_seconds": str(min(MAX_ROLE_SESSION_S, (limit + 30) * 60)),
-    }
-
-
-# --- OIDC claims (diagnostic: never the token) --------------------------------------------------------------------
-
-SAFE_CLAIMS = ("sub", "aud", "ref", "repository", "repository_id", "repository_owner_id", "job_workflow_ref")
-CLAIMS_MARK = "CCE_OIDC_CLAIMS="
-# the subjects the access role may trust (same pattern as GitHubSubject in github-validation-access.yaml)
-SUB_PATTERN = r"^repo:[^*?\s:]+:ref:refs/heads/main(:job_workflow_ref:[^*?\s]+)?$"
-
-
-def oidc_claims(audience: str = "sts.amazonaws.com") -> dict[str, Any]:
-    url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
-    bearer = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-    if not url or not bearer:
-        raise RequestError("no OIDC token available: the job needs `permissions: id-token: write`")
-    sep = "&" if "?" in url else "?"
-    req = urllib.request.Request(f"{url}{sep}audience={audience}", headers={"Authorization": f"bearer {bearer}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - GitHub's own token endpoint
-        token = json.loads(resp.read())["value"]
-    parts = token.split(".")
-    if len(parts) != 3:
-        raise RequestError("malformed OIDC token")
-    payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
-    return {k: payload[k] for k in SAFE_CLAIMS if k in payload}
-
-
 # --- AWS through the CLI ---------------------------------------------------------------------------------------
 
 
+def aws_env(profile: str | None, base: dict[str, str] | None = None) -> dict[str, str]:
+    """The environment of every AWS call and child process: the standard credential chain (environment credentials,
+    AWS_PROFILE, SSO, temporary credentials), or the named `profile`, always in us-east-1. A profile together with
+    credentials in the environment is ambiguous (the CLI's --profile and boto3's profile_name would disagree with
+    the plain chain): refused instead of guessing."""
+    env = dict(os.environ if base is None else base)
+    if profile:
+        present = [k for k in CREDENTIAL_ENV if env.get(k)]
+        if present:
+            raise Refused(f"--profile {profile} with {present} in the environment: ambiguous identity; unset one")
+        env["AWS_PROFILE"] = profile
+        env.pop("AWS_DEFAULT_PROFILE", None)
+    env.update(AWS_REGION=REGION, AWS_DEFAULT_REGION=REGION, AWS_PAGER="")
+    return env
+
+
 class Aws:
-    def __init__(self) -> None:
+    def __init__(self, profile: str | None = None) -> None:
         self.bin = os.environ.get("CCE_AWS_BIN", "aws")
-        self.env = {**os.environ, "AWS_REGION": REGION, "AWS_DEFAULT_REGION": REGION, "AWS_PAGER": ""}
+        self.profile = profile or None
+        self.env = aws_env(self.profile)
 
     def raw(self, *args: str, timeout: float = 120) -> str:
         argv = [self.bin, *args]
@@ -502,6 +464,164 @@ class Aws:
             if exc.code == "ParameterNotFound":
                 return False
             raise
+
+
+def boto3_identity() -> dict[str, Any]:
+    """Run inside the controller interpreter (hidden subcommand): who boto3 is, with this process's environment."""
+    import boto3  # only the controller environment has it
+
+    session = boto3.Session()
+    ident = session.client("sts", region_name=session.region_name).get_caller_identity()
+    return {"account": ident["Account"], "arn": ident["Arn"], "region": session.region_name}
+
+
+def verify_identity(aws: Aws, python: str, expected_account: str) -> dict[str, Any]:
+    """Read-only, BEFORE any write: the AWS CLI and boto3 (the controller's interpreter, as the children will run it)
+    must resolve the same identity, in us-east-1, in the request's account. Raises Refused otherwise."""
+    try:
+        cli = aws.json("sts", "get-caller-identity")
+    except AwsError as exc:
+        raise Refused(f"no usable AWS identity for the CLI (log in first, e.g. `aws sso login`): {exc}") from exc
+    probe = subprocess.run(
+        [python, str(Path(__file__).resolve()), "_boto3-identity"],
+        capture_output=True,
+        text=True,
+        env=aws.env,
+        timeout=120,
+        check=False,
+    )
+    if probe.returncode != 0:
+        raise Refused(f"boto3 in {python} cannot resolve an identity: {probe.stderr.strip()[-300:]}")
+    b3 = json.loads(probe.stdout)
+    ident = {
+        "account": str(cli.get("Account", "")),
+        "arn": str(cli.get("Arn", "")),
+        "boto3_arn": b3.get("arn"),
+        "boto3_region": b3.get("region"),
+        "profile": aws.profile or os.environ.get("AWS_PROFILE") or "(default chain)",
+        "region": REGION,
+    }
+    if b3.get("arn") != ident["arn"] or b3.get("account") != ident["account"]:
+        raise Refused(f"the AWS CLI is {ident['arn']} but boto3 is {b3.get('arn')}: different identities")
+    if b3.get("region") != REGION:
+        raise Refused(f"boto3 resolves region {b3.get('region')!r}, not {REGION}")
+    if ident["account"] != expected_account:
+        raise Refused(
+            f"the active identity is in account {ident['account']}, the request expects {expected_account}: "
+            "nothing was written"
+        )
+    return ident
+
+
+# --- base stack (execution role, host boundary, watchdog): read-only state and its setup ---------------------------
+
+
+def template_resources(text: str) -> dict[str, str]:
+    """Logical id -> type of the top-level Resources of a YAML template (two-space indentation, as ours)."""
+    body = text.split("\nResources:\n", 1)[1].split("\nOutputs:\n", 1)[0]
+    found = re.findall(r"^  ([A-Za-z0-9]+):\n    Type: (\S+)", body, flags=re.M)
+    return dict(found)
+
+
+def base_parameters(req: dict[str, Any]) -> dict[str, str]:
+    net = req["network"]
+    return {"VpcId": net["vpc_id"], "SubnetId": net["subnet_id"], "InstanceType": req["aws"]["instance_type"]}
+
+
+def federated_trust(doc: Any) -> list[str]:
+    if isinstance(doc, str):
+        doc = json.loads(urllib.parse.unquote(doc))
+    out = []
+    for st in doc.get("Statement", []) if isinstance(doc, dict) else []:
+        principal = st.get("Principal", {})
+        if isinstance(principal, dict) and principal.get("Federated"):
+            out.append(str(principal["Federated"]))
+        if "AssumeRoleWithWebIdentity" in json.dumps(st.get("Action", "")):
+            out.append("sts:AssumeRoleWithWebIdentity")
+    return out
+
+
+def base_stack_state(aws: Aws, req: dict[str, Any]) -> dict[str, Any]:
+    """Read-only. `ready` only if the base stack is complete, has exactly the resources of validation-base.yaml (so no
+    federated/CI role is left), no role of it trusts a federated principal, its outputs are there and its network is
+    the request's. The template body is compared too (a difference is fixed by `setup --apply`)."""
+    name = req["aws"]["base_stack"]
+    want = template_resources(BASE_TEMPLATE.read_text(encoding="utf-8"))
+    state: dict[str, Any] = {"name": name, "parameters_wanted": base_parameters(req)}
+    stack = aws.stack(name)
+    if stack is None:
+        return state | {"status": "absent", "ready": False, "action": "create", "to_add": sorted(want)}
+    status = str(stack.get("StackStatus"))
+    outputs = aws.outputs(stack)
+    current = {p["ParameterKey"]: p["ParameterValue"] for p in stack.get("Parameters", [])}
+    summaries = aws.json("cloudformation", "list-stack-resources", "--stack-name", name).get(
+        "StackResourceSummaries", []
+    )
+    have = {r["LogicalResourceId"]: r for r in summaries if r.get("ResourceStatus") != "DELETE_COMPLETE"}
+    federated = {}
+    for logical, r in have.items():
+        if r.get("ResourceType") == "AWS::IAM::Role" and r.get("PhysicalResourceId"):
+            role = aws.json("iam", "get-role", "--role-name", r["PhysicalResourceId"])["Role"]
+            trust = federated_trust(role.get("AssumeRolePolicyDocument", {}))
+            if trust:
+                federated[logical] = {"role": r["PhysicalResourceId"], "trust": sorted(set(trust))}
+    try:
+        body = aws.json("cloudformation", "get-template", "--stack-name", name, "--template-stage", "Original")
+        tbody = body.get("TemplateBody")
+        template_matches = isinstance(tbody, str) and tbody.strip() == BASE_TEMPLATE.read_text(encoding="utf-8").strip()
+    except AwsError:
+        template_matches = False
+    params_changed = sorted(k for k, v in state["parameters_wanted"].items() if current.get(k) != v)
+    extra_params = sorted(set(current) - set(state["parameters_wanted"]))
+    to_add = sorted(set(want) - set(have))
+    to_remove = sorted(
+        f"{lid} ({have[lid].get('ResourceType')} {have[lid].get('PhysicalResourceId')})"
+        for lid in set(have) - set(want)
+    )
+    missing_outputs = [k for k in BASE_OUTPUTS if not outputs.get(k)]
+    network = {"vpc_id": outputs.get("AllowedVpcId"), "subnet_id": outputs.get("AllowedSubnetId")}
+    complete = status.endswith("_COMPLETE") and "ROLLBACK" not in status and not status.startswith("DELETE")
+    ready = (
+        complete
+        and not to_add
+        and not to_remove
+        and not federated
+        and not missing_outputs
+        and not params_changed
+        and network == {"vpc_id": req["network"]["vpc_id"], "subnet_id": req["network"]["subnet_id"]}
+    )
+    changes = bool(to_add or to_remove or params_changed or extra_params or not template_matches)
+    return state | {
+        "status": status,
+        "ready": ready,
+        "action": "update" if changes else "none",
+        "template_matches": template_matches,
+        "parameters_changed": params_changed,
+        "parameters_dropped": extra_params,
+        "to_add": to_add,
+        "to_remove": to_remove,
+        "federated_trust": federated,
+        "missing_outputs": missing_outputs,
+        "network": network,
+        "outputs": {k: outputs.get(k) for k in BASE_OUTPUTS},
+    }
+
+
+def base_not_ready(state: dict[str, Any]) -> str:
+    why = []
+    if state.get("status") == "absent":
+        why.append("it does not exist")
+    for key in ("to_add", "to_remove", "parameters_changed", "missing_outputs"):
+        if state.get(key):
+            why.append(f"{key}={state[key]}")
+    if state.get("federated_trust"):
+        why.append(f"roles trusted by a federated principal (CI/OIDC) {state['federated_trust']}")
+    if state.get("status") not in (None, "absent") and not str(state["status"]).endswith("_COMPLETE"):
+        why.append(f"status {state['status']}")
+    return (
+        f"base stack {state['name']} is not ready ({'; '.join(why) or 'network differs: ' + str(state.get('network'))})"
+        ": review `setup` and apply it with `setup --apply`"
+    )
 
 
 def check_network(aws: Aws, vpc_id: str, subnet_id: str, az: str, instance_type: str) -> dict[str, Any]:
@@ -570,16 +690,85 @@ def wait_for(what: str, fn: Any, timeout: float, *, deadline: float | None = Non
         time.sleep(poll_s())
 
 
+# --- local inputs: parity ZIP, tools, checkout ---------------------------------------------------------------------
+
+
+def check_parity_zip(par: dict[str, Any]) -> dict[str, Any]:
+    """Read-only: the local results ZIP exists, matches its SHA-256 (if the request pins one), has only safe member
+    paths and contains CAWbase_benchmark_v1.1/ and corrida_nocturna/. Raises Refused otherwise."""
+    zpath = Path(par["zip_path"]).expanduser()
+    if not zpath.is_file():
+        raise Refused(f"parity ZIP not found: {zpath}")
+    if inside_checkout(zpath):
+        raise Refused("parity ZIP inside the checkout: keep it outside Git")
+    got = sha256_file(zpath)
+    if par.get("sha256") and got != par["sha256"]:
+        raise Refused(f"parity ZIP sha256 {got} does not match the request")
+    try:
+        with zipfile.ZipFile(zpath) as zf:
+            names = zf.namelist()
+    except zipfile.BadZipFile as exc:
+        raise Refused(f"parity ZIP is not a ZIP: {exc}") from exc
+    for name in names:
+        parts = Path(name).parts
+        if name.startswith("/") or ".." in parts:
+            raise Refused(f"parity ZIP: unsafe path {name!r}")
+    dirs = {str(Path(n).parent) if not n.endswith("/") else n.rstrip("/") for n in names}
+    candidates = {""} | {str(Path(d).parent) for d in dirs if Path(d).name == "CAWbase_benchmark_v1.1"}
+    for cand in sorted(candidates, key=len):
+        prefix = f"{cand}/" if cand and cand != "." else ""
+        if all(
+            any(n.startswith(f"{prefix}{sub}/") for n in names)
+            for sub in ("CAWbase_benchmark_v1.1", "corrida_nocturna")
+        ):
+            return {"file": zpath.name, "sha256": got, "package_dir": prefix.rstrip("/")}
+    raise Refused("parity ZIP: no directory with CAWbase_benchmark_v1.1/ and corrida_nocturna/")
+
+
+def local_tools(aws: Aws, python: str) -> dict[str, str]:
+    def version(argv: list[str]) -> str:
+        try:
+            r = subprocess.run(argv, capture_output=True, text=True, env=aws.env, timeout=60, check=False)
+            return (
+                (r.stdout or r.stderr).strip().splitlines()[0]
+                if (r.stdout or r.stderr).strip()
+                else f"exit {r.returncode}"
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return f"missing: {exc}"
+
+    return {
+        "aws": version([aws.bin, "--version"]),
+        "session-manager-plugin": version(["session-manager-plugin", "--version"]),
+        "python": version([python, "--version"]),
+    }
+
+
+def checkout_commit() -> dict[str, Any]:
+    def git(*args: str) -> str:
+        r = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, check=False)
+        return r.stdout.strip() if r.returncode == 0 else ""
+
+    return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain", "--untracked-files=no"))}
+
+
 # --- the run ----------------------------------------------------------------------------------------------------
 
 
 class Run:
-    def __init__(self, req: dict[str, Any], ev: Path, workdir: Path | None = None, python: str | None = None) -> None:
+    def __init__(
+        self,
+        req: dict[str, Any],
+        ev: Path,
+        workdir: Path | None = None,
+        python: str | None = None,
+        profile: str | None = None,
+    ) -> None:
         self.req = req
         self.ev = ev.resolve()
         self.workdir = (workdir or ev.parent / f"{ev.name}-work").resolve()
         self.python = python or sys.executable
-        self.aws = Aws()
+        self.aws = Aws(profile)
         self.id: str = req["id"]
         self.stack_name: str = req["stack"]["name"]
         self.ledger = LEDGER_PREFIX + self.id
@@ -587,7 +776,8 @@ class Run:
         self.schedule = f"cce-a09-{self.id}"
         self.t0 = now()
         self.deadline = self.t0 + req["limits"]["max_runtime_minutes"] * 60
-        self.access: dict[str, str] = {}
+        self.access: dict[str, str] = {}  # outputs of the base stack
+        self.identity: dict[str, Any] = {}
         self.iid: str | None = None
         self.key_file = self.workdir / "secrets" / "api-key"
         self.record: dict[str, Any] = {"id": self.id, "stack": self.stack_name, "after_run": req["stack"]["after_run"]}
@@ -632,11 +822,11 @@ class Run:
         req, net, target = self.req, self.req["network"], aws_target()
         pre: dict[str, Any] = {"target": target, "checks": {}}
         checks = pre["checks"]
-        repo = REPO.resolve()
-        if self.ev == repo or repo in self.ev.parents or self.workdir == repo or repo in self.workdir.parents:
+        if inside_checkout(self.ev) or inside_checkout(self.workdir):
             raise Refused("evidence and work directories must be outside the repository checkout")
-        ident = self.aws.json("sts", "get-caller-identity")
-        pre["caller"] = str(ident.get("Arn", "")).split(":", 5)[-1]  # assumed-role/NAME/SESSION, no account
+        # who we are, before anything else touches AWS: CLI and boto3 agree, us-east-1, the expected account
+        self.identity = pre["identity"] = verify_identity(self.aws, self.python, req["aws"]["account_id"])
+        checks["identity"] = True
         if self.aws.get_param(self.ledger) is not None:
             raise Duplicate(self.ledger)  # first: a retry reports the earlier claim, whatever changed since
         stale = subprocess.run([sys.executable, str(BUILD_TEMPLATE), "--check"], capture_output=True, text=True)
@@ -644,24 +834,13 @@ class Run:
             raise Refused(f"cloudformation.yaml is stale: {stale.stderr.strip()}")
         pre["template_sha256"] = sha256_file(TEMPLATE)
         checks["template_up_to_date"] = True
-        # access stack (initial enablement): roles, watchdog group and the network the roles were scoped to
-        name = os.environ.get("CCE_A09_ACCESS_STACK") or ACCESS_STACK_DEFAULT
-        access = self.aws.stack(name)
-        if not access or not str(access.get("StackStatus", "")).endswith("_COMPLETE"):
-            raise Refused(f"access stack {name} is missing or not complete: run the initial enablement first")
-        self.access = self.aws.outputs(access)
-        for key in ("CfnExecutionRoleArn", "WatchdogRoleArn", "WatchdogScheduleGroup", "HostPermissionsBoundaryArn"):
-            if not self.access.get(key):
-                raise Refused(f"access stack {name}: output {key} missing")
-        allowed = {
-            "vpc_id": self.access.get("AllowedVpcId"),
-            "subnet_id": self.access.get("AllowedSubnetId"),
-        }
-        if allowed != {"vpc_id": net["vpc_id"], "subnet_id": net["subnet_id"]}:
-            raise Refused(
-                f"network: the request uses {net['vpc_id']}/{net['subnet_id']}; the access stack allows {allowed}"
-            )
-        checks["network_matches_access_stack"] = True
+        # base stack (setup): execution role, host boundary, watchdog and the network the roles were scoped to
+        base = pre["base_stack"] = base_stack_state(self.aws, req)
+        if not base["ready"]:
+            raise Refused(base_not_ready(base))
+        self.access = {k: str(v) for k, v in base["outputs"].items()}
+        checks["base_stack"] = True
+        checks["network_matches_base_stack"] = True
         # quota and capacity: one validation at a time within 4 vCPU of G/VT
         quota = float(
             self.aws.json("service-quotas", "get-service-quota", "--service-code", "ec2", "--quota-code", G_QUOTA_CODE)[
@@ -704,10 +883,12 @@ class Run:
             ami = self.aws.json("ssm", "get-parameter", "--name", AMI_PARAM)["Parameter"]["Value"]
         images = self.aws.json("ec2", "describe-images", "--image-ids", ami).get("Images", [])
         img = images[0] if images else {}
-        pre["ami"] = {k: img.get(k) for k in ("ImageId", "Name", "OwnerAlias", "State", "Architecture", "CreationDate")}
+        # DescribeImages names the owner alias `ImageOwnerAlias` (there is no `OwnerAlias` field)
+        fields = ("ImageId", "Name", "ImageOwnerAlias", "OwnerId", "Public", "State", "Architecture", "CreationDate")
+        pre["ami"] = {k: img.get(k) for k in fields}
         if not (
             img.get("State") == "available"
-            and img.get("OwnerAlias") == "amazon"
+            and img.get("ImageOwnerAlias") == "amazon"
             and AMI_NAME in str(img.get("Name"))
             and img.get("Architecture") == "x86_64"
         ):
@@ -739,47 +920,28 @@ class Run:
             if self.aws.get_param(self.key_param) is None:
                 raise Refused(f"API key parameter {self.key_param} missing for the reused stack")
         checks["stack"] = mode
-        # cost ceiling and the tools of the runner
+        # cost ceiling and the local tools
         pre["worst_case_instance_usd"] = worst_case_usd(req)
+        pre["tools"] = local_tools(self.aws, self.python)
         if shutil.which("session-manager-plugin") is None:
-            raise Refused("session-manager-plugin is not installed on the runner (needed for the SSM tunnel)")
-        boto = subprocess.run([self.python, "-c", "import boto3"], capture_output=True, text=True)
-        if boto.returncode != 0:
-            raise Refused(f"the controller interpreter {self.python} has no boto3 (uv sync --extra aws)")
-        checks["runner_tools"] = True
+            raise Refused("session-manager-plugin is not installed on this machine (needed for the SSM tunnel)")
+        checks["local_tools"] = True
         if req.get("parity"):
-            self.parity_pkg = self.fetch_parity()
-            pre["parity"] = {
-                "status": "configured",
-                "s3_uri": req["parity"]["s3_uri"],
-                "sha256": req["parity"]["sha256"],
-            }
+            pre["parity"] = {"status": "configured", **check_parity_zip(req["parity"])}
         else:
-            pre["parity"] = {"status": "not_configured"}
+            pre["parity"] = {"status": "pending", "reason": "no parity ZIP given (parity.zip_path or --parity-zip)"}
         return pre
 
-    def fetch_parity(self) -> Path:
-        """The optional results ZIP (outside Git), verified by SHA-256 and unpacked on the runner, outside the
-        evidence. A mismatch refuses the run before anything is created."""
-        par = self.req["parity"]
-        dest = self.workdir / "parity"
-        dest.mkdir(parents=True, exist_ok=True)
-        zpath = dest / "results.zip"
-        self.aws.raw("s3", "cp", par["s3_uri"], str(zpath), "--only-show-errors", timeout=1800)
-        got = sha256_file(zpath)
-        if got != par["sha256"]:
-            raise Refused(f"parity ZIP sha256 {got} does not match the request")
-        out = dest / "unpacked"
+    def unpack_parity(self) -> Path:
+        """The optional results ZIP (outside Git), verified again and unpacked in the work directory, outside the
+        evidence. Done after the preflight and before the claim: a mismatch refuses the run before anything exists."""
+        info = check_parity_zip(self.req["parity"])
+        zpath = Path(self.req["parity"]["zip_path"]).expanduser()
+        out = self.workdir / "parity" / "unpacked"
         with zipfile.ZipFile(zpath) as zf:
-            for info in zf.infolist():
-                target = (out / info.filename).resolve()
-                if out.resolve() not in target.parents and target != out.resolve():
-                    raise Refused(f"parity ZIP: unsafe path {info.filename!r}")
-            zf.extractall(out)  # noqa: S202 - every member path was checked above
-        for cand in [out, *[p for p in out.rglob("*") if p.is_dir()]]:
-            if (cand / "CAWbase_benchmark_v1.1").is_dir() and (cand / "corrida_nocturna").is_dir():
-                return cand
-        raise Refused("parity ZIP: no directory with CAWbase_benchmark_v1.1/ and corrida_nocturna/")
+            zf.extractall(out)  # noqa: S202 - every member path was checked by check_parity_zip
+        pkg = out / info["package_dir"] if info["package_dir"] else out
+        return pkg
 
     # --- claim ---
 
@@ -787,10 +949,9 @@ class Run:
         ctx = {
             "id": self.id,
             "stack": self.stack_name,
-            "repository": os.environ.get("GITHUB_REPOSITORY", ""),
-            "sha": os.environ.get("GITHUB_SHA", ""),
-            "run_id": os.environ.get("GITHUB_RUN_ID", f"local-{int(self.t0)}"),
-            "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
+            "run_id": f"local-{int(self.t0)}-{os.getpid()}",
+            "operator": self.identity.get("arn", ""),
+            "checkout": checkout_commit(),
             "claimed_at": iso(self.t0),
             "status": "claimed",
             "mode": self.req["stack"]["mode"],
@@ -851,7 +1012,7 @@ class Run:
             "ServerProfile": self.req["validation"].get("server_profile", "reference-8k-1slot"),
             "ApiKeyParameterName": self.key_param,
             "HostPermissionsBoundaryArn": self.access["HostPermissionsBoundaryArn"],
-            # the AWS-side stop is created by CloudFormation with the instance: no runner in between
+            # the AWS-side stop is created by CloudFormation with the instance: no local process in between
             "WatchdogStart": iso(self.deadline + WATCHDOG_GRACE_MIN * 60),
             "WatchdogEnd": iso(self.deadline + WATCHDOG_GRACE_MIN * 60 + WATCHDOG_WINDOW_H * 3600),
             "WatchdogRoleArn": self.access["WatchdogRoleArn"],
@@ -874,7 +1035,7 @@ class Run:
         }
         self.record["watchdog"] = wd
         save(self.ev, "watchdog.json", wd)
-        self.write_owner(created_by=self.id)  # before CreateStack: a lost runner leaves a record to clean by
+        self.write_owner(created_by=self.id)  # before CreateStack: a lost process leaves a record to clean by
         out = self.aws.json(
             "cloudformation",
             "create-stack",
@@ -929,8 +1090,8 @@ class Run:
         return pid if pid.startswith("i-") else None
 
     def arm_watchdog(self) -> None:
-        """A recurring stop of THIS instance, run by EventBridge Scheduler in AWS from the job's time limit on: it
-        does not depend on the runner. The cleanup deletes it only after it verified the instance stopped."""
+        """A recurring stop of THIS instance, run by EventBridge Scheduler in AWS from the run's time limit on: it
+        does not depend on this process. The cleanup deletes it only after it verified the instance stopped."""
         assert self.iid
         start = self.deadline + WATCHDOG_GRACE_MIN * 60
         end = start + WATCHDOG_WINDOW_H * 3600
@@ -1070,7 +1231,7 @@ class Run:
             "api_key_file": str(self.key_file),
             "instance_id": self.iid,
             "region": REGION,
-            "profile": "",  # default chain: the job's temporary OIDC credentials
+            "profile": "",  # the standard chain of the environment this process passes on (AWS_PROFILE, SSO, keys)
         }
         out = []
         for line in tpl.splitlines():
@@ -1158,23 +1319,33 @@ class Run:
         outcome: dict[str, Any] = {"id": self.id, "stack": self.stack_name, "after_run": self.req["stack"]["after_run"]}
         try:
             pre = self.preflight()
+            if self.req.get("parity"):
+                self.parity_pkg = self.unpack_parity()  # local only; before the claim
         except Duplicate:
             dup = json.loads(self.aws.get_param(self.ledger) or "{}")
             save(self.ev, "duplicate.json", {"ledger": self.ledger, "claim": dup})
-            outcome |= {"validation": "not_run_duplicate", "exit": 3, "claimed_by": dup}
+            outcome |= {"validation": "not_run_duplicate", "exit": 3, "claimed_by": dup, "cleanup_in_run": "not_run"}
             save(self.ev, "outcome.json", outcome)
             print(
-                f"DUPLICATE: request {self.id} was already claimed by run {dup.get('run_id')} attempt "
-                f"{dup.get('run_attempt')} (status {dup.get('status')}): no new spend. Submit a new id to run again.",
+                f"DUPLICATE: request {self.id} was already claimed by {dup.get('run_id')} "
+                f"(status {dup.get('status')}): no new spend. Use a new id to run again; "
+                "`cleanup` re-verifies the old run's resources.",
                 file=sys.stderr,
             )
+            report(self.ev, outcome)
             return 3
         except (Refused, AwsError) as exc:
-            save(self.ev, "preflight.json", {"refused": str(exc)})
-            outcome |= {"validation": "refused", "exit": 2, "reason": str(exc)}
+            save(self.ev, "preflight.json", {"refused": str(exc), "identity": self.identity or None})
+            outcome |= {"validation": "refused", "exit": 2, "reason": str(exc), "cleanup_in_run": "not_needed"}
             save(self.ev, "outcome.json", outcome)
             print(f"REFUSED (nothing claimed or created): {exc}", file=sys.stderr)
+            report(self.ev, outcome)
             return 2
+        except KeyboardInterrupt:
+            outcome |= {"validation": "interrupted before any write", "exit": 130, "cleanup_in_run": "not_needed"}
+            save(self.ev, "outcome.json", outcome)
+            report(self.ev, outcome)
+            return 130
         save(self.ev, "preflight.json", pre)
         for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             signal.signal(sig, _raise_interrupted)
@@ -1218,11 +1389,31 @@ class Run:
             withhold(self.ev, self.workdir / "withheld")
             save(self.ev, "outcome.json", outcome)
             redact(self.ev, [self.key_file])
-        log(f"validation: {outcome.get('validation')}; in-run cleanup: {outcome.get('cleanup_in_run')}")
-        return code
+        report(self.ev, outcome)
+        # the cleanup decides the exit status when it failed: resources may still be there
+        return 5 if outcome.get("cleanup_in_run") == "FAILED" else code
 
 
-# --- cleanup (idempotent; also the separate cleanup job) -------------------------------------------------------------
+def report(ev: Path, outcome: dict[str, Any]) -> None:
+    """The two results, apart: the validation (tests) and the cleanup."""
+    clean_file = ev / "cleanup-run.json"
+    clean = json.loads(clean_file.read_text()) if clean_file.exists() else {}
+    lines = [
+        f"== A09-1 AWS validation {outcome.get('id')} "
+        f"(stack {outcome.get('stack')}, after_run {outcome.get('after_run')})",
+        f"   VALIDATION (tests): {outcome.get('validation')} (exit {outcome.get('exit')})",
+        f"   CLEANUP:            {outcome.get('cleanup_in_run')}"
+        + (f" instance={clean.get('instance')} stack={clean.get('stack_status')}" if clean else ""),
+        f"   PARITY:             {(outcome.get('parity') or {}).get('status', 'pending')}",
+        f"   evidence:           {ev}",
+    ]
+    if outcome.get("cleanup_in_run") == "FAILED":
+        lines.append("   CLEANUP FAILED: repeat `a09-aws-validation cleanup --request …` (the AWS-side watchdog")
+        lines.append("   keeps stopping the instance meanwhile); see cleanup-run.json for what is left")
+    print("\n".join(lines), flush=True)
+
+
+# --- cleanup (idempotent; also `cleanup` after a lost process) ---------------------------------------------------
 
 
 def owner_record(aws: Aws, stack_name: str) -> dict[str, Any] | None:
@@ -1241,13 +1432,14 @@ def tags_of(obj: dict[str, Any]) -> dict[str, str]:
 class Cleanup:
     """Stops and, if the request says delete, deletes ONLY what this request owns: the request must be claimed, the
     stack's ownership record must name this claim (id and token: it created the stack or adopted it with reuse), the
-    stack must be that one (StackId, or the claim token tag if the runner was lost before learning the id), and only
+    stack must be that one (StackId, or the claim token tag if the process was lost before learning the id), and only
     the concrete instance of that stack is touched. Anything else is preserved and reported."""
 
     def __init__(self, req: dict[str, Any], ev: Path, aws: Aws | None = None) -> None:
         self.req = req
         self.ev = ev
         self.aws = aws or Aws()
+        self.base_stack: str = req["aws"]["base_stack"]
         self.id: str = req["id"]
         self.stack_name: str = req["stack"]["name"]
         self.after: str = req["stack"]["after_run"]
@@ -1283,7 +1475,7 @@ class Cleanup:
             if not same:
                 rec["ownership"] = f"not_owned: {self.stack_name} is another stack ({stack.get('StackId')})"
                 return None, None
-            if not owner.get("stack_id"):  # the runner was lost before it learned the id: recover it from the tag
+            if not owner.get("stack_id"):  # the process was lost before it learned the id: recover it from the tag
                 owner["stack_id"] = stack["StackId"]
         rec["ownership"] = "owned" + (f" (adopted from {owner['adopted_from']})" if owner.get("adopted_from") else "")
         if stack is None and owner.get("stack_id"):
@@ -1445,7 +1637,7 @@ class Cleanup:
     def disarm(self) -> str:
         group = None
         try:
-            access = self.aws.stack(os.environ.get("CCE_A09_ACCESS_STACK") or ACCESS_STACK_DEFAULT)
+            access = self.aws.stack(self.base_stack)
             group = self.aws.outputs(access).get("WatchdogScheduleGroup") if access else None
         except AwsError:
             group = None
@@ -1499,19 +1691,12 @@ def withhold(ev: Path, dest: Path) -> list[dict[str, str]]:
         save(
             ev,
             "withheld.json",
-            {"reason": "parity outputs reproduce the private corpus; kept off GitHub", "files": moved},
+            {"reason": "parity outputs reproduce the private corpus; kept out of the evidence", "files": moved},
         )
     return moved
 
 
-SECRET_ENV = (
-    "AWS_SECRET_ACCESS_KEY",
-    "AWS_SESSION_TOKEN",
-    "AWS_ACCESS_KEY_ID",
-    "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
-    "ACTIONS_RUNTIME_TOKEN",
-    "GITHUB_TOKEN",
-)
+SECRET_ENV = ("AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_ACCESS_KEY_ID")
 SECRET_NAMES = re.compile(r"(^|/)(api-key[^/]*|[^/]*\.pem|credentials[^/]*)$")
 
 
@@ -1546,137 +1731,204 @@ def redact(ev: Path, secret_files: list[Path]) -> int:
     return count
 
 
-def summary_markdown(dirs: list[Path]) -> str:
-    lines = ["### A09-1 AWS GPU validation"]
-    for d in dirs:
-        for name in ("outcome.json", "cleanup.json"):
-            p = d / name
-            if not p.exists():
-                continue
-            doc = json.loads(p.read_text())
-            if name == "outcome.json":
-                lines.append(f"- **Validation**: `{doc.get('validation')}` (exit {doc.get('exit')})")
-                lines.append(f"- In-run cleanup: `{doc.get('cleanup_in_run')}`; after run: `{doc.get('after_run')}`")
-                offload = doc.get("gpu_offload") or {}
-                lines.append(f"- GPU offload: `{offload.get('status')}` {offload.get('offloaded')}")
-                lines.append(f"- Parity: `{(doc.get('parity') or {}).get('status')}`")
-                for prof, v in ((doc.get("gpu_validation") or {}).get("verdicts") or {}).items():
-                    lines.append(f"  - `{prof}`: `{v.get('verdict')}` {v.get('criteria')}")
-            else:
-                lines.append(f"- **Cleanup job**: `{doc.get('outcome')}` errors={doc.get('errors')}")
-                lines.append(f"  - instances {doc.get('instances')}; stack `{doc.get('stack_status')}`")
-    return "\n".join(lines) + "\n"
+# --- setup and plan --------------------------------------------------------------------------------------------
+
+
+def setup(aws: Aws, req: dict[str, Any], python: str, out: Path, apply: bool) -> int:
+    """The base stack, idempotent: plan (read-only) or, with apply, `cloudformation deploy` of validation-base.yaml and
+    its verification (ready: exactly the template's resources, no role trusted by a federated principal, outputs,
+    network). Identity and account are verified before anything is read or written."""
+    rec: dict[str, Any] = {"mode": "apply" if apply else "plan", "base_stack": req["aws"]["base_stack"]}
+    try:
+        rec["identity"] = verify_identity(aws, python, req["aws"]["account_id"])
+        net = req["network"]
+        rec["network"] = check_network(
+            aws, net["vpc_id"], net["subnet_id"], net["availability_zone"], req["aws"]["instance_type"]
+        )
+        rec["before"] = base_stack_state(aws, req)
+    except (Refused, AwsError) as exc:
+        rec["refused"] = str(exc)
+        save(out, "setup.json", rec)
+        print(f"REFUSED (nothing changed): {exc}", file=sys.stderr)
+        return 2
+    before = rec["before"]
+    print(json.dumps({k: before.get(k) for k in SETUP_PLAN_KEYS if k in before}, indent=2))
+    if not apply:
+        save(out, "setup.json", rec)
+        print(
+            "base stack ready: nothing to do"
+            if before["ready"] and before["action"] == "none"
+            else "plan only: apply it with `setup --apply`"
+        )
+        return 0
+    overrides = [f"{k}={v}" for k, v in base_parameters(req).items()]
+    try:
+        out_text = aws.raw(
+            "cloudformation",
+            "deploy",
+            "--stack-name",
+            req["aws"]["base_stack"],
+            "--template-file",
+            str(BASE_TEMPLATE),
+            "--capabilities",
+            "CAPABILITY_NAMED_IAM",
+            "--no-fail-on-empty-changeset",
+            "--parameter-overrides",
+            *overrides,
+            timeout=1800,
+        )
+        rec["deploy"] = "no_changes" if "No changes to deploy" in out_text else "created_or_updated"
+        after = rec["after"] = base_stack_state(aws, req)
+    except AwsError as exc:
+        rec["failed"] = str(exc)
+        save(out, "setup.json", rec)
+        print(f"SETUP NOT VERIFIED: {exc}", file=sys.stderr)
+        return 1
+    save(out, "setup.json", rec)
+    if not after["ready"]:
+        print(f"SETUP NOT VERIFIED: {base_not_ready(after)}", file=sys.stderr)
+        return 1
+    print(f"base stack {after['name']} ready ({rec['deploy']}): no federated trust, outputs and network verified")
+    return 0
+
+
+SETUP_PLAN_KEYS = (
+    "name",
+    "status",
+    "ready",
+    "action",
+    "to_add",
+    "to_remove",
+    "federated_trust",
+    "parameters_changed",
+    "parameters_dropped",
+    "template_matches",
+    "network",
+)
+
+
+def plan(run: Run) -> int:
+    """Read-only: the identity, the base stack and the whole preflight of the run (nothing claimed or created)."""
+    run.ev.mkdir(parents=True, exist_ok=True)
+    try:
+        pre = run.preflight()
+        pre["plan"] = "ready: `run` would claim the id and create the stack"
+        code = 0
+    except Duplicate:
+        pre = {"plan": f"duplicate: {run.ledger} is already claimed (no new spend; use a new id)"}
+        code = 3
+    except (Refused, AwsError) as exc:
+        pre = {"plan": f"refused: {exc}", "identity": run.identity or None}
+        code = 2
+    save(run.ev, "plan.json", pre)
+    print(
+        json.dumps(
+            {
+                k: pre.get(k)
+                for k in (
+                    "plan",
+                    "identity",
+                    "quota",
+                    "network",
+                    "ami",
+                    "parity",
+                    "worst_case_instance_usd",
+                    "base_stack",
+                )
+                if k in pre
+            },
+            indent=2,
+            default=str,
+        )
+    )
+    return code
 
 
 # --- CLI -----------------------------------------------------------------------------------------------------------
 
 
-def _write_outputs(path: str | None, values: dict[str, str]) -> None:
-    text = "".join(f"{k}={v}\n" for k, v in values.items())
-    if path:
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(text)
-    print(text, end="")
+def state_dir(rid: str) -> Path:
+    base = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
+    return base / "cce-inference" / "a09-validation" / rid
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("check")
+    c = sub.add_parser("check", help="offline validation of request files (default: the fictitious example)")
     c.add_argument("files", nargs="*")
-    d = sub.add_parser("detect")
-    d.add_argument("--before", required=True)
-    d.add_argument("--after", required=True)
-    d.add_argument("--github-output")
-    oc = sub.add_parser("oidc-claims")
-    oc.add_argument("--out", help="also write the claims as JSON to this file")
-    r = sub.add_parser("run")
-    r.add_argument("--request", required=True)
-    r.add_argument("--evidence", required=True)
-    r.add_argument("--workdir", required=True)
-    r.add_argument("--python", default=sys.executable, help="controller interpreter (with boto3)")
-    r.add_argument("--tunnel-port", type=int, default=18080)
-    k = sub.add_parser("cleanup")
-    k.add_argument("--request", required=True)
-    k.add_argument("--evidence", required=True)
-    x = sub.add_parser("redact")
-    x.add_argument("evidence")
-    x.add_argument("--secret-file", action="append", default=[])
-    s = sub.add_parser("summary")
-    s.add_argument("dirs", nargs="+")
+    for name in ("plan", "setup", "run", "cleanup"):
+        p = sub.add_parser(name)
+        p.add_argument("--request", required=True, help="local request file, outside the checkout")
+        p.add_argument("--profile", help="named AWS profile (default: the standard credential chain)")
+        p.add_argument("--evidence", help="evidence directory (default: the local state directory)")
+        p.add_argument("--python", default=sys.executable, help="controller interpreter (with boto3)")
+        if name in ("plan", "run"):
+            p.add_argument("--workdir", help="work directory (default: next to the evidence)")
+            p.add_argument("--parity-zip", help="local results ZIP for the parity run (optional)")
+            p.add_argument("--tunnel-port", type=int, default=18080)
+        if name == "setup":
+            p.add_argument("--apply", action="store_true", help="create or update the base stack (default: plan)")
+    sub.add_parser("_boto3-identity")
     a = ap.parse_args(argv)
 
+    if a.cmd == "_boto3-identity":
+        print(json.dumps(boto3_identity()))
+        return 0
     if a.cmd == "check":
-        files = [Path(f) for f in a.files] or sorted(REQUESTS_DIR.glob("*.json"))
-        errors = check_unique_ids(REQUESTS_DIR)
+        files = [Path(f) for f in a.files] or [EXAMPLE_REQUEST]
+        errors = []
         for f in files:
             try:
-                load_request(f)
+                load_request(f, local=f.resolve() != EXAMPLE_REQUEST)
             except RequestError as exc:
                 errors.append(str(exc))
         for err in errors:
             print(f"INVALID: {err}", file=sys.stderr)
         print(f"{len(files)} request(s) checked, {len(errors)} error(s)")
         return 2 if errors else 0
-    if a.cmd == "detect":
-        try:
-            path, notes = detect(a.before, a.after)
-            for n in notes:
-                print(f"note: {n}", file=sys.stderr)
-            if path is None:
-                _write_outputs(a.github_output, {"request": ""})
-                print("no new validation request in this push: nothing to run")
-                return 0
-            dup = check_unique_ids(REQUESTS_DIR)
-            if dup:
-                raise RequestError("; ".join(dup))
-            req = load_request(path)
-        except RequestError as exc:
-            print(f"INVALID REQUEST (nothing is run): {exc}", file=sys.stderr)
-            return 2
-        _write_outputs(a.github_output, detect_outputs(req, path))
-        return 0
-    if a.cmd == "oidc-claims":
-        claims = oidc_claims()
-        text = json.dumps(claims, indent=2)
-        print(text)
-        print(f"{CLAIMS_MARK}{json.dumps(claims, separators=(',', ':'))}")  # read by enable_access.py
-        if a.out:
-            Path(a.out).write_text(text + "\n", encoding="utf-8")
-        if os.environ.get("GITHUB_STEP_SUMMARY"):
-            with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
-                fh.write(f"### OIDC claims (safe subset, never the token)\n\n```json\n{text}\n```\n")
-        return 0
-    if a.cmd == "run":
-        try:
-            req = load_request(Path(a.request))
-        except RequestError as exc:
-            print(f"INVALID REQUEST: {exc}", file=sys.stderr)
-            return 2
-        run = Run(req, Path(a.evidence), Path(a.workdir), a.python)
-        run.tunnel_port = a.tunnel_port
-        return run.main()
-    if a.cmd == "cleanup":
+    try:
         req = load_request(Path(a.request))
+        if getattr(a, "parity_zip", None):
+            zp = str(Path(a.parity_zip).expanduser().resolve())
+            pinned = (req.get("parity") or {}).get("sha256")
+            req["parity"] = {"zip_path": zp, **({"sha256": pinned} if pinned else {})}
+            errors = validate_request(req)
+            if errors:
+                raise RequestError("; ".join(errors))
+        aws = Aws(a.profile)
+    except (RequestError, Refused) as exc:
+        print(f"INVALID REQUEST (nothing read or written in AWS): {exc}", file=sys.stderr)
+        return 2
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    ev = Path(a.evidence).expanduser() if a.evidence else state_dir(req["id"]) / f"{a.cmd}-{stamp}"
+    if inside_checkout(ev):
+        print("REFUSED: the evidence directory must be outside the checkout", file=sys.stderr)
+        return 2
+    if a.cmd == "setup":
+        return setup(aws, req, a.python, ev, a.apply)
+    if a.cmd == "cleanup":
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, signal.SIG_IGN)
-        cl = Cleanup(req, Path(a.evidence))
+        try:
+            ident = verify_identity(aws, a.python, req["aws"]["account_id"])
+        except (Refused, AwsError) as exc:
+            print(f"REFUSED (nothing changed): {exc}", file=sys.stderr)
+            return 2
+        save(ev, "identity.json", ident)
+        cl = Cleanup(req, ev, aws=aws)
         rc = cl.main()
         cl.update_ledger("verified" if rc == 0 else "FAILED")
-        redact(Path(a.evidence), [])
+        redact(ev, [])
+        print(f"   CLEANUP: {'verified' if rc == 0 else 'FAILED'} ({req['stack']['after_run']}); evidence: {ev}")
         return rc
-    if a.cmd == "redact":
-        count = redact(Path(a.evidence), [Path(f) for f in a.secret_file])
-        print(f"redacted {count} occurrence(s)")
-        return 0
-    if a.cmd == "summary":
-        text = summary_markdown([Path(x) for x in a.dirs])
-        print(text)
-        if os.environ.get("GITHUB_STEP_SUMMARY"):
-            with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
-                fh.write(text)
-        return 0
-    return 2
+    workdir = Path(a.workdir).expanduser() if a.workdir else ev.parent / f"{ev.name}-work"
+    run = Run(req, ev, workdir, a.python, a.profile)
+    run.aws = aws
+    run.tunnel_port = a.tunnel_port
+    if a.cmd == "plan":
+        return plan(run)
+    return run.main()
 
 
 if __name__ == "__main__":
