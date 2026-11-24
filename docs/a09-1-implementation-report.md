@@ -154,7 +154,18 @@ Rama `fix/a09-1-local-aws-validation`, creada desde `origin/main` en `e7e08b3` (
 
 **Evidencia A (AWS real, solo lecturas, 2026-11-24).** Con la solicitud local (fuera del checkout) y la identidad del operador: `setup` (plan) del stack de acceso anterior → `to_remove: ValidationRole (cce-a09-github-validation)` con confianza federada (`token.actions.githubusercontent.com`, `AssumeRoleWithWebIdentity`), parámetros `GitHubOidcProviderArn`, `GitHubSubject` y `ParityObjectArn` descartados, red sin cambios, ningún recurso a agregar; `plan` → identidad igual por la CLI y por boto3 en `us-east-1` y en la cuenta esperada, corrida rechazada porque el stack base aún tiene el rol federado; `get-template` devuelve el cuerpo original como texto, igual a la plantilla desplegada. Lectura del estado (IAM, CloudFormation, SSM, Scheduler, EC2): el único rol que confía en este repositorio es `cce-a09-github-validation`, nunca usado; el proveedor OIDC lo comparten roles de otros repositorios (se conserva); ningún stack de validación, parámetro `/cce/…`, schedule ni instancia G. Ninguna escritura.
 
-**No verificado / pendiente.** La revocación externa (Q-A09-07) espera la autorización del usuario; `setup --apply` real; la corrida con GPU (gasto aparte); el túnel SSM real (falta `session-manager-plugin` en la máquina del operador; el preflight lo exige). Linux local y GitHub Actions no se ejecutaron para este cambio.
+**No verificado / pendiente.** La revocación externa (Q-A09-07) espera la autorización del usuario; `setup --apply` real; la corrida con GPU (gasto aparte); el túnel SSM real (falta `session-manager-plugin` en la máquina del operador; el preflight lo exige). GitHub Actions no se ejecutó para este cambio.
+
+| Ambiente | Comando | Resultado |
+|---|---|---|
+| macOS (Apple M1, Python 3.13, uv) | `cd deploy/inference/controller && uv run pytest -q -rs` | **169 aprobadas**, 1 omitida (guardia de inactividad: necesita `/proc/uptime`) |
+| Linux local (Docker `python:3.13-bookworm`, aarch64, Python 3.13.18) | `PYTHONPATH=src python3 -m pytest -q -rs -p no:cacheprovider tests` (copia de `deploy` y `.github` en un repositorio git temporal) | **170 aprobadas**, sin omisiones |
+| macOS | `uv run pytest -q -rs` (raíz, SQLite; sin `CCE_TEST_POSTGRES_URL`) | **1072 aprobadas**, 615 omitidas (variantes PostgreSQL sin servidor y opcionales), 10 deseleccionadas (`dist`), 0 fallos; incluye `tests/test_a09_aws_validation_local.py` (9) |
+| macOS | `uv run ruff check .`, `uv run ruff format --check src tests examples scripts`, `uv run mypy` (raíz); `mypy` y `mypy --strict ../validation/aws_validation.py`, `ruff check` y `ruff format --check` del controlador | sin hallazgos |
+| macOS | `python3 deploy/inference/aws/build_template.py --check`; `shellcheck -S warning` de `deploy/inference` (con `bin/a09-aws-validation`); `deploy/inference/bin/a09-aws-validation check`; `python3 scripts/check_doc_links.py` | al día; sin hallazgos; 1 solicitud, 0 errores; `bad 0` |
+| macOS | `actionlint .github/workflows/*.yml` | solo el aviso SC2035 de `ci.yml`, anterior y sin tocar |
+
+No se ejecutaron PostgreSQL, `pytest -m dist` ni las validaciones Docker del motor: el paquete del motor no cambió.
 
 ## 3. Trazabilidad AC-A09-1
 
