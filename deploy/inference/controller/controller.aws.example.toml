@@ -20,7 +20,7 @@ job_deadline_s = 86400
 
 [endpoint]
 base_url = "http://10.0.1.23:8080"          # CloudFormation output EndpointUrl
-model_alias = "qwen3.6-27b-q4km"
+model_alias = "qwen3.6-27b-q8_0"         # manifest.json models[targets.aws].alias (Q8_0)
 api_key_file = "/etc/cce-inference-controller/api-key"   # copy of the SSM SecureString, 0600
 canary = true
 canary_timeout_s = 180

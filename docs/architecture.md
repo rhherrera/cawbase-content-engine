@@ -169,6 +169,6 @@ Cada feature futura añade recursos de alcance siguiendo las mismas reglas: tabl
 
 > **Implementado en `deploy/inference/`; validación en GPU real y aceptación pendientes.** No cambia la arquitectura del motor.
 
-- El servidor de inferencia (llama.cpp, endpoint OpenAI-compatible privado) corre en un host GPU propio (EC2 `g6.xlarge` u on-premise). El motor no lo conoce todavía: el adaptador real del contrato A03 es de A09-2.
+- El servidor de inferencia (llama.cpp, endpoint OpenAI-compatible privado) corre en un host GPU propio (EC2 `g6e.xlarge` con Q8_0, objetivo pendiente de validación real, u on-premise con Q4_K_M). El motor no lo conoce todavía: el adaptador real del contrato A03 es de A09-2.
 - El **controlador** (`cce-inference-controller`) corre **fuera del host GPU y fuera del núcleo Python**: decide arrancar ante trabajo durable, espera la readiness real del modelo, permite el despacho solo en `ready` con readiness verificada (lo cierra el primer sondeo fallido) y detiene el host tras 60 min continuos sin trabajo. Su estado es durable (SQLite con lease de líder) y sus reglas son puras. La cola y los workers reales de CAWbase se conectan en B01.
 - El núcleo conserva sus reglas: no inicia ni apaga infraestructura, no espera readiness de un modelo y no depende de `boto3`. Contrato: [despliegue de inferencia y operación](inference-deployment.md).

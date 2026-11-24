@@ -1,5 +1,5 @@
 [Unit]
-Description=CAWbase content engine inference server (llama.cpp b12329, Qwen3.6-27B Q4_K_M)
+Description=CAWbase content engine inference server (llama.cpp b12329, Qwen3.6-27B: model of server.env)
 Documentation=file:///opt/cce-inference/src/README.md
 Wants=network-online.target
 After=network-online.target
@@ -13,12 +13,14 @@ Group=cce-inference
 EnvironmentFile=/etc/cce-inference/server.env
 Environment=HOME=/var/lib/cce-inference
 StateDirectory=cce-inference
-# Quick check: size + verification record written by install-model.sh (full SHA-256 at install time).
-ExecStartPre=/opt/cce-inference/src/server/install-model.sh --dir /srv/cce-inference/models --verify --quick
+# Artifact check before starting: CCE_MODEL_ID of server.env is a manifest.json model, CCE_MODEL_PATH and
+# CCE_MODEL_ALIAS are its file and alias, and the file has the right size and verification record (full SHA-256
+# at install time). Any mismatch fails here, explicitly.
+ExecStartPre=/opt/cce-inference/src/server/run-server.sh --check
 ExecStart=/opt/cce-inference/src/server/run-server.sh
 Restart=on-failure
 RestartSec=5
-# Loading 19.4 GB of weights from EBS can take minutes; readiness is judged by the controller, not by systemd.
+# Loading 19-29 GB of weights from EBS can take minutes; readiness is judged by the controller, not by systemd.
 TimeoutStartSec=0
 TimeoutStopSec=60
 NoNewPrivileges=true

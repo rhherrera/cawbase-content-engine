@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import DEPLOY, HERE, free_port, server_env
+from conftest import DEPLOY, HERE, Q8, free_port, server_env
 
 SIM_HOST = HERE / "sim_host.sh"
 SCRIPT = DEPLOY / "bench" / "gpu-validation.py"
@@ -25,16 +25,18 @@ IID = "i-0sim"
 
 
 class Sim:
-    def __init__(self, tmp: Path, model: str) -> None:
+    def __init__(self, tmp: Path, fake_model: dict[str, str]) -> None:
         self.tmp = tmp
         self.port = free_port()
-        self.env_file = server_env(tmp, model, self.port)
+        self.env_file = server_env(tmp, fake_model["path"], self.port)
         self.ev = tmp / "evidence"
         aws = tmp / "aws"
         aws.write_text(f'#!/bin/sh\nexec {sys.executable} {HERE / "fake_aws.py"} "$@"\n')
         aws.chmod(0o755)
         smi = tmp / "nvidia-smi"
-        smi.write_text('#!/bin/sh\ncase "$*" in *name*) echo "NVIDIA L4 (simulated)";; *) echo "17000, 23034";; esac\n')
+        smi.write_text(
+            '#!/bin/sh\ncase "$*" in *name*) echo "NVIDIA L40S (simulated)";; *) echo "30500, 46068";; esac\n'
+        )
         smi.chmod(0o755)
         (tmp / "meminfo").write_text("MemTotal:       16000000 kB\nMemAvailable:    4000000 kB\n")
         (tmp / "dmi").mkdir()
@@ -53,7 +55,7 @@ drain_timeout_s = 20
 inference_timeout_s = 10
 [endpoint]
 base_url = "http://127.0.0.1:{self.port}"
-model_alias = "qwen3.6-27b-q4km"
+model_alias = "{Q8}"
 api_key_file = "{tmp / "api-key"}"
 canary_timeout_s = 10
 [backend]
@@ -80,6 +82,7 @@ stop = "{SIM_HOST} {tmp} stop"
             "CCE_DMI_DIR": str(tmp / "dmi"),
             "CCE_IMDS_BASE": "http://127.0.0.1:9",
             "FAKE_AWS_DIR": str(tmp / "fake-aws"),
+            "CCE_MANIFEST": fake_model["manifest"],
             "FAKE_AWS_SIM_DIR": str(tmp),
             "FAKE_AWS_SIM_HOST": str(SIM_HOST),
         }
@@ -135,7 +138,7 @@ stop = "{SIM_HOST} {tmp} stop"
 
 @pytest.fixture
 def sim(tmp_path: Path, fake_model: dict[str, str]):
-    s = Sim(tmp_path, fake_model["path"])
+    s = Sim(tmp_path, fake_model)
     yield s
     subprocess.run([str(SIM_HOST), str(tmp_path), "stop"], check=False)
 
@@ -172,6 +175,16 @@ def test_job_driven_cycle_profiles_and_verified_stop(sim: Sim):
     assert sim.host_state() == "stopped" and sim.profile() == "reference-8k-1slot"  # original profile restored
     py = sim.evidence("preflight.json")["python"]
     assert py["executable"] == sys.executable  # every child runs on the controller interpreter
+    # the AWS target artifact (Q8_0) end to end: controller alias, host record, every load and the verdicts
+    assert sim.evidence("preflight.json")["target"]["model_id"] == Q8
+    artifact = summary["steps"]["host_evidence"]["artifact"]
+    assert artifact["match"] is True and artifact["served"]["model_id"] == Q8
+    assert artifact["served"]["file"] == "Qwen3.6-27B-Q8_0.gguf" and artifact["served"]["alias"] == Q8
+    assert sim.evidence("model-record.json")["sha256"] == artifact["expected"]["record_sha256"]
+    load = sim.evidence("load-reference-8k-1slot.json")
+    assert load["model"] == Q8 and load["model_ok"] is True and load["models_listed"] == [Q8]
+    for v in summary["verdicts"].values():
+        assert v["expected_model"] == Q8 and v["criteria"]["model"] == "pass"
     assert (sim.ev / "host-facts.json").exists() and (sim.ev / "boot-timings.json").exists()
 
 
@@ -297,6 +310,28 @@ def test_refuses_to_start_unless_the_instance_is_stopped(sim: Sim):
     r = sim.run()
     assert r.returncode == 2 and "must be stopped" in r.stderr
     assert sim.host_state() == "running" and sim.calls("stop-instances") == 0  # nothing was touched
+
+
+def test_refuses_a_controller_alias_that_is_not_the_aws_target(sim: Sim):
+    sim.cfg.write_text(sim.cfg.read_text().replace(f'model_alias = "{Q8}"', 'model_alias = "qwen3.6-27b-q4km"'))
+    r = sim.run()
+    assert r.returncode == 2 and "artifact mismatch" in r.stderr and Q8 in r.stderr
+    assert sim.host_state() == "stopped" and sim.calls("stop-instances") == 0 and not sim.ev.exists()
+
+
+def test_a_host_serving_another_artifact_fails_and_still_stops(sim: Sim, tmp_path: Path):
+    """The host verified and serves its file, but it is not the artifact the manifest pins for AWS (another
+    SHA-256): the validation fails explicitly after the job cycle and the instance ends stopped."""
+    other = json.loads(Path(sim.env["CCE_MANIFEST"]).read_text())
+    other["models"][Q8]["sha256"] = "0" * 64
+    alt = tmp_path / "operator-manifest.json"
+    alt.write_text(json.dumps(other))
+    r = sim.run(env={"CCE_MANIFEST": str(alt)})
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "artifact mismatch on the host" in r.stderr
+    summary = sim.evidence("summary.json")
+    assert summary["steps"]["host_evidence"]["artifact"]["match"] is False and summary["verdicts"] == {}
+    assert sim.evidence("final-state.json")["state"] == "stopped" and sim.host_state() == "stopped"
 
 
 def test_refuses_unknown_profiles_and_another_interpreter(sim: Sim):

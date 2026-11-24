@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import socket
 import stat
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +24,9 @@ from cce_inference_controller.store import Store  # noqa: E402
 HERE = Path(__file__).parent
 DEPLOY = HERE.parent.parent  # deploy/inference
 SERVER = DEPLOY / "server"
+MANIFEST = DEPLOY / "manifest.json"
+Q8 = "qwen3.6-27b-q8_0"  # the AWS target model of manifest.json
+Q4 = "qwen3.6-27b-q4km"  # the on-premise target model of manifest.json
 
 JOB = {
     "messages": [{"role": "system", "content": "Classify."}, {"role": "user", "content": "Synthetic text."}],
@@ -92,19 +97,49 @@ def rig(tmp_path: Path) -> Rig:
     )
 
 
+def make_test_manifest(tmp_path: Path) -> tuple[Path, dict[str, Path]]:
+    """manifest.json for the tests: the real one (ids, targets, aliases, file names), with every model's bytes,
+    SHA-256 and URL replaced by a tiny local file. Written to TMP/manifest.json, where sim_host.sh finds it."""
+    m = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    sources: dict[str, Path] = {}
+    for model_id, entry in m["models"].items():
+        src = tmp_path / f"src-{model_id}.gguf"
+        src.write_bytes(b"GGUF" + model_id.encode() + os.urandom(4096))
+        entry.update(bytes=src.stat().st_size, sha256=hashlib.sha256(src.read_bytes()).hexdigest(), url=src.as_uri())
+        sources[model_id] = src
+    out = tmp_path / "manifest.json"
+    out.write_text(json.dumps(m, indent=2), encoding="utf-8")
+    return out, sources
+
+
+def install_model(manifest: Path, model_id: str, models_dir: Path, src: Path | None = None) -> Path:
+    """Install a model of the test manifest with the real install-model.sh (verification record included)."""
+    argv = [str(SERVER / "install-model.sh"), "--model", model_id, "--dir", str(models_dir)]
+    if src is not None:
+        argv += ["--from", str(src)]
+    subprocess.run(argv, check=True, capture_output=True, env={**os.environ, "CCE_MANIFEST": str(manifest)})
+    file = json.loads(manifest.read_text())["models"][model_id]["file"]
+    return models_dir / file
+
+
 @pytest.fixture
 def fake_model(tmp_path: Path) -> dict[str, str]:
-    src = tmp_path / "src.gguf"
-    src.write_bytes(b"GGUF" + os.urandom(4096))
-    return {
-        "path": str(src),
-        "CCE_MODEL_FILE": "tiny.gguf",
-        "CCE_MODEL_SHA256": hashlib.sha256(src.read_bytes()).hexdigest(),
-        "CCE_MODEL_BYTES": str(src.stat().st_size),
-    }
+    """The AWS target (Q8_0 id, file name and alias) installed from a tiny file through the test manifest."""
+    manifest, sources = make_test_manifest(tmp_path)
+    path = install_model(manifest, Q8, tmp_path / "models")
+    return {"path": str(path), "manifest": str(manifest), "model_id": Q8, "alias": Q8, "q4_src": str(sources[Q4])}
 
 
-def server_env(tmp_path: Path, model: str, port: int, profile: str = "reference-8k-1slot") -> Path:
+def server_env(
+    tmp_path: Path,
+    model: str,
+    port: int,
+    profile: str = "reference-8k-1slot",
+    *,
+    model_id: str | None = Q8,
+    alias: str = Q8,
+) -> Path:
+    """server.env as bootstrap.sh / onprem/install.sh write it; model_id=None is a pre-selection (legacy) file."""
     key = tmp_path / "api-key"
     key.write_text("cli-test-key\n")
     key.chmod(0o600)
@@ -115,8 +150,9 @@ def server_env(tmp_path: Path, model: str, port: int, profile: str = "reference-
     env.write_text(
         "\n".join(
             [
+                *([f"CCE_MODEL_ID={model_id}"] if model_id else []),
                 f"CCE_MODEL_PATH={model}",
-                "CCE_MODEL_ALIAS=qwen3.6-27b-q4km",
+                f"CCE_MODEL_ALIAS={alias}",
                 f"CCE_PROFILE={SERVER / 'profiles' / (profile + '.env')}",
                 "CCE_HOST=127.0.0.1",
                 f"CCE_PORT={port}",

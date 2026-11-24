@@ -1,15 +1,36 @@
 {
-  "manifest_version": 1,
-  "note": "A09-1 pinned artifacts. Hashes verified against the Hugging Face and GitHub APIs on 2026-11-20 (model: HEAD x-linked-etag/x-linked-size; runtime: release asset digests and a local download of both tarballs). Weights are never stored in Git.",
-  "model": {
-    "id": "qwen3.6-27b-q4km",
-    "repository": "ggml-org/Qwen3.6-27B-GGUF",
-    "revision": "fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f",
-    "file": "Qwen3.6-27B-Q4_K_M.gguf",
-    "url": "https://huggingface.co/ggml-org/Qwen3.6-27B-GGUF/resolve/fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f/Qwen3.6-27B-Q4_K_M.gguf",
-    "bytes": 19403683392,
-    "sha256": "f3ab00cc923590947877bad882e09ada67789f747f5d3cb3c178fdf91b9aaab9",
-    "license": "apache-2.0 (as declared in the external run metadata; to be re-checked on the model card before production use)"
+  "manifest_version": 2,
+  "note": "A09-1 pinned artifacts. Hashes verified against the Hugging Face and GitHub APIs on 2026-11-20 (models: revision tree, blobs API and HEAD x-linked-etag/x-linked-size of the immutable URL; runtime: release asset digests and a local download of both tarballs). Weights are never stored in Git. install-model.sh, run-server.sh, bootstrap.sh and build_template.py read the model data from here.",
+  "models": {
+    "qwen3.6-27b-q8_0": {
+      "alias": "qwen3.6-27b-q8_0",
+      "quantization": "Q8_0",
+      "repository": "ggml-org/Qwen3.6-27B-GGUF",
+      "revision": "fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f",
+      "file": "Qwen3.6-27B-Q8_0.gguf",
+      "url": "https://huggingface.co/ggml-org/Qwen3.6-27B-GGUF/resolve/fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f/Qwen3.6-27B-Q8_0.gguf",
+      "bytes": 28595762752,
+      "sha256": "7cdc25ae00036f204a5748a63456f81ea11eec1225c2336064db157adc6f1c7c",
+      "license": "apache-2.0 (model card cardData of this revision; to be re-checked before production use)",
+      "role": "AWS target (g6e.xlarge, NVIDIA L40S), all weights on the GPU; PENDING real validation",
+      "verified": "2026-11-20: revision tree, blobs API (lfs sha256, size) and HEAD of the immutable URL (x-repo-commit, x-linked-etag, x-linked-size) agree"
+    },
+    "qwen3.6-27b-q4km": {
+      "alias": "qwen3.6-27b-q4km",
+      "quantization": "Q4_K_M",
+      "repository": "ggml-org/Qwen3.6-27B-GGUF",
+      "revision": "fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f",
+      "file": "Qwen3.6-27B-Q4_K_M.gguf",
+      "url": "https://huggingface.co/ggml-org/Qwen3.6-27B-GGUF/resolve/fec6ff7c0c86cf07f6e5ae0a1391c3a042f2017f/Qwen3.6-27B-Q4_K_M.gguf",
+      "bytes": 19403683392,
+      "sha256": "f3ab00cc923590947877bad882e09ada67789f747f5d3cb3c178fdf91b9aaab9",
+      "license": "apache-2.0 (as declared in the external run metadata; to be re-checked on the model card before production use)",
+      "role": "on-premise default (existing installations) and historical reference: the external 43/50 run used this artifact; AWS L4 (g6.xlarge) data is historical"
+    }
+  },
+  "targets": {
+    "aws": "qwen3.6-27b-q8_0",
+    "onprem": "qwen3.6-27b-q4km"
   },
   "runtime": {
     "engine": "llama.cpp",
@@ -57,25 +78,51 @@
   },
   "reference_profile": {
     "name": "razona512+esquema",
-    "server_args": ["-c", "8192", "-ngl", "all", "--parallel", "1", "--reasoning", "on", "--reasoning-format", "deepseek", "--reasoning-budget", "512"],
+    "server_args": [
+      "-c",
+      "8192",
+      "-ngl",
+      "all",
+      "--parallel",
+      "1",
+      "--reasoning",
+      "on",
+      "--reasoning-format",
+      "deepseek",
+      "--reasoning-budget",
+      "512"
+    ],
     "request": {
       "temperature": 0,
       "max_tokens": 3072,
       "response_format": "per request: {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"salida\", \"strict\": true, \"schema\": <esquema_salida.json>}} (added by proxy_esquema.py; --json-schema-file returned HTTP 400 with the Qwen template in b12329)"
     },
-    "external_result": "43/50 strict (3 repetitions 43/43/43), RTX 5090 32 GiB, +19123 MiB VRAM at load, median 7.60 s/case, ~73.5 tok/s",
+    "external_result": "Q4_K_M ONLY (historical; not a Q8_0 result): 43/50 strict (3 repetitions 43/43/43), RTX 5090 32 GiB, +19123 MiB VRAM at load, median 7.60 s/case, ~73.5 tok/s",
     "external_hashes": {
       "prompt_sistema.txt": "e0720bce7966d5cc7ec63817ad6dcee540e8104fa1954d38843741bbff1f866d",
       "entradas/evaluacion.jsonl": "c0d20428bb552adf18e8b91053e25db91362360a6fbc75e35efb2ad89431c8a7",
       "entradas/calibracion.jsonl": "afe4023c4d6c139938843303184d90c718f023c342596b9a5cd9f487f373041e"
-    }
+    },
+    "external_artifact": "qwen3.6-27b-q4km (Qwen3.6-27B-Q4_K_M.gguf, sha256 f3ab00cc…aab9)"
   },
   "aws": {
-    "instance_type": "g6.xlarge",
-    "gpu": "NVIDIA L4, 22888 MiB",
+    "instance_type": "g6e.xlarge",
+    "gpu": "NVIDIA L40S, 48 GB (exact MiB recorded by host-facts.sh at validation)",
     "vcpu": 4,
-    "memory_mib": 16384,
+    "memory_mib": 32768,
+    "model": "qwen3.6-27b-q8_0",
+    "status": "target PENDING real validation (user decision 2026-11-20)",
     "ami_ssm_parameter": "/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id",
-    "ami_seen": {"us-east-1": "ami-0fcbed7f428844048 (Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04) 20261119)"}
+    "ami_seen": {
+      "us-east-1": "ami-0fcbed7f428844048 (Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04) 20261119)"
+    },
+    "historical": {
+      "instance_type": "g6.xlarge",
+      "gpu": "NVIDIA L4, 22888 MiB",
+      "vcpu": 4,
+      "memory_mib": 16384,
+      "model": "qwen3.6-27b-q4km",
+      "status": "previous A09-1 target; never validated on GPU (G quota 0 vCPU)"
+    }
   }
 }

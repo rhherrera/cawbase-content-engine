@@ -10,6 +10,7 @@ case "$CMD" in
   start)
     if ! alive; then
       set -m  # own process group: like a real host, it outlives whoever asked for the start
+      [ -f "$DIR/manifest.json" ] && export CCE_MANIFEST="$DIR/manifest.json"  # the tests' manifest
       CCE_SERVER_ENV="$DIR/server.env" nohup "$(dirname "$0")/../../server/run-server.sh" > "$DIR/server.log" 2>&1 &
       echo $! > "$PID_FILE"
     fi ;;

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import DEPLOY, HERE, SERVER, free_port, server_env
+from conftest import DEPLOY, HERE, Q4, Q8, SERVER, free_port, install_model, make_test_manifest, server_env
 
 CLI = [str(DEPLOY / "bin" / "cce-inference")]
 
@@ -20,23 +20,26 @@ def sh(*args: str, env: dict[str, str] | None = None, check: bool = True) -> sub
     return subprocess.run(list(args), capture_output=True, text=True, env={**os.environ, **(env or {})}, check=check)
 
 
-def test_install_model_verifies_hash_size_and_is_atomic(tmp_path: Path, fake_model: dict[str, str]):
-    env = {k: v for k, v in fake_model.items() if k.startswith("CCE_")}
+def test_install_model_verifies_hash_size_and_is_atomic(tmp_path: Path):
+    manifest, sources = make_test_manifest(tmp_path)
+    env = {"CCE_MANIFEST": str(manifest)}
+    entry = json.loads(manifest.read_text())["models"][Q8]
     d = tmp_path / "models"
-    r = sh(str(SERVER / "install-model.sh"), "--dir", str(d), "--from", fake_model["path"], env=env)
-    assert "installed" in r.stdout and (d / "tiny.gguf").exists()
-    assert json.loads((d / "tiny.gguf.verified.json").read_text())["sha256"] == env["CCE_MODEL_SHA256"]
-    assert "sha256" in sh(str(SERVER / "install-model.sh"), "--dir", str(d), "--verify", env=env).stdout
-    assert "quick" in sh(str(SERVER / "install-model.sh"), "--dir", str(d), "--verify", "--quick", env=env).stdout
-    # wrong expected hash: refused, and no final file left behind
-    bad = dict(env, CCE_MODEL_SHA256="0" * 64, CCE_MODEL_FILE="other.gguf")
-    r = sh(str(SERVER / "install-model.sh"), "--dir", str(d), "--from", fake_model["path"], env=bad, check=False)
-    assert r.returncode != 0 and "sha256 mismatch" in r.stderr and not (d / "other.gguf").exists()
+    im = str(SERVER / "install-model.sh")
+    r = sh(im, "--model", Q8, "--dir", str(d), "--from", str(sources[Q8]), env=env)
+    assert "installed" in r.stdout and (d / "Qwen3.6-27B-Q8_0.gguf").exists() and not list(d.glob(".*partial"))
+    record = json.loads((d / "Qwen3.6-27B-Q8_0.gguf.verified.json").read_text())
+    assert (record["model"], record["sha256"], record["bytes"]) == (Q8, entry["sha256"], entry["bytes"])
+    assert "sha256" in sh(im, "--model", Q8, "--dir", str(d), "--verify", env=env).stdout
+    assert "quick" in sh(im, "--model", Q8, "--dir", str(d), "--verify", "--quick", env=env).stdout
+    # download path (the pinned URL of the manifest; a file:// URL here)
+    r = sh(im, "--model", Q4, "--dir", str(tmp_path / "dl"), env=env)
+    assert "installed" in r.stdout and (tmp_path / "dl" / "Qwen3.6-27B-Q4_K_M.gguf").exists()
     # tampered installed file: full verification fails
-    with open(d / "tiny.gguf", "r+b") as fh:
+    with open(d / "Qwen3.6-27B-Q8_0.gguf", "r+b") as fh:
         fh.write(b"XXXX")
-    r = sh(str(SERVER / "install-model.sh"), "--dir", str(d), "--verify", env=env, check=False)
-    assert r.returncode != 0
+    r = sh(im, "--model", Q8, "--dir", str(d), "--verify", env=env, check=False)
+    assert r.returncode != 0 and "sha256 mismatch" in r.stderr
 
 
 def test_run_server_command_line_is_the_reference_profile(tmp_path: Path, fake_model: dict[str, str]):
@@ -53,7 +56,8 @@ def test_run_server_command_line_is_the_reference_profile(tmp_path: Path, fake_m
         "--reasoning-budget 512",
         "--metrics",
         "--no-webui",
-        "--alias qwen3.6-27b-q4km",
+        f"--alias {Q8}",
+        "-m " + fake_model["path"],
     ):
         assert frag in joined, frag
     two = server_env(tmp_path, fake_model["path"], 8080, "candidate-16k-2slot")
@@ -63,9 +67,19 @@ def test_run_server_command_line_is_the_reference_profile(tmp_path: Path, fake_m
     assert "-c 16384" in joined and "--parallel 2" in joined
 
 
-def test_cli_start_stop_status_cycle_with_a_simulated_host(tmp_path: Path, fake_model: dict[str, str]):
+@pytest.mark.parametrize("target", ["aws-q8_0", "onprem-legacy-q4km"])
+def test_cli_start_stop_status_cycle_with_a_simulated_host(tmp_path: Path, fake_model: dict[str, str], target: str):
+    """The same cycle for the AWS target (server.env written with CCE_MODEL_ID = Q8_0) and for an existing on-premise
+    Q4_K_M installation whose server.env predates the model selection (no CCE_MODEL_ID): both pass the artifact
+    check and serve their own alias."""
     port = free_port()
-    server_env(tmp_path, fake_model["path"], port)
+    if target == "aws-q8_0":
+        alias = Q8
+        server_env(tmp_path, fake_model["path"], port)
+    else:
+        alias = Q4
+        q4 = install_model(Path(fake_model["manifest"]), Q4, tmp_path / "onprem", Path(fake_model["q4_src"]))
+        server_env(tmp_path, str(q4), port, model_id=None, alias=Q4)
     host = HERE / "sim_host.sh"
     cfg = tmp_path / "controller.toml"
     cfg.write_text(
@@ -81,7 +95,7 @@ drain_timeout_s = 20
 inference_timeout_s = 10
 [endpoint]
 base_url = "http://127.0.0.1:{port}"
-model_alias = "qwen3.6-27b-q4km"
+model_alias = "{alias}"
 api_key_file = "{tmp_path / "api-key"}"
 canary_timeout_s = 10
 [backend]
