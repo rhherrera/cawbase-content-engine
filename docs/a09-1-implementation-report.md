@@ -112,6 +112,26 @@ Rama `ci/a09-1-aws-gpu-validation`, creada desde `origin/main` en `1c7385b` (mer
 
 **No verificado (G y GitHub).** Ninguna ejecución en GitHub Actions ni contra AWS real; la habilitación inicial no se aplicó; la semántica real de las políticas IAM (`validate-template` no la evalúa), el `sub` real del repositorio, EventBridge Scheduler, la propagación de las etiquetas del stack, el borrado real y `session-manager-plugin` en `ubuntu-latest` se comprueban en la primera corrida. La primera solicitud con gasto va en una PR aparte, cuando el usuario autorice la red y el gasto.
 
+### 2.8 Revisión 1 de la validación automatizada (sobre `09c9429`)
+
+Rama `ci/a09-1-aws-gpu-validation`; los commits previos se conservan.
+
+**1. Limpieza con verificación de propiedad.** Reproducción (prueba descartable fuera del repositorio, AWS simulado, código de `09c9429`): una solicitud `create`+`delete` que nombra un stack preexistente con su instancia encendida → preflight rechazado (salida 2, nada reservado) → el job `cleanup` salió 0 y dejó el stack en `DELETE_COMPLETE`, la instancia detenida y el volumen borrado. Corrección (E-A09-28): token en la reserva, registro de propiedad por stack escrito antes de `CreateStack`, adopción explícita en `reuse`, limpieza solo de lo propio (por `StackId` y por la instancia concreta). Regresiones: `test_an_unclaimed_request_never_stops_or_deletes_anything` (el caso reproducido: `not_claimed`, sin `stop-instances` ni `delete-stack`), `test_a_claimed_request_preserves_a_stack_recreated_under_its_name`, `test_a_claimed_request_preserves_a_stack_adopted_by_another`, `test_retry_of_an_old_request_preserves_resources_adopted_later` (id1 crea y conserva, id2 adopta con `reuse`, la instancia queda en uso; el reintento de id1 da salida 3 y su limpieza, `keep-stopped` o `delete`, no detiene ni borra nada; el dueño actual sí puede) y `test_reuse_refuses_a_stack_without_a_matching_ownership_record`.
+
+**2. Parada en AWS desde el aprovisionamiento.** El schedule pasa a ser un recurso del stack (E-A09-29): CloudFormation lo crea con la instancia, con el inicio fijado desde la reserva (límite de gasto sin cambios). Regresión `test_runner_lost_right_after_create_stack_the_instance_is_stopped_without_runner_or_cleanup`: el `aws` simulado acepta `CreateStack` y mata al runner con SIGKILL antes de devolverle el `StackId`; CloudFormation simulado termina la creación por su cuenta 1,5 s después; la instancia aparece encendida junto con su schedule (inicio ≤ reserva + 75 min) y el schedule la detiene sin `stop-instances` del runner ni del job `cleanup`; un job `cleanup` posterior reconoce el stack por la etiqueta `cce:claim-token` y lo borra por `StackId`.
+
+**3. Habilitación automatizada.** `deploy/inference/ci/enable_access.py` (E-A09-30) con `tests/test_enable_access.py` (19, `gh` simulado en `tests/fake_gh.py`): plan sin cambios; aplicación verificada (todas las llamadas con el perfil `rodrigo`, aunque el entorno traiga una clave estática y `AWS_PROFILE=fede`) e idempotente (segunda vez: `no_changes`, la variable no se reescribe); diagnóstico disparado si nunca corrió; doce rechazos sin desplegar ni escribir la variable (perfil, repositorio, rama, `pull_request`, audiencia, plantilla con `job_workflow_ref`, log sin claims, run fallido, AZ, ruta, proveedor, oferta); trust distinto del observado ⇒ salida 1 sin escribir la variable; cambio de subred que actualiza y verifica.
+
+| Ambiente | Comando | Resultado |
+|---|---|---|
+| macOS (Apple M1, Python 3.13, uv) | `cd deploy/inference/controller && uv run pytest -q -rs` | **171 aprobadas**, 1 omitida (guardia de inactividad: necesita `/proc/uptime`) |
+| Linux local (Docker `python:3.13-bookworm`, aarch64, Python 3.13.18) | `PYTHONPATH=src python3 -m pytest -q -rs -p no:cacheprovider tests` (copia de `.github` y `deploy`) | **172 aprobadas**, sin omisiones |
+| macOS | `uv run pytest -q tests/test_a09_aws_validation_ci.py tests/test_ci_contract.py` (raíz) | 33 aprobadas (patrón del `sub` idéntico en orquestador e IaC; schedule en la plantilla; permisos de los registros) |
+| macOS | `actionlint` de los workflows nuevos; ruff; `mypy --strict` de `aws_validation.py` y `enable_access.py`; `build_template.py --check`; shellcheck | sin hallazgos |
+| AWS, solo lectura (perfil `rodrigo`, 2026-11-24) | `aws cloudformation validate-template` de `github-validation-access.yaml` y de la plantilla del host regenerada | válidas (`CAPABILITY_NAMED_IAM`, `CAPABILITY_IAM`); *user data* sin cambios (13 849 de 16 384 bytes) |
+
+**No verificado**: igual que §2.7, más el recurso `AWS::Scheduler::Schedule` real dentro del stack (formato de fechas, rollback) y la operación de habilitación contra AWS y GitHub reales. No se creó ningún recurso ni se escribió ninguna variable.
+
 ## 3. Trazabilidad AC-A09-1
 
 | AC | Prueba / evidencia | Nivel | Resultado |
@@ -143,7 +163,7 @@ Rama `ci/a09-1-aws-gpu-validation`, creada desde `origin/main` en `1c7385b` (mer
 | 25 | `test_model_selection.py` (17), `test_scripts.py` (ciclos `aws-q8_0` y `onprem-legacy-q4km`), `test_gpu_validation.py` (alias del controlador y artefacto del host); metadatos HF de Q8_0 (§2.6) | S, A | cumplido en S/A; descarga y carga reales **pendientes** (G) |
 | 26 | `parity.sh` con `--model`, artefacto registrado y 43/50 aparte (revisión y prueba estática) | D | **pendiente** (G) |
 | 27 | §2.7: `test_ci_validation.py` (detección, esquema, corrida completa, reintento sin gasto, reutilización, rechazos del preflight, paridad, offload); `test_gpu_validation.py` (offload); `test_a09_aws_validation_ci.py`; `actionlint`; `validate-template` | S, A | cumplido en S/A; ejecución en GitHub Actions y primera corrida real **pendientes** (G) |
-| 28 | §2.7: trust, límite y alcance de la IaC (`test_a09_aws_validation_ci.py`); limpieza y watchdog ante fallo, SIGTERM y SIGKILL, fallo de validación ≠ fallo de limpieza (`test_ci_validation.py`) | S, A | cumplido en S/A; habilitación inicial y semántica IAM real **pendientes** (G) |
+| 28 | §2.7 y §2.8: trust, límite y alcance de la IaC (`test_a09_aws_validation_ci.py`); limpieza solo de lo propio, parada creada con la instancia y runner perdido tras `CreateStack`, fallo de validación ≠ fallo de limpieza (`test_ci_validation.py`); habilitación idempotente (`test_enable_access.py`) | S, A | cumplido en S/A; habilitación real y semántica IAM real **pendientes** (G) |
 
 ## 4. Validación pendiente en GPU real
 
