@@ -41,7 +41,7 @@ ACCOUNT = "000000000000"
 VPC, SUBNET, AZ, AMI = "vpc-0aaaaaaaaaaaaaaaa", "subnet-0bbbbbbbbbbbbbbbb", "us-east-1a", "ami-0ccccccccccccccc0"
 AMI_PARAM = "/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id"
 BASE = "cce-a09-validation-base"
-PROFILE_KEY, ENV_KEY, OTHER_KEY = "AKIASIMPROFILE000001", "ASIASIMSESSION000002", "AKIASIMOTHERACCT0003"
+PROFILE_KEY, ENV_KEY, OTHER_KEY = "sim-profile-access-key", "sim-env-access-key", "sim-other-access-key"
 OPERATOR = f"arn:aws:iam::{ACCOUNT}:user/sim-operator"
 BASE_OUT = {
     "CfnExecutionRoleArn": f"arn:aws:iam::{ACCOUNT}:role/cce-a09-cfn-execution",
