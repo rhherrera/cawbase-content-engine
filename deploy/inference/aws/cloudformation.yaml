@@ -66,6 +66,13 @@ Parameters:
     MinValue: 125
     MaxValue: 1000
     Description: gp3 MiB/s of the weights volume (cold weight load time vs. monthly cost).
+  HostPermissionsBoundaryArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional permissions boundary of the host role. The GitHub validation (deploy/inference/ci) passes the
+      boundary of its access stack, whose CloudFormation execution role can only create roles bounded by it.
+      Empty (manual deployment): no boundary.
   GuardIdleMinutes:
     Type: Number
     Default: 120
@@ -76,6 +83,7 @@ Parameters:
 Conditions:
   HasClientSg: !Not [!Equals [!Ref ClientSecurityGroupId, ""]]
   HasClientCidr: !Not [!Equals [!Ref ClientCidr, ""]]
+  HasHostBoundary: !Not [!Equals [!Ref HostPermissionsBoundaryArn, ""]]
 
 Resources:
   EndpointSecurityGroup:
@@ -125,6 +133,7 @@ Resources:
   HostRole:
     Type: AWS::IAM::Role
     Properties:
+      PermissionsBoundary: !If [HasHostBoundary, !Ref HostPermissionsBoundaryArn, !Ref AWS::NoValue]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

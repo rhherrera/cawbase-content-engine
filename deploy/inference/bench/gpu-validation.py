@@ -11,11 +11,14 @@ from the operator machine (standard library only). Reproducible sequence:
      readiness and the job succeeded with a structured result;
   2. host evidence through SSM (host facts, boot timeline of this cold start); the served artifact must be the
      manifest's AWS target (model id, file, alias, size and SHA-256 of its verification record), or the run fails;
+     the server journal of this boot is saved and every model load in it must say `offloaded N/N layers to GPU`
+     (all weights on the GPU, D-A09-08), or the run fails;
   3. profile campaign while the instance is up (controller stopped so it cannot idle-stop under the measurements):
      per profile, `load` (switch + restart, memory sampled ON the host), `limits`, every expected run (`c1`; `cN`
      for N slots; `overload` for the first, reference profile; memory on the host) and the verdict over ALL of them:
      a measurement that ran and failed leaves a `status: failed` record, never a gap; the campaign stops at the first
      profile that does not pass (D-A09-05: escalate to the user);
+     after the campaign the journal is saved again and every load of the campaign must have offloaded all layers;
   4. while the instance is still `running`: restore the original profile in server.env through Run Command and
      verify it (`switch-profile.sh --current`); it takes effect at the next start;
   5. final stop through the controller (`stop --wait`: pause, drain, stop);
@@ -35,7 +38,8 @@ touched); 130 interrupted (instance verified stopped); 4 CLEANUP FAILED: the ins
 
 Every measurement sends and requires the served alias (`--model`); parity.sh gets it and the artifact record.
 
-Tool overrides (tests only): CCE_AWS_BIN, CCE_HOST_SRC, CCE_HOST_SUDO, CCE_POLL_S, CCE_MEASURE_SCRIPT, CCE_MANIFEST.
+Tool overrides (tests only): CCE_AWS_BIN, CCE_HOST_SRC, CCE_HOST_SUDO, CCE_POLL_S, CCE_MEASURE_SCRIPT, CCE_MANIFEST,
+CCE_SERVER_LOG_CMD (host command that prints the server log of this boot; default journalctl).
 """
 
 from __future__ import annotations
@@ -44,6 +48,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import shlex
 import signal
 import subprocess
@@ -61,6 +66,8 @@ SSM_RUN = BENCH / "ssm-run.sh"
 PROFILES_DIR = DEPLOY / "server" / "profiles"
 MANIFEST = DEPLOY / "manifest.json"
 DEFAULT_PROFILES = "reference-8k-1slot candidate-16k-1slot candidate-16k-2slot"
+SERVER_LOG_CMD = "journalctl -u cce-inference -b --no-pager -o short-iso"
+OFFLOAD = re.compile(r"offloaded (\d+)/(\d+) layers to GPU")  # llama.cpp load_tensors, one line per model load
 
 
 class Interrupted(BaseException):
@@ -109,6 +116,19 @@ def aws_target_model() -> tuple[str, dict[str, Any]]:
     m = json.loads(Path(os.environ.get("CCE_MANIFEST", str(MANIFEST))).read_text(encoding="utf-8"))
     model_id = m["targets"]["aws"]
     return model_id, m["models"][model_id]
+
+
+def gpu_offload(text: str) -> dict[str, Any]:
+    """GPU offload evidence of a server log: every model load must report `offloaded N/N layers to GPU`."""
+    loads = [(int(a), int(b)) for a, b in OFFLOAD.findall(text)]
+    full = bool(loads) and all(a == b for a, b in loads)
+    return {
+        "loads": len(loads),
+        "offloaded": [f"{a}/{b}" for a, b in loads],
+        "all_layers_on_gpu": full,
+        "status": "no_evidence" if not loads else ("verified" if full else "partial"),
+        "lines": [ln.strip()[-200:] for ln in text.splitlines() if OFFLOAD.search(ln)][:20],
+    }
 
 
 def _raise_interrupted(signum: int, _frame: Any) -> None:
@@ -405,6 +425,22 @@ class Validation:
         if served != expected:
             raise ValidationFailed(f"artifact mismatch on the host: served {served}, expected {expected}")
         self.log(f"served artifact verified: {self.model_id} ({self.model['file']}, sha256 {self.model['sha256']})")
+        self.server_log("job-cycle", strict=True)
+
+    def server_log(self, name: str, *, strict: bool) -> dict[str, Any]:
+        """Save the server journal of this boot (server-journal-NAME.log) and its GPU offload evidence; strict: a
+        load that did not put every layer on the GPU, or no load line at all, fails the validation."""
+        cmd = os.environ.get("CCE_SERVER_LOG_CMD", SERVER_LOG_CMD)
+        assert self.a.instance_id
+        r = self.run([str(SSM_RUN), self.a.instance_id, cmd, "120"], timeout=300, check=strict)
+        (self.ev / f"server-journal-{name}.log").write_text(r.stdout, encoding="utf-8")
+        offload = gpu_offload(r.stdout) if r.returncode == 0 else {"status": "unavailable", "error": r.stderr[-300:]}
+        self.save(f"gpu-offload-{name}.json", offload)
+        self.summary["steps"].setdefault("gpu_offload", {})[name] = offload
+        if strict and not offload.get("all_layers_on_gpu"):
+            raise ValidationFailed(f"GPU offload ({name}): not every layer of every load is on the GPU: {offload}")
+        self.log(f"GPU offload ({name}): {offload['status']} {offload.get('offloaded')}")
+        return offload
 
     # --- 3. profile campaign ----------------------------------------------------------------------------------------
 
@@ -536,6 +572,11 @@ class Validation:
         """Always runs. Returns True only when the instance is verified `stopped`."""
         errors: list[str] = []
         self.stop_bg()
+        if "campaign" not in self.summary["steps"].get("gpu_offload", {}) and self.ec2_state() == "running":
+            try:  # best effort: the journal of a failed or interrupted run is evidence too
+                self.server_log("final", strict=False)
+            except Exception as exc:  # noqa: BLE001 - recorded, never hides the stop below
+                errors.append(f"server_log_failed: {exc}")
         if self.profile_changed and self.original_profile and self.profile["status"] != "restored":
             # before the stop: Run Command only reaches a running instance; a failure never skips the stop below
             state = self.ec2_state()
@@ -593,6 +634,7 @@ class Validation:
             self.job_cycle()
             self.host_evidence()
             self.campaign()
+            self.server_log("campaign", strict=True)
             self.restore_profile()
             self.final_stop()
         except (KeyboardInterrupt, Interrupted) as exc:
