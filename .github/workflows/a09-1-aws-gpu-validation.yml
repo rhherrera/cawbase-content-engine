@@ -95,7 +95,7 @@ jobs:
       - name: Controller environment (boto3 for the EC2 backend)
         run: uv sync --project deploy/inference/controller --extra aws --frozen
       - name: OIDC subject presented by this job (safe claims only, never the token)
-        run: python3 deploy/inference/ci/aws_validation.py oidc-claims | tee "$EV/oidc-claims.json"
+        run: python3 deploy/inference/ci/aws_validation.py oidc-claims --out "$EV/oidc-claims.json"
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.CCE_A09_AWS_ROLE_ARN }}

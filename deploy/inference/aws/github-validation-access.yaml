@@ -159,6 +159,10 @@ Resources:
                 Effect: Allow
                 Action: [ssm:PutParameter, ssm:GetParameter]
                 Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cce/inference/validation-runs/*"
+              - Sid: StackOwnershipRecords # which request owns (created or adopted by reuse) each stack
+                Effect: Allow
+                Action: [ssm:PutParameter, ssm:GetParameter, ssm:DeleteParameter]
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cce/inference/validation-stacks/cce-inference-*"
               - Sid: PerStackApiKey
                 Effect: Allow
                 Action: [ssm:PutParameter, ssm:GetParameter, ssm:DeleteParameter]
@@ -169,10 +173,14 @@ Resources:
                 Resource: "*"
                 Condition:
                   StringEquals: {kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"}
-              - Sid: Watchdog
+              - Sid: WatchdogOfReusedStacks # a reused stack's instance already exists: the runner arms it before any start
                 Effect: Allow
-                Action: [scheduler:CreateSchedule, scheduler:DeleteSchedule, scheduler:GetSchedule]
+                Action: [scheduler:CreateSchedule, scheduler:DeleteSchedule]
                 Resource: !Sub "arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${WatchdogScheduleGroup}/cce-a09-*"
+              - Sid: ReadWatchdogs # also the in-stack schedule created by CloudFormation with the instance
+                Effect: Allow
+                Action: scheduler:GetSchedule
+                Resource: !Sub "arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${WatchdogScheduleGroup}/*"
               - !If
                 - HasParity
                 - Sid: ReadTheParityZip
@@ -312,6 +320,16 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cce-inference-*"
                 Condition:
                   StringEqualsIfExists: {iam:PassedToService: ec2.amazonaws.com}
+              - Sid: InStackWatchdog # created with the instance: no window without an AWS-side stop
+                Effect: Allow
+                Action: [scheduler:CreateSchedule, scheduler:GetSchedule, scheduler:UpdateSchedule, scheduler:DeleteSchedule]
+                Resource: !Sub "arn:${AWS::Partition}:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/${WatchdogScheduleGroup}/cce-inference-*"
+              - Sid: PassTheWatchdogRoleToScheduler
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt WatchdogRole.Arn
+                Condition:
+                  StringEquals: {iam:PassedToService: scheduler.amazonaws.com}
               - Sid: ControllerManagedPolicy
                 Effect: Allow
                 Action:

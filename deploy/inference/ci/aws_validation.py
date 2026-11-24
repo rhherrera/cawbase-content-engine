@@ -67,6 +67,7 @@ REGION = "us-east-1"
 ACCESS_STACK_DEFAULT = "cce-a09-github-access"
 LEDGER_PREFIX = "/cce/inference/validation-runs/"
 API_KEY_PREFIX = "/cce/inference/validation/"
+OWNER_PREFIX = "/cce/inference/validation-stacks/"  # which request owns each stack (created it, or adopted it by reuse)
 AMI_PARAM = "/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id"
 AMI_NAME = "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04)"
 G_QUOTA_CODE = "L-DB2E81BA"  # Running On-Demand G and VT instances (vCPU)
@@ -411,6 +412,9 @@ def detect_outputs(req: dict[str, Any], path: Path) -> dict[str, str]:
 # --- OIDC claims (diagnostic: never the token) --------------------------------------------------------------------
 
 SAFE_CLAIMS = ("sub", "aud", "ref", "repository", "repository_id", "repository_owner_id", "job_workflow_ref")
+CLAIMS_MARK = "CCE_OIDC_CLAIMS="
+# the subjects the access role may trust (same pattern as GitHubSubject in github-validation-access.yaml)
+SUB_PATTERN = r"^repo:[^*?\s:]+:ref:refs/heads/main(:job_workflow_ref:[^*?\s]+)?$"
 
 
 def oidc_claims(audience: str = "sts.amazonaws.com") -> dict[str, Any]:
@@ -476,23 +480,6 @@ class Aws:
         insts = [i for r in res.get("Reservations", []) for i in r.get("Instances", [])]
         return str(insts[0]["State"]["Name"]) if insts else "absent"
 
-    def stack_instances(self, stack: str) -> list[dict[str, Any]]:
-        res = self.json(
-            "ec2",
-            "describe-instances",
-            "--filters",
-            f"Name=tag:aws:cloudformation:stack-name,Values={stack}",
-            "Name=instance-state-name,Values=pending,running,stopping,stopped,shutting-down",
-        )
-        return [i for r in res.get("Reservations", []) for i in r.get("Instances", [])]
-
-    def stack_volumes(self, stack: str) -> list[dict[str, Any]]:
-        res = self.json(
-            "ec2", "describe-volumes", "--filters", f"Name=tag:aws:cloudformation:stack-name,Values={stack}"
-        )
-        vols: list[dict[str, Any]] = res.get("Volumes", [])
-        return vols
-
     def get_param(self, name: str, decrypt: bool = False) -> str | None:
         try:
             args = ["ssm", "get-parameter", "--name", name, *(["--with-decryption"] if decrypt else [])]
@@ -515,6 +502,54 @@ class Aws:
             if exc.code == "ParameterNotFound":
                 return False
             raise
+
+
+def check_network(aws: Aws, vpc_id: str, subnet_id: str, az: str, instance_type: str) -> dict[str, Any]:
+    """Read-only: the VPC exists, the subnet is in it and in the AZ, the instance type is offered there and the subnet
+    has an active default route (the bootstrap downloads 28.6 GB over HTTPS). Raises Refused otherwise."""
+    if not aws.json("ec2", "describe-vpcs", "--vpc-ids", vpc_id).get("Vpcs"):
+        raise Refused(f"VPC {vpc_id} not found")
+    subnets = aws.json("ec2", "describe-subnets", "--subnet-ids", subnet_id).get("Subnets", [])
+    if not subnets:
+        raise Refused(f"subnet {subnet_id} not found")
+    sn = subnets[0]
+    if sn.get("VpcId") != vpc_id or sn.get("AvailabilityZone") != az:
+        raise Refused(
+            f"subnet {subnet_id} is in {sn.get('VpcId')}/{sn.get('AvailabilityZone')}, the request says {vpc_id}/{az}"
+        )
+    offers = aws.json(
+        "ec2",
+        "describe-instance-type-offerings",
+        "--location-type",
+        "availability-zone",
+        "--filters",
+        f"Name=instance-type,Values={instance_type}",
+        f"Name=location,Values={az}",
+    ).get("InstanceTypeOfferings", [])
+    if not offers:
+        raise Refused(f"{instance_type} is not offered in {az}")
+    rts = aws.json("ec2", "describe-route-tables", "--filters", f"Name=association.subnet-id,Values={subnet_id}").get(
+        "RouteTables", []
+    )
+    if not rts:
+        rts = aws.json(
+            "ec2",
+            "describe-route-tables",
+            "--filters",
+            f"Name=vpc-id,Values={vpc_id}",
+            "Name=association.main,Values=true",
+        ).get("RouteTables", [])
+    default = [
+        r
+        for t in rts
+        for r in t.get("Routes", [])
+        if r.get("DestinationCidrBlock") == "0.0.0.0/0" and r.get("State", "active") == "active"
+    ]
+    via = "igw" if any(str(r.get("GatewayId", "")).startswith("igw-") for r in default) else ""
+    via = via or ("nat" if any(r.get("NatGatewayId") for r in default) else "")
+    if not via:
+        raise Refused(f"subnet {subnet_id}: no active 0.0.0.0/0 route (bootstrap needs outbound HTTPS)")
+    return {"vpc_id": vpc_id, "subnet_id": subnet_id, "availability_zone": az, "outbound": via}
 
 
 def poll_s() -> float:
@@ -557,6 +592,7 @@ class Run:
         self.key_file = self.workdir / "secrets" / "api-key"
         self.record: dict[str, Any] = {"id": self.id, "stack": self.stack_name, "after_run": req["stack"]["after_run"]}
         self.parity_pkg: Path | None = None
+        self.token = secrets.token_hex(16)
 
     # --- small utilities ---
 
@@ -656,53 +692,12 @@ class Run:
                 f"{target['vcpu']}: wait for the other run or raise the quota"
             )
         checks["quota"] = True
-        offers = self.aws.json(
-            "ec2",
-            "describe-instance-type-offerings",
-            "--location-type",
-            "availability-zone",
-            "--filters",
-            f"Name=instance-type,Values={target['instance_type']}",
-            f"Name=location,Values={net['availability_zone']}",
-        ).get("InstanceTypeOfferings", [])
-        if not offers:
-            raise Refused(f"{target['instance_type']} is not offered in {net['availability_zone']}")
-        checks["instance_type_offered"] = True
-        # network: subnet in the VPC and AZ, with an outbound route (bootstrap downloads 28.6 GB over HTTPS)
-        subnets = self.aws.json("ec2", "describe-subnets", "--subnet-ids", net["subnet_id"]).get("Subnets", [])
-        if not subnets:
-            raise Refused(f"subnet {net['subnet_id']} not found")
-        sn = subnets[0]
-        if sn.get("VpcId") != net["vpc_id"] or sn.get("AvailabilityZone") != net["availability_zone"]:
-            raise Refused(
-                f"subnet {net['subnet_id']} is in {sn.get('VpcId')}/{sn.get('AvailabilityZone')}, the request says "
-                f"{net['vpc_id']}/{net['availability_zone']}"
-            )
-        rts = self.aws.json(
-            "ec2", "describe-route-tables", "--filters", f"Name=association.subnet-id,Values={net['subnet_id']}"
-        ).get("RouteTables", [])
-        if not rts:
-            rts = self.aws.json(
-                "ec2",
-                "describe-route-tables",
-                "--filters",
-                f"Name=vpc-id,Values={net['vpc_id']}",
-                "Name=association.main,Values=true",
-            ).get("RouteTables", [])
-        default = [
-            r
-            for t in rts
-            for r in t.get("Routes", [])
-            if r.get("DestinationCidrBlock") == "0.0.0.0/0" and r.get("State", "active") == "active"
-        ]
-        via = "igw" if any(str(r.get("GatewayId", "")).startswith("igw-") for r in default) else ""
-        via = via or ("nat" if any(r.get("NatGatewayId") for r in default) else "")
-        pre["network"] = {**net, "outbound": via or "none"}
-        if not via:
-            raise Refused(f"subnet {net['subnet_id']}: no active 0.0.0.0/0 route (bootstrap needs outbound HTTPS)")
-        if via == "igw" and not net["assign_public_ip"]:
+        pre["network"] = check_network(
+            self.aws, net["vpc_id"], net["subnet_id"], net["availability_zone"], target["instance_type"]
+        )
+        if pre["network"]["outbound"] == "igw" and not net["assign_public_ip"]:
             raise Refused("subnet routes through an internet gateway: assign_public_ip must be true for egress")
-        checks["network"] = True
+        checks["instance_type_offered"] = checks["network"] = True
         # AMI pinned or resolved now (recorded): the DLAMI with the NVIDIA driver
         ami = self.req["ami"]
         if ami == "resolve-latest":
@@ -730,7 +725,14 @@ class Run:
             tags = {t["Key"]: t["Value"] for t in stack.get("Tags", [])}
             if tags.get("cce:template-sha256") != pre["template_sha256"]:
                 raise Refused("stack was created from another cloudformation.yaml: reuse needs the same template")
+            owner = owner_record(self.aws, self.stack_name)
             iid = self.aws.outputs(stack).get("InstanceId", "")
+            if not owner or owner.get("stack_id") != stack.get("StackId") or owner.get("instance_id") != iid:
+                raise Refused(
+                    f"stack {self.stack_name} has no matching ownership record ({OWNER_PREFIX}{self.stack_name}): "
+                    "only a stack created by a validation request can be adopted with mode reuse"
+                )
+            pre["adopt_from"] = {k: owner.get(k) for k in ("owner_id", "stack_id", "instance_id")}
             state = self.aws.instance_state(iid)
             if state != "stopped":
                 raise Refused(f"reused instance {iid} must be stopped (found {state})")
@@ -791,6 +793,8 @@ class Run:
             "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
             "claimed_at": iso(self.t0),
             "status": "claimed",
+            "mode": self.req["stack"]["mode"],
+            "token": self.token,  # tags what this claim creates; ownership is checked against it
         }
         self.record["run_id"] = ctx["run_id"]
         path = self.workdir / "ledger.json"
@@ -803,6 +807,20 @@ class Run:
             raise
         save(self.ev, "claim.json", ctx)
         log(f"request {self.id} claimed ({self.ledger})")
+
+    # --- ownership ---
+
+    def write_owner(self, **fields: Any) -> None:
+        """The stack's ownership record: this claim (id + token) owns it. Written BEFORE CreateStack (create) or at
+        adoption (reuse, overwriting the previous owner), then completed with the stack and instance ids."""
+        current = owner_record(self.aws, self.stack_name) or {}
+        if current.get("owner_id") != self.id or current.get("token") != self.token:
+            current = {"stack_name": self.stack_name, "stack_id": None, "instance_id": None}
+        current.update(fields, owner_id=self.id, token=self.token, updated_at=iso(now()))
+        path = self.workdir / "owner.json"
+        path.write_text(json.dumps(current, separators=(",", ":")), encoding="utf-8")
+        self.aws.put_param(OWNER_PREFIX + self.stack_name, path, overwrite=True)
+        self.record["owner"] = {k: v for k, v in current.items() if k != "token"}
 
     # --- A. provisioning: stack, watchdog, bootstrap, first load, instance stopped ---
 
@@ -833,14 +851,31 @@ class Run:
             "ServerProfile": self.req["validation"].get("server_profile", "reference-8k-1slot"),
             "ApiKeyParameterName": self.key_param,
             "HostPermissionsBoundaryArn": self.access["HostPermissionsBoundaryArn"],
+            # the AWS-side stop is created by CloudFormation with the instance: no runner in between
+            "WatchdogStart": iso(self.deadline + WATCHDOG_GRACE_MIN * 60),
+            "WatchdogEnd": iso(self.deadline + WATCHDOG_GRACE_MIN * 60 + WATCHDOG_WINDOW_H * 3600),
+            "WatchdogRoleArn": self.access["WatchdogRoleArn"],
+            "WatchdogScheduleGroup": self.access["WatchdogScheduleGroup"],
         }
         tags = {
+            "cce:claim-token": self.token,
             "cce:validation-id": self.id,
             "cce:template-sha256": pre["template_sha256"],
             "cce:after-run": self.req["stack"]["after_run"],
         }
         self.record["stack_parameters"] = params
-        self.aws.raw(
+        wd = {
+            "kind": "in_stack",
+            "name": f"{self.stack_name}-watchdog",
+            "group": params["WatchdogScheduleGroup"],
+            "first_stop_at": params["WatchdogStart"],
+            "until": params["WatchdogEnd"],
+            "every_minutes": WATCHDOG_RATE_MIN,
+        }
+        self.record["watchdog"] = wd
+        save(self.ev, "watchdog.json", wd)
+        self.write_owner(created_by=self.id)  # before CreateStack: a lost runner leaves a record to clean by
+        out = self.aws.json(
             "cloudformation",
             "create-stack",
             "--stack-name",
@@ -859,6 +894,7 @@ class Run:
             json.dumps([{"Key": k, "Value": v} for k, v in tags.items()]),
         )
         self.record["timeline"]["create_stack"] = now()
+        self.write_owner(stack_id=out.get("StackId"))
         log(f"stack {self.stack_name} requested")
 
     def stack_failed(self, stack: dict[str, Any] | None) -> None:
@@ -926,7 +962,7 @@ class Run:
             "--action-after-completion",
             "DELETE",
         )
-        wd: dict[str, Any] = {"name": self.schedule, "group": self.access["WatchdogScheduleGroup"]}
+        wd: dict[str, Any] = {"kind": "runner", "name": self.schedule, "group": self.access["WatchdogScheduleGroup"]}
         wd |= {
             "instance_id": self.iid,
             "first_stop_at": iso(start),
@@ -963,14 +999,17 @@ class Run:
             stack = self.aws.stack(self.stack_name)
             assert stack
             self.iid = self.aws.outputs(stack)["InstanceId"]
-            self.arm_watchdog()
+            prev = owner_record(self.aws, self.stack_name) or {}
+            # explicit adoption: from now on this claim owns the stack; an older request's retry preserves it
+            self.write_owner(stack_id=stack["StackId"], instance_id=self.iid, adopted_from=prev.get("owner_id"))
+            self.arm_watchdog()  # the instance is stopped: armed before anything can start it
             save(self.ev, "provision.json", self.record)
             return
         self.create_stack(pre)
         self.ledger_update(status="provisioning")
         self.iid = wait_for("the instance of the stack", self.host_id, 1200, deadline=self.deadline)
         tl["instance_created"] = now()
-        self.arm_watchdog()  # before waiting for anything else on the instance
+        self.write_owner(instance_id=self.iid)
 
         def complete() -> bool:
             stack = self.aws.stack(self.stack_name)
@@ -983,6 +1022,14 @@ class Run:
 
         wait_for("CREATE_COMPLETE", complete, 1800, deadline=self.deadline)
         tl["stack_complete"] = now()
+        # evidence: the schedule CloudFormation created with the instance targets exactly this instance
+        wd = self.record["watchdog"]
+        sched = self.aws.json("scheduler", "get-schedule", "--name", wd["name"], "--group-name", wd["group"])
+        target = json.loads(sched.get("Target", sched.get("target", {})).get("Input", "{}"))
+        wd["targets"] = target.get("InstanceIds")
+        if wd["targets"] != [self.iid]:
+            raise ValidationFailed(f"in-stack watchdog does not target {self.iid}: {sched}")
+        save(self.ev, "watchdog.json", wd)
 
         def ssm_online() -> bool:
             info = self.aws.json(
@@ -1178,63 +1225,137 @@ class Run:
 # --- cleanup (idempotent; also the separate cleanup job) -------------------------------------------------------------
 
 
+def owner_record(aws: Aws, stack_name: str) -> dict[str, Any] | None:
+    raw = aws.get_param(OWNER_PREFIX + stack_name)
+    try:
+        doc = json.loads(raw) if raw else None
+    except ValueError:
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def tags_of(obj: dict[str, Any]) -> dict[str, str]:
+    return {t["Key"]: t["Value"] for t in obj.get("Tags", [])}
+
+
 class Cleanup:
+    """Stops and, if the request says delete, deletes ONLY what this request owns: the request must be claimed, the
+    stack's ownership record must name this claim (id and token: it created the stack or adopted it with reuse), the
+    stack must be that one (StackId, or the claim token tag if the runner was lost before learning the id), and only
+    the concrete instance of that stack is touched. Anything else is preserved and reported."""
+
     def __init__(self, req: dict[str, Any], ev: Path, aws: Aws | None = None) -> None:
         self.req = req
         self.ev = ev
         self.aws = aws or Aws()
+        self.id: str = req["id"]
         self.stack_name: str = req["stack"]["name"]
         self.after: str = req["stack"]["after_run"]
         self.key_param = f"{API_KEY_PREFIX}{self.stack_name}/api-key"
         self.schedule = f"cce-a09-{req['id']}"
         self.ledger = LEDGER_PREFIX + req["id"]
 
-    def stop_instances(self, rec: dict[str, Any], errors: list[str]) -> bool:
-        """Stop every non-terminated instance of the stack and verify it; True when none is left running."""
-        instances = self.aws.stack_instances(self.stack_name)
-        rec["instances"] = {i["InstanceId"]: i["State"]["Name"] for i in instances}
-        for i in instances:
-            iid, state = i["InstanceId"], i["State"]["Name"]
-            if state in ("pending", "running"):
-                try:
-                    self.aws.raw("ec2", "stop-instances", "--instance-ids", iid)
-                    rec.setdefault("stopped_by_cleanup", []).append(iid)
-                except AwsError as exc:
-                    errors.append(f"stop_instances_failed {iid}: {exc}")
-        ok = True
-        for i in instances:
-            iid = i["InstanceId"]
-            try:
-                final = wait_for(
-                    f"{iid} stopped",
-                    lambda iid=iid: (s := self.aws.instance_state(iid)) in ("stopped", "terminated", "absent") and s,
-                    900,
-                )
-            except ValidationFailed:
-                final = self.aws.instance_state(iid)
-                errors.append(f"instance_not_stopped {iid}: {final}")
-                ok = False
-            rec["instances"][iid] = final
-        return ok
+    def ownership(self, rec: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """(owner record, owned stack or None) when this claim owns the stack; (None, None) when nothing here is
+        this request's (the reason is in rec['ownership'])."""
+        raw = self.aws.get_param(self.ledger)
+        claim = json.loads(raw) if raw else None
+        if not isinstance(claim, dict) or not claim.get("token"):
+            rec["ownership"] = "not_claimed: this request never reserved its id; nothing is stopped or deleted"
+            return None, None
+        owner = owner_record(self.aws, self.stack_name)
+        rec["owner_record"] = {k: v for k, v in (owner or {}).items() if k != "token"}
+        if not owner or owner.get("owner_id") != self.id or owner.get("token") != claim["token"]:
+            who = (owner or {}).get("owner_id")
+            rec["ownership"] = (
+                f"not_owned: stack owned by {who!r} (adopted or created by another request)"
+                if who
+                else "not_owned: this request created or adopted nothing (or its cleanup already finished)"
+            )
+            return None, None
+        stack = self.aws.stack(owner["stack_id"] or self.stack_name)
+        if stack is not None:
+            same = (
+                stack.get("StackId") == owner["stack_id"]
+                if owner.get("stack_id")
+                else tags_of(stack).get("cce:claim-token") == claim["token"]
+            )
+            if not same:
+                rec["ownership"] = f"not_owned: {self.stack_name} is another stack ({stack.get('StackId')})"
+                return None, None
+            if not owner.get("stack_id"):  # the runner was lost before it learned the id: recover it from the tag
+                owner["stack_id"] = stack["StackId"]
+        rec["ownership"] = "owned" + (f" (adopted from {owner['adopted_from']})" if owner.get("adopted_from") else "")
+        if stack is None and owner.get("stack_id"):
+            other = self.aws.stack(self.stack_name)
+            if other is not None and other.get("StackId") != owner["stack_id"]:
+                rec["ownership"] += f"; the owned stack is gone and {self.stack_name} is another stack: preserved"
+        return owner, stack
 
-    def delete_stack(self, rec: dict[str, Any], errors: list[str]) -> bool:
+    def instance_of(self, owner: dict[str, Any], stack: dict[str, Any] | None) -> str | None:
+        iid = owner.get("instance_id")
+        if not iid and stack is not None:
+            try:
+                res = self.aws.json(
+                    "cloudformation",
+                    "describe-stack-resource",
+                    "--stack-name",
+                    stack["StackId"],
+                    "--logical-resource-id",
+                    "Host",
+                )
+                iid = res.get("StackResourceDetail", {}).get("PhysicalResourceId") or None
+            except AwsError:
+                iid = None
+        return str(iid) if iid else None
+
+    def stop_owned(self, iid: str, stack_id: str, rec: dict[str, Any], errors: list[str]) -> bool:
+        res = self.aws.json("ec2", "describe-instances", "--instance-ids", iid) if iid else {}
+        insts = [i for r in res.get("Reservations", []) for i in r.get("Instances", [])]
+        if not insts:
+            rec["instance"] = {"id": iid, "state": "absent"}
+            return True
+        inst = insts[0]
+        if tags_of(inst).get("aws:cloudformation:stack-id") not in (None, stack_id):
+            rec["instance"] = {"id": iid, "state": inst["State"]["Name"], "preserved": "belongs to another stack"}
+            return True  # not ours: neither stopped nor counted as left over
+        state = inst["State"]["Name"]
+        if state in ("pending", "running"):
+            try:
+                self.aws.raw("ec2", "stop-instances", "--instance-ids", iid)
+                rec["stopped_by_cleanup"] = iid
+            except AwsError as exc:
+                errors.append(f"stop_instances_failed {iid}: {exc}")
+        try:
+            final = wait_for(
+                f"{iid} stopped",
+                lambda: (st := self.aws.instance_state(iid)) in ("stopped", "terminated", "absent") and st,
+                900,
+            )
+        except ValidationFailed:
+            final = self.aws.instance_state(iid)
+            errors.append(f"instance_not_stopped {iid}: {final}")
+        rec["instance"] = {"id": iid, "state": final}
+        return final in ("stopped", "terminated", "absent")
+
+    def delete_stack(self, stack_id: str, rec: dict[str, Any], errors: list[str]) -> bool:
+        """Delete by StackId (never by name: a stack recreated with the same name is not this one)."""
         for attempt in (1, 2):
-            stack = self.aws.stack(self.stack_name)
+            stack = self.aws.stack(stack_id)
             if stack is None:
                 break
             if not str(stack.get("StackStatus")).startswith("DELETE_IN_PROGRESS"):
                 try:
-                    self.aws.raw("cloudformation", "delete-stack", "--stack-name", self.stack_name)
+                    self.aws.raw("cloudformation", "delete-stack", "--stack-name", stack_id)
                 except AwsError as exc:
                     errors.append(f"delete_stack_failed: {exc}")
                     return False
 
             def gone() -> str | bool:
-                s = self.aws.stack(self.stack_name)
+                s = self.aws.stack(stack_id)
                 if s is None:
                     return "deleted"
-                status = str(s.get("StackStatus"))
-                return "failed" if status == "DELETE_FAILED" else False
+                return "failed" if str(s.get("StackStatus")) == "DELETE_FAILED" else False
 
             try:
                 result = wait_for("stack deleted", gone, 2400)
@@ -1244,47 +1365,68 @@ class Cleanup:
             if result == "deleted":
                 break
             rec.setdefault("delete_failed_attempts", []).append(attempt)
-        stack = self.aws.stack(self.stack_name)
+        stack = self.aws.stack(stack_id)
         rec["stack_status"] = stack.get("StackStatus") if stack else "DELETE_COMPLETE"
         if stack is not None:
             errors.append(f"stack_not_deleted: {rec['stack_status']}")
             return False
         return True
 
+    def volumes_left(self, stack_id: str) -> list[str]:
+        res = self.aws.json(
+            "ec2", "describe-volumes", "--filters", f"Name=tag:aws:cloudformation:stack-id,Values={stack_id}"
+        )
+        return [v["VolumeId"] for v in res.get("Volumes", [])]
+
     def main(self, name: str = "cleanup.json") -> int:
         self.ev.mkdir(parents=True, exist_ok=True)
-        rec: dict[str, Any] = {"id": self.req["id"], "stack": self.stack_name, "after_run": self.after}
+        rec: dict[str, Any] = {"id": self.id, "stack": self.stack_name, "after_run": self.after}
         errors: list[str] = []
+        ok = True
         try:
-            stack = self.aws.stack(self.stack_name)
+            owner, stack = self.ownership(rec)
+            if owner is None:
+                rec["watchdog"] = "untouched"
+                rec["outcome"] = "verified"
+                rec["errors"] = []
+                save(self.ev, name, rec)
+                log(f"cleanup: nothing of {self.id} to clean ({rec['ownership']}); resources preserved")
+                return 0
+            stack_id = str(owner["stack_id"] or "")
+            rec["stack_id"] = stack_id
             rec["stack_status_before"] = stack.get("StackStatus") if stack else "absent"
-            stopped = self.stop_instances(rec, errors)
+            iid = self.instance_of(owner, stack)
+            stopped = self.stop_owned(iid, stack_id, rec, errors) if iid else True
             rec["instances_stopped"] = stopped
             if self.after == "delete":
-                deleted = self.delete_stack(rec, errors) if stack else True
+                deleted = self.delete_stack(stack_id, rec, errors) if (stack is not None and stack_id) else True
                 rec["stack_deleted"] = deleted
-                left = [i["InstanceId"] for i in self.aws.stack_instances(self.stack_name)]
-                vols = [v["VolumeId"] for v in self.aws.stack_volumes(self.stack_name)]
-                rec["instances_left"], rec["volumes_left"] = left, vols
-                if left or vols:
-                    errors.append(f"resources_left: instances {left}, volumes {vols}")
-                if deleted:
+                vols = self.volumes_left(stack_id) if stack_id else []
+                ours = bool(iid) and "preserved" not in rec.get("instance", {})
+                final = self.aws.instance_state(str(iid)) if ours else "absent"
+                rec["volumes_left"], rec["instance_final"] = vols, final
+                if vols or final not in ("terminated", "absent"):
+                    errors.append(f"resources_left: instance {iid} {final}, volumes {vols}")
+                ok = stopped and deleted and not vols and final in ("terminated", "absent")
+                if ok and self.aws.stack(self.stack_name) is None:  # parameters are per NAME: only if it is free
                     rec["api_key_parameter_deleted"] = self.aws.delete_param(self.key_param)
-                ok = stopped and deleted and not left and not vols
+                    self.aws.delete_param(OWNER_PREFIX + self.stack_name)  # nothing left to own
+                    rec["owner_record"] = "deleted"
+                elif ok:
+                    rec["api_key_parameter_deleted"] = False  # the name now belongs to another stack: kept
             else:
-                after = self.aws.stack(self.stack_name)
+                after = self.aws.stack(stack_id) if stack_id else None
                 rec["stack_status"] = after.get("StackStatus") if after else "absent"
-                if after and str(after.get("StackStatus")).endswith("_IN_PROGRESS"):
-                    errors.append(f"stack_in_progress: {after.get('StackStatus')}")
+                in_progress = after is not None and str(after.get("StackStatus")).endswith("_IN_PROGRESS")
+                if in_progress:
+                    errors.append(f"stack_in_progress: {rec['stack_status']}")
                 rec["kept"] = bool(after) and stopped
-                ok = stopped and not (after and str(after.get("StackStatus")).endswith("_IN_PROGRESS"))
+                ok = stopped and not in_progress
                 if after:
                     rec["residual"] = "EBS of the stopped stack (root + weights) until it is deleted"
-            # the watchdog stays armed unless the instance is verified stopped (it is the backstop)
-            if ok:
-                rec["watchdog"] = self.disarm()
-            else:
-                rec["watchdog"] = "kept_armed"
+            # runner watchdog (reused stacks) removed only once the instance is verified stopped; the in-stack one
+            # goes with the stack (delete) or ends at its EndDate (keep-stopped)
+            rec["watchdog"] = self.disarm() if ok else "kept_armed"
         except Exception as exc:  # noqa: BLE001 - a cleanup error is reported, never hidden
             errors.append(f"cleanup_error: {exc}")
             ok = False
@@ -1297,7 +1439,7 @@ class Cleanup:
         if rec["outcome"] != "verified":
             print(f"CLEANUP FAILED for {self.stack_name}: {errors}", file=sys.stderr)
             return 5
-        log(f"cleanup verified ({self.after}): {json.dumps({k: rec.get(k) for k in ('instances', 'stack_status')})}")
+        log(f"cleanup verified ({self.after}): {json.dumps({k: rec.get(k) for k in ('instance', 'stack_status')})}")
         return 0
 
     def disarm(self) -> str:
@@ -1311,15 +1453,15 @@ class Cleanup:
             return "unknown_group"
         try:
             self.aws.raw("scheduler", "delete-schedule", "--name", self.schedule, "--group-name", group)
-            return "disarmed"
+            return "runner_schedule_disarmed"
         except AwsError as exc:
-            return "absent" if exc.code == "ResourceNotFoundException" else f"disarm_failed: {exc}"
+            return "no_runner_schedule" if exc.code == "ResourceNotFoundException" else f"disarm_failed: {exc}"
 
     def update_ledger(self, outcome: str) -> None:
         try:
             current = json.loads(self.aws.get_param(self.ledger) or "null")
             if not isinstance(current, dict):
-                return
+                return  # never create a claim from the cleanup
             current.update(cleanup_job=outcome, updated_at=iso(now()))
             tmp = self.ev / ".ledger.json"
             tmp.write_text(json.dumps(current, separators=(",", ":")), encoding="utf-8")
@@ -1446,7 +1588,8 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--before", required=True)
     d.add_argument("--after", required=True)
     d.add_argument("--github-output")
-    sub.add_parser("oidc-claims")
+    oc = sub.add_parser("oidc-claims")
+    oc.add_argument("--out", help="also write the claims as JSON to this file")
     r = sub.add_parser("run")
     r.add_argument("--request", required=True)
     r.add_argument("--evidence", required=True)
@@ -1497,6 +1640,9 @@ def main(argv: list[str] | None = None) -> int:
         claims = oidc_claims()
         text = json.dumps(claims, indent=2)
         print(text)
+        print(f"{CLAIMS_MARK}{json.dumps(claims, separators=(',', ':'))}")  # read by enable_access.py
+        if a.out:
+            Path(a.out).write_text(text + "\n", encoding="utf-8")
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
                 fh.write(f"### OIDC claims (safe subset, never the token)\n\n```json\n{text}\n```\n")

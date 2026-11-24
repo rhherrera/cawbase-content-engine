@@ -205,3 +205,32 @@ def test_the_host_template_accepts_the_boundary_and_stays_compatible():
     assert tpl["Parameters"]["HostPermissionsBoundaryArn"]["Default"] == ""
     pb = tpl["Resources"]["HostRole"]["Properties"]["PermissionsBoundary"]
     assert pb == {"If": ["HasHostBoundary", {"Ref": "HostPermissionsBoundaryArn"}, {"Ref": "AWS::NoValue"}]}
+
+
+def test_the_orchestrator_and_the_iac_trust_the_same_subjects():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("av", ROOT / "deploy" / "inference" / "ci" / "aws_validation.py")
+    assert spec and spec.loader
+    av = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(av)
+    assert av.SUB_PATTERN == ACCESS["Parameters"]["GitHubSubject"]["AllowedPattern"]
+
+
+def test_the_aws_side_stop_is_created_by_cloudformation_with_the_instance():
+    tpl = load_cfn("deploy/inference/aws/cloudformation.template.yaml")
+    wd = tpl["Resources"]["Watchdog"]
+    assert wd["Type"] == "AWS::Scheduler::Schedule" and wd["Condition"] == "HasWatchdog"
+    props = wd["Properties"]
+    assert props["Target"]["Arn"] == "arn:aws:scheduler:::aws-sdk:ec2:stopInstances"
+    assert props["Target"]["Input"] == {"Sub": '{"InstanceIds": ["${Host}"]}'}  # the instance of this stack
+    assert props["StartDate"] == {"Ref": "WatchdogStart"} and props["State"] == "ENABLED"
+    assert tpl["Parameters"]["WatchdogStart"]["Default"] == ""  # manual deployments: no schedule
+    sts = {st.get("Sid"): st for st in statements("CfnExecutionRole")}
+    assert "scheduler:CreateSchedule" in actions(sts["InStackWatchdog"])
+    assert sts["PassTheWatchdogRoleToScheduler"]["Resource"] == {"GetAtt": "WatchdogRole.Arn"}
+
+
+def test_ownership_records_are_writable_only_under_their_prefix():
+    (st,) = [s for s in statements("ValidationRole") if s.get("Sid") == "StackOwnershipRecords"]
+    assert "parameter/cce/inference/validation-stacks/cce-inference-*" in str(st["Resource"])

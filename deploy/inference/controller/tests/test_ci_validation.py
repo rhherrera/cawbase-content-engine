@@ -359,7 +359,8 @@ def test_oidc_claims_print_the_subject_and_never_the_token(tmp_path: Path):
     finally:
         srv.shutdown()
     assert r.returncode == 0, r.stderr
-    claims = json.loads(r.stdout)
+    claims = json.loads(r.stdout.split(ci.CLAIMS_MARK, 1)[1])
+    assert json.loads(r.stdout.split(ci.CLAIMS_MARK, 1)[0]) == claims  # human-readable and machine line agree
     assert claims["sub"] == payload["sub"] and claims["job_workflow_ref"].endswith("@refs/heads/main")
     assert "actor" not in claims and "run_id" not in claims
     assert "SIGNATURE-SECRET" not in r.stdout + r.stderr and token not in (tmp_path / "summary.md").read_text()
@@ -392,8 +393,13 @@ def test_new_request_runs_end_to_end_and_deletes_with_verification(cs: CiSim):
     assert (p["InstanceType"], p["ImageId"], p["SubnetId"], p["AvailabilityZone"]) == ("g6e.xlarge", AMI, SUBNET, AZ)
     assert p["HostPermissionsBoundaryArn"] == ACCESS["HostPermissionsBoundaryArn"] and p["ClientCidr"] == ""
     assert stack["tags"]["cce:validation-id"] == doc["id"] and stack["tags"]["cce:after-run"] == "delete"
+    # the AWS-side stop is a resource of the stack (created by CloudFormation with the instance), bound to the limit
     wd = cs.evj("watchdog.json")
-    assert wd["instance_id"] == "i-0sim" and wd["every_minutes"] == 10
+    assert wd["kind"] == "in_stack" and wd["targets"] == ["i-0sim"] and wd["every_minutes"] == 10
+    claimed = ci.dt.datetime.fromisoformat(claim["claimed_at"].replace("Z", "+00:00")).timestamp()
+    start = ci.dt.datetime.fromisoformat(p["WatchdogStart"].replace("Z", "+00:00")).timestamp()
+    assert abs(start - (claimed + (60 + ci.WATCHDOG_GRACE_MIN) * 60)) <= 5  # spend limit: max_runtime + grace
+    assert p["WatchdogRoleArn"] == ACCESS["WatchdogRoleArn"] and stack["tags"]["cce:claim-token"] == claim["token"]
     prov = cs.evj("provision.json")
     tl = prov["timeline"]
     assert tl["create_stack"] <= tl["instance_created"] <= tl["bootstrap_done"] <= tl["stopped_for_validation"]
@@ -412,8 +418,10 @@ def test_new_request_runs_end_to_end_and_deletes_with_verification(cs: CiSim):
     # cleanup (delete): stack gone, instance terminated, no volume, API key parameter deleted, watchdog disarmed
     clean = cs.evj("cleanup-run.json")
     assert clean["outcome"] == "verified" and clean["stack_deleted"] is True and clean["volumes_left"] == []
-    assert clean["api_key_parameter_deleted"] is True and clean["watchdog"] == "disarmed"
+    assert clean["api_key_parameter_deleted"] is True and clean["watchdog"] == "no_runner_schedule"
+    assert clean["ownership"] == "owned" and clean["owner_record"] == "deleted"
     st = cs.state()
+    assert not any(k.startswith(ci.OWNER_PREFIX) for k in st["params"])
     assert doc["stack"]["name"] not in [n for n, s in st["stacks"].items() if s["status"] != "DELETE_COMPLETE"]
     assert st["instances"]["i-0sim"].get("terminated") and st["schedules"] == {} and st["volumes"] == {}
     # the separate cleanup job (idempotent) verifies the same
@@ -438,9 +446,14 @@ def test_keep_stopped_then_retry_spends_nothing_then_a_new_request_reuses_the_st
     r = cs.run_ci(req)
     assert r.returncode == 0, r.stdout + r.stderr
     clean = cs.evj("cleanup-run.json")
-    assert clean["outcome"] == "verified" and clean["kept"] is True and clean["instances"] == {"i-0sim": "stopped"}
-    assert "EBS" in clean["residual"] and clean["watchdog"] == "disarmed"
+    assert clean["outcome"] == "verified" and clean["kept"] is True
+    assert clean["instance"] == {"id": "i-0sim", "state": "stopped"} and clean["ownership"] == "owned"
+    assert "EBS" in clean["residual"] and clean["watchdog"] == "no_runner_schedule"
     st = cs.state()
+    (sched,) = st["schedules"].values()  # the in-stack watchdog stays with the kept stack, inert after its end date
+    assert sched["created_by"] == "cloudformation" and sched["end-date"] > sched["start-date"]
+    owner = json.loads(st["params"][ci.OWNER_PREFIX + doc["stack"]["name"]]["Value"])
+    assert owner["owner_id"] == doc["id"] and owner["instance_id"] == "i-0sim" and owner["stack_id"]
     assert st["stacks"][doc["stack"]["name"]]["status"] == "CREATE_COMPLETE" and st["volumes"]
     key_param = f"/cce/inference/validation/{doc['stack']['name']}/api-key"
     key = st["params"][key_param]["Value"]
@@ -468,7 +481,12 @@ def test_keep_stopped_then_retry_spends_nothing_then_a_new_request_reuses_the_st
     assert r.returncode == 0, r.stdout + r.stderr
     assert cs.calls_of("cloudformation", "create-stack") == creates  # reused, not created
     assert cs.evj("outcome.json", ev2)["validation"] == "validated"
-    assert cs.evj("cleanup-run.json", ev2)["stack_deleted"] is True and cs.state()["volumes"] == {}
+    assert cs.evj("provision.json", ev2)["owner"]["adopted_from"] == doc["id"]  # explicit adoption
+    assert cs.evj("watchdog.json", ev2)["kind"] == "runner"  # armed before anything could start the instance
+    clean2 = cs.evj("cleanup-run.json", ev2)
+    assert clean2["stack_deleted"] is True and cs.state()["volumes"] == {}
+    assert clean2["ownership"] == f"owned (adopted from {doc['id']})"
+    assert clean2["watchdog"] == "runner_schedule_disarmed"
 
 
 @pytest.mark.parametrize(
@@ -616,7 +634,7 @@ def test_sigterm_during_bootstrap_cleans_up_and_exits_130(cs: CiSim):
         env={**cs.env, "FAKE_AWS_BOOTSTRAP": "hang"},
     )
     try:
-        wait_until(lambda: (cs.cievidence / "watchdog.json").exists(), timeout=120)
+        wait_until(lambda: (cs.cievidence / "bootstrap.log").exists(), timeout=120)
         time.sleep(1)
         p.send_signal(signal.SIGTERM)  # what GitHub sends on cancellation / time limit
         out, err = p.communicate(timeout=300)
@@ -626,7 +644,8 @@ def test_sigterm_during_bootstrap_cleans_up_and_exits_130(cs: CiSim):
     assert p.returncode == 130, out + err
     assert cs.evj("outcome.json")["validation"].startswith("interrupted")
     clean = cs.evj("cleanup-run.json")
-    assert clean["outcome"] == "verified" and clean["stack_deleted"] is True and clean["watchdog"] == "disarmed"
+    assert clean["outcome"] == "verified" and clean["stack_deleted"] is True
+    assert clean["watchdog"] == "no_runner_schedule" and cs.state()["schedules"] == {}  # in-stack: gone with it
     assert cs.host_state() == "stopped"
 
 
@@ -641,7 +660,7 @@ def test_runner_killed_the_aws_side_watchdog_still_stops_the_instance(cs: CiSim)
         env={**cs.env, "FAKE_AWS_BOOTSTRAP": "hang"},
     )
     try:
-        wait_until(lambda: (cs.cievidence / "watchdog.json").exists(), timeout=120)
+        wait_until(lambda: (cs.cievidence / "bootstrap.log").exists(), timeout=120)
         p.kill()
         p.wait(timeout=30)
     finally:
@@ -650,9 +669,8 @@ def test_runner_killed_the_aws_side_watchdog_still_stops_the_instance(cs: CiSim)
     assert cs.host_state() == "running" and not (cs.cievidence / "cleanup-run.json").exists()
     sched = next(iter(cs.state()["schedules"].values()))
     assert json.loads(sched["target"]["Input"]) == {"InstanceIds": ["i-0sim"]}
-    assert (
-        sched["target"]["RoleArn"] == ACCESS["WatchdogRoleArn"] and sched["schedule-expression"] == "rate(10 minutes)"
-    )
+    assert sched["created_by"] == "cloudformation" and sched["schedule-expression"] == "rate(10 minutes)"
+    assert sched["target"]["RoleArn"] == ACCESS["WatchdogRoleArn"]
     subprocess.run([str(cs.tmp / "aws"), "fake", "fire-schedules"], env=cs.env, check=True)  # EventBridge, no runner
     assert cs.host_state() == "stopped"
     r = cs.cleanup(req, cs.tmp / "ev-cleanup")
@@ -696,3 +714,169 @@ def test_the_workflow_and_the_orchestrator_agree_on_the_contract():
     for sub in ("check", "detect", "oidc-claims", "run --request", "cleanup --request", "redact", "summary"):
         assert f"aws_validation.py {sub}" in wf, sub
     assert f'paths: ["{ci.REQUESTS_REL}/**"]' in wf
+
+
+# --- ownership: the cleanup touches only what the request created or explicitly adopted ------------------------
+
+
+def seed_foreign_stack(cs: CiSim, name: str, *, running: bool = True) -> str:
+    """A stack that this request did not create (manual, or another run's), with its instance."""
+    sid = f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/foreign"
+
+    def pre(s: dict[str, Any]) -> None:
+        s["stacks"][name] = {"id": sid, "status": "CREATE_COMPLETE", "outputs": {"InstanceId": "i-0sim"}, "tags": {}}
+        tags = {"cce:role": "inference", "aws:cloudformation:stack-name": name, "aws:cloudformation:stack-id": sid}
+        s["instances"]["i-0sim"] = {"type": "g6e.xlarge", "tags": tags}
+        s["volumes"]["vol-0simweights"] = {"stack": name, "stack_id": sid}
+
+    cs.patch_state(pre)
+    if running:
+        subprocess.run([str(SIM_HOST), str(cs.tmp), "start"], check=True, env=cs.env)
+    return sid
+
+
+def assert_untouched(cs: CiSim, name: str, sid: str) -> None:
+    st = cs.state()
+    assert st["stacks"][name]["status"] == "CREATE_COMPLETE" and st["stacks"][name]["id"] == sid
+    assert cs.host_state() == "running" and "vol-0simweights" in st["volumes"]
+    assert cs.calls_of("delete-stack") == 0 and cs.calls_of("stop-instances") == 0
+
+
+def test_an_unclaimed_request_never_stops_or_deletes_anything(cs: CiSim):
+    """Reproduction of the defect of 09c9429: a create+delete request naming an existing stack is refused by the
+    preflight (nothing claimed), and the always-run cleanup job then deleted that stack. Now it touches nothing."""
+    doc = request()
+    sid = seed_foreign_stack(cs, doc["stack"]["name"])
+    req = cs.write_request(doc)
+    r = cs.run_ci(req)
+    assert r.returncode == 2, r.stdout + r.stderr
+    r2 = cs.cleanup(req, cs.tmp / "ev-cleanup")
+    assert r2.returncode == 0, r2.stderr
+    clean = cs.evj("cleanup.json", cs.tmp / "ev-cleanup")
+    assert clean["ownership"].startswith("not_claimed") and clean["watchdog"] == "untouched"
+    assert_untouched(cs, doc["stack"]["name"], sid)
+
+
+def claim_and_owner(cs: CiSim, doc: dict[str, Any], *, owner_id: str, stack_id: str | None) -> None:
+    def pre(s: dict[str, Any]) -> None:
+        s["params"][ci.LEDGER_PREFIX + doc["id"]] = {
+            "Type": "String",
+            "Value": json.dumps({"id": doc["id"], "token": "t-" + doc["id"], "run_id": "1", "status": "failed"}),
+        }
+        s["params"][ci.OWNER_PREFIX + doc["stack"]["name"]] = {
+            "Type": "String",
+            "Value": json.dumps(
+                {"owner_id": owner_id, "token": "t-" + owner_id, "stack_id": stack_id, "instance_id": "i-0sim"}
+            ),
+        }
+
+    cs.patch_state(pre)
+
+
+def test_a_claimed_request_preserves_a_stack_recreated_under_its_name(cs: CiSim):
+    """The request owned a stack that is gone; another stack now has the same name: its StackId differs."""
+    doc = request()
+    name = doc["stack"]["name"]
+    sid = seed_foreign_stack(cs, name)
+    old = f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/old"
+    claim_and_owner(cs, doc, owner_id=doc["id"], stack_id=old)
+    r = cs.cleanup(cs.write_request(doc), cs.tmp / "ev-cleanup")
+    assert r.returncode == 0, r.stderr
+    clean = cs.evj("cleanup.json", cs.tmp / "ev-cleanup")
+    assert "is another stack: preserved" in clean["ownership"] and clean["instance"]["preserved"]
+    assert_untouched(cs, name, sid)
+
+
+def test_a_claimed_request_preserves_a_stack_adopted_by_another(cs: CiSim):
+    doc = request()
+    name = doc["stack"]["name"]
+    sid = seed_foreign_stack(cs, name)
+    claim_and_owner(cs, doc, owner_id="a09-1-later-002", stack_id=sid)
+    r = cs.cleanup(cs.write_request(doc), cs.tmp / "ev-cleanup")
+    assert r.returncode == 0, r.stderr
+    assert "owned by 'a09-1-later-002'" in cs.evj("cleanup.json", cs.tmp / "ev-cleanup")["ownership"]
+    assert_untouched(cs, name, sid)
+
+
+def test_retry_of_an_old_request_preserves_resources_adopted_later(cs: CiSim):
+    """id1 creates and keeps the stack; id2 adopts it with reuse and keeps it; the instance is then in use (A09-2).
+    Re-running id1 (its validation and its cleanup, keep-stopped as versioned or even a delete variant) must not
+    stop or delete it; the current owner still can."""
+    name = "cce-inference-a09-shared"
+    doc1 = request("a09-1-sim-old", stack={"name": name, "mode": "create", "after_run": "keep-stopped"})
+    cs.host_reads_key_from_ssm(name)
+    req1 = cs.write_request(doc1)
+    r = cs.run_ci(req1)
+    assert r.returncode == 0, r.stdout + r.stderr
+    doc2 = request("a09-1-sim-new", stack={"name": name, "mode": "reuse", "after_run": "keep-stopped"})
+    r = cs.ci(*cs.run_args(cs.write_request(doc2), cs.tmp / "ev2"))
+    assert r.returncode == 0, r.stdout + r.stderr
+    owner = json.loads(cs.state()["params"][ci.OWNER_PREFIX + name]["Value"])
+    assert owner["owner_id"] == doc2["id"] and owner["adopted_from"] == doc1["id"]
+    subprocess.run([str(SIM_HOST), str(cs.tmp), "start"], check=True, env=cs.env)  # in use after the validation
+    stops, deletes = cs.calls_of("stop-instances"), cs.calls_of("delete-stack")
+    assert cs.ci(*cs.run_args(req1, cs.tmp / "ev-retry")).returncode == 3  # no spend
+    for variant, after in (("keep", "keep-stopped"), ("del", "delete")):
+        doc1v = {**doc1, "stack": {**doc1["stack"], "after_run": after}}
+        r = cs.cleanup(cs.write_request(doc1v), cs.tmp / f"ev-old-{variant}")
+        assert r.returncode == 0, r.stderr
+        clean = cs.evj("cleanup.json", cs.tmp / f"ev-old-{variant}")
+        assert clean["ownership"].startswith("not_owned") and doc2["id"] in clean["ownership"]
+    assert cs.host_state() == "running" and cs.state()["stacks"][name]["status"] == "CREATE_COMPLETE"
+    assert cs.calls_of("stop-instances") == stops and cs.calls_of("delete-stack") == deletes
+    doc2d = {**doc2, "stack": {**doc2["stack"], "after_run": "delete"}}
+    r = cs.cleanup(cs.write_request(doc2d), cs.tmp / "ev-2")
+    assert r.returncode == 0 and cs.evj("cleanup.json", cs.tmp / "ev-2")["stack_deleted"] is True
+
+
+def test_reuse_refuses_a_stack_without_a_matching_ownership_record(cs: CiSim):
+    name = "cce-inference-manual"
+    doc = request(stack={"name": name, "mode": "reuse", "after_run": "delete"})
+    sid = seed_foreign_stack(cs, name, running=False)
+    sha = ci.sha256_file(ci.TEMPLATE)
+    cs.patch_state(lambda s: s["stacks"][name]["tags"].update({"cce:template-sha256": sha}))
+    r = cs.run_ci(cs.write_request(doc))
+    assert r.returncode == 2 and "no matching ownership record" in r.stderr, r.stderr
+    assert cs.state()["stacks"][name]["id"] == sid and cs.calls_of("delete-stack") == 0
+
+
+# --- the AWS-side stop exists from the creation of the instance, without the runner --------------------------
+
+
+def test_runner_lost_right_after_create_stack_the_instance_is_stopped_without_runner_or_cleanup(cs: CiSim):
+    """AWS accepts CreateStack and the runner dies before it receives the StackId (SIGKILL from the fake, at that
+    exact point). CloudFormation keeps creating: the instance appears later, together with the in-stack schedule
+    bound to the spend limit, and EventBridge stops it. No runner, no cleanup job."""
+    doc = request()
+    req = cs.write_request(doc)
+    p = subprocess.Popen(
+        [sys.executable, str(CI_SCRIPT), *cs.run_args(req)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env={**cs.env, "FAKE_AWS_CREATE_DELAY_S": "1.5", "FAKE_AWS_KILL_CALLER_AFTER": "create-stack"},
+    )
+    assert p.wait(timeout=120) == -signal.SIGKILL
+    st = cs.state()
+    stack = st["stacks"][doc["stack"]["name"]]
+    assert stack["status"] == "CREATE_IN_PROGRESS" and "i-0sim" not in st["instances"]  # accepted, nothing yet
+    owner = json.loads(st["params"][ci.OWNER_PREFIX + doc["stack"]["name"]]["Value"])
+    assert owner["owner_id"] == doc["id"] and owner["stack_id"] is None  # the runner never learned the id
+    assert not (cs.cievidence / "provision.json").exists() and not (cs.cievidence / "cleanup-run.json").exists()
+    # later, on its own, CloudFormation creates the instance and the schedule that targets it
+    wait_until(lambda: cs.state()["stacks"][doc["stack"]["name"]]["status"] == "CREATE_COMPLETE", timeout=60)
+    assert cs.host_state() == "running"
+    (sched,) = cs.state()["schedules"].values()
+    assert sched["created_by"] == "cloudformation"
+    assert json.loads(sched["target"]["Input"]) == {"InstanceIds": ["i-0sim"]}
+    claim = json.loads(cs.state()["params"][ci.LEDGER_PREFIX + doc["id"]]["Value"])
+    claimed = ci.dt.datetime.fromisoformat(claim["claimed_at"].replace("Z", "+00:00")).timestamp()
+    start = ci.dt.datetime.fromisoformat(sched["start-date"].replace("Z", "+00:00")).timestamp()
+    assert start <= claimed + (60 + ci.WATCHDOG_GRACE_MIN) * 60 + 5  # within the request's spend limit
+    subprocess.run([str(cs.tmp / "aws"), "fake", "fire-schedules"], env=cs.env, check=True)  # EventBridge only
+    assert cs.host_state() == "stopped"
+    assert cs.calls_of("stop-instances") == 0 and cs.calls_of("delete-stack") == 0  # neither runner nor cleanup
+    # a later cleanup job still finds it as this request's (claim token tag) and deletes it by StackId
+    r = cs.cleanup(req, cs.tmp / "ev-cleanup")
+    assert r.returncode == 0, r.stderr
+    clean = cs.evj("cleanup.json", cs.tmp / "ev-cleanup")
+    assert clean["ownership"] == "owned" and clean["stack_deleted"] is True and clean["stack_id"] == stack["id"]

@@ -12,8 +12,11 @@ Account state for the CI orchestration (deploy/inference/ci/aws_validation.py) l
 seeded by the test: access stack, quota, subnets, route tables, AMIs, SSM parameters. Without it the fake behaves
 as for the GPU-validation tests (one simulated instance, text queries). Faults: FAKE_AWS_CREATE_FAIL=1 (stack
 creation fails and is deleted), FAKE_AWS_BOOTSTRAP=fail|hang, FAKE_AWS_DELETE_FAIL=1 (DELETE_FAILED, the volume
-stays), FAKE_AWS_OTHER_GPU=ID:TYPE:STATE (another G instance in the account). `fake fire-schedules` does what
-EventBridge Scheduler would do with every armed schedule (the AWS-side watchdog).
+stays), FAKE_AWS_OTHER_GPU=ID:TYPE:STATE (another G instance in the account), FAKE_AWS_CREATE_DELAY_S=N (CloudFormation
+finishes the creation N seconds later in a detached process, like AWS, whether or not the caller is alive),
+FAKE_AWS_KILL_CALLER_AFTER=create-stack (the caller, i.e. the runner, is SIGKILLed right after AWS accepted
+CreateStack and before it receives the StackId). `fake fire-schedules` does what EventBridge Scheduler would do with
+every armed schedule (the AWS-side watchdog), including the one CloudFormation creates with the instance.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ import fnmatch
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -150,24 +154,83 @@ def outputs(stack: dict[str, Any]) -> list[dict[str, str]]:
     return [{"OutputKey": k, "OutputValue": v} for k, v in stack.get("outputs", {}).items()]
 
 
-def cloudformation(op: str, o: dict[str, str]) -> int:
+def complete_creation(st: dict[str, Any], name: str) -> None:
+    """What CloudFormation does after accepting CreateStack: the instance, the volume, the in-stack watchdog."""
     sim_dir = Path(os.environ["FAKE_AWS_SIM_DIR"])
+    stack = st["stacks"][name]
+    if stack["status"] != "CREATE_IN_PROGRESS":
+        return
+    if os.environ.get("FAKE_AWS_CREATE_FAIL") == "1":
+        stack["status"] = "DELETE_IN_PROGRESS"
+        stack["events"] = [{"LogicalResourceId": "Host", "ResourceStatus": "CREATE_FAILED",
+                            "ResourceStatusReason": "simulated: insufficient capacity"}]  # fmt: skip
+        return
+    params, tags, sid = stack["params"], stack["tags"], stack["id"]
+    cfn = {"aws:cloudformation:stack-name": name, "aws:cloudformation:stack-id": sid}
+    st.setdefault("instances", {})[IID] = {
+        "type": params["InstanceType"],
+        "tags": {**tags, "cce:role": "inference", **cfn},
+    }
+    st.setdefault("volumes", {})[VOL] = {"stack": name, "stack_id": sid}
+    stack["outputs"] = {
+        "InstanceId": IID,
+        "EndpointUrl": "http://10.0.0.10:8080",
+        "WeightsVolumeId": VOL,
+        "EndpointSecurityGroupId": "sg-0sim",
+        "ControllerPolicyArn": "arn:aws:iam::000000000000:policy/x",
+    }
+    if params.get("WatchdogStart"):  # AWS::Scheduler::Schedule of the template, created with the instance
+        stack["outputs"]["WatchdogScheduleName"] = f"{name}-watchdog"
+        st.setdefault("schedules", {})[f"{params['WatchdogScheduleGroup']}/{name}-watchdog"] = {
+            "schedule-expression": "rate(10 minutes)",
+            "start-date": params["WatchdogStart"],
+            "end-date": params["WatchdogEnd"],
+            "created_by": "cloudformation",
+            "stack_id": sid,
+            "target": {
+                "Arn": "arn:aws:scheduler:::aws-sdk:ec2:stopInstances",
+                "RoleArn": params["WatchdogRoleArn"],
+                "Input": json.dumps({"InstanceIds": [IID]}),
+            },
+        }
+    sim("start")  # a new instance boots and runs its bootstrap (cloud-init)
+    mode = os.environ.get("FAKE_AWS_BOOTSTRAP", "ok")
+    marks = ["bootstrap start", "model selected: qwen3.6-27b-q8_0", "weights volume mounted"]
+    if mode == "ok":
+        marks += ["runtime installed", "model installed and verified", "units installed; server started"]
+    (sim_dir / "bootstrap.log").write_text("".join(f"2026-11-24T00:00:00.000Z {m}\n" for m in marks))
+    status = {"ok": "status: done", "fail": "status: error\nerrors: bootstrap.sh exit 1"}.get(mode, "status: running")
+    (sim_dir / "cloud-init-status").write_text(status + "\n")
+    stack["status"] = "CREATE_COMPLETE"
+
+
+def find_stack(st: dict[str, Any], name_or_id: str) -> tuple[str, dict[str, Any] | None]:
+    if name_or_id.startswith("arn:"):
+        for name, stack in st.get("stacks", {}).items():
+            if stack.get("id") == name_or_id:
+                return name, stack
+        return "", None
+    return name_or_id, st.get("stacks", {}).get(name_or_id)
+
+
+def cloudformation(op: str, o: dict[str, str]) -> int:
+    kill_caller = False
     with state() as st:
         assert st is not None, "cloudformation needs a seeded state.json"
         stacks = st.setdefault("stacks", {})
-        name = o.get("stack-name", "")
-        stack = stacks.get(name)
+        name, stack = find_stack(st, o.get("stack-name", ""))
         if op == "describe-stacks":
             if stack and stack["status"] == "DELETE_IN_PROGRESS" and not stack.get("delete_failed"):
                 stack["status"] = "DELETE_COMPLETE"  # the deletion completes between two describes
             if not stack or stack["status"] == "DELETE_COMPLETE":
-                return fail("ValidationError", f"Stack with id {name} does not exist", "DescribeStacks")
+                return fail("ValidationError", f"Stack with id {o.get('stack-name')} does not exist", "DescribeStacks")
             out = {
                 "StackName": name,
-                "StackId": f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/x",
+                "StackId": stack.get("id", f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/seeded"),
                 "StackStatus": stack["status"],
                 "Outputs": outputs(stack),
                 "Tags": [{"Key": k, "Value": v} for k, v in stack.get("tags", {}).items()],
+                "Parameters": [{"ParameterKey": k, "ParameterValue": v} for k, v in stack.get("params", {}).items()],
             }
             print(json.dumps({"Stacks": [out]}))
             return 0
@@ -178,47 +241,84 @@ def cloudformation(op: str, o: dict[str, str]) -> int:
             assert Path(tpl).is_file() and o.get("role-arn") and o.get("on-failure") == "DELETE", o
             params = {p["ParameterKey"]: p["ParameterValue"] for p in json.loads(o["parameters"])}
             tags = {t["Key"]: t["Value"] for t in json.loads(o["tags"])}
-            new: dict[str, Any] = {"status": "CREATE_COMPLETE", "params": params, "tags": tags, "role": o["role-arn"]}
-            stacks[name] = new
-            if os.environ.get("FAKE_AWS_CREATE_FAIL") == "1":
-                new["status"] = "DELETE_IN_PROGRESS"
-                new["events"] = [{"LogicalResourceId": "Host", "ResourceStatus": "CREATE_FAILED",
-                                  "ResourceStatusReason": "simulated: insufficient capacity"}]  # fmt: skip
-                print(json.dumps({"StackId": name}))
-                return 0
-            itags = {**tags, "cce:role": "inference", "aws:cloudformation:stack-name": name}
-            st.setdefault("instances", {})[IID] = {"type": params["InstanceType"], "tags": itags}
-            st.setdefault("volumes", {})[VOL] = {"stack": name}
-            new["outputs"] = {
-                "InstanceId": IID,
-                "EndpointUrl": "http://10.0.0.10:8080",
-                "WeightsVolumeId": VOL,
-                "EndpointSecurityGroupId": "sg-0sim",
-                "ControllerPolicyArn": "arn:aws:iam::000000000000:policy/x",
+            sid = f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/{uuid.uuid4()}"
+            stacks[name] = {
+                "id": sid,
+                "status": "CREATE_IN_PROGRESS",
+                "params": params,
+                "tags": tags,
+                "role": o["role-arn"],
             }
-            sim("start")  # a new instance boots and runs its bootstrap (cloud-init)
-            mode = os.environ.get("FAKE_AWS_BOOTSTRAP", "ok")
-            marks = ["bootstrap start", "model selected: qwen3.6-27b-q8_0", "weights volume mounted"]
-            if mode == "ok":
-                marks += ["runtime installed", "model installed and verified", "units installed; server started"]
-            (sim_dir / "bootstrap.log").write_text("".join(f"2026-11-24T00:00:00.000Z {m}\n" for m in marks))
-            status = {"ok": "status: done", "fail": "status: error\nerrors: bootstrap.sh exit 1"}.get(
-                mode, "status: running"
-            )
-            (sim_dir / "cloud-init-status").write_text(status + "\n")
-            print(json.dumps({"StackId": name}))
-            return 0
-        if op == "describe-stack-resource":
+            delay = float(os.environ.get("FAKE_AWS_CREATE_DELAY_S", "0"))
+            if delay > 0:  # CloudFormation keeps going on its own, whatever happens to the caller
+                subprocess.Popen(  # noqa: S603
+                    [sys.executable, __file__, "fake", "complete-stack", name, str(delay)],
+                    start_new_session=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                complete_creation(st, name)
+            kill_caller = os.environ.get("FAKE_AWS_KILL_CALLER_AFTER") == "create-stack"
+            if not kill_caller:
+                print(json.dumps({"StackId": sid}))
+        elif op == "describe-stack-resource":
             if not stack or "outputs" not in stack or stack["status"].startswith("DELETE"):
                 return fail(
                     "ValidationError", f"Resource Host does not exist for stack {name}", "DescribeStackResource"
                 )
             print(json.dumps({"StackResourceDetail": {"PhysicalResourceId": IID, "ResourceStatus": "CREATE_COMPLETE"}}))
             return 0
-        if op == "describe-stack-events":
+        elif op == "deploy":  # the access stack (github-validation-access.yaml), as `cloudformation deploy` does it
+            assert Path(o["template-file"]).is_file() and "--no-fail-on-empty-changeset" in sys.argv
+            assert "CAPABILITY_NAMED_IAM" in sys.argv
+            params = dict(x.split("=", 1) for x in multi(sys.argv[1:], "--parameter-overrides"))
+            if stack and stack.get("params") == params and stack["status"].endswith("_COMPLETE"):
+                print(f"\nNo changes to deploy. Stack {name} is up to date")
+                return 0
+            acct = "arn:aws:iam::000000000000"
+            stacks[name] = {
+                "id": f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/{uuid.uuid4()}",
+                "status": "UPDATE_COMPLETE" if stack else "CREATE_COMPLETE",
+                "params": params,
+                "outputs": {
+                    "ValidationRoleArn": f"{acct}:role/cce-a09-github-validation",
+                    "CfnExecutionRoleArn": f"{acct}:role/cce-a09-cfn-execution",
+                    "HostPermissionsBoundaryArn": f"{acct}:policy/cce-a09-host-boundary",
+                    "WatchdogRoleArn": f"{acct}:role/cce-a09-watchdog",
+                    "WatchdogScheduleGroup": "cce-inference-watchdog",
+                    "AllowedVpcId": params["VpcId"],
+                    "AllowedSubnetId": params["SubnetId"],
+                    "GitHubSubject": params["GitHubSubject"],
+                },
+            }
+            sub = os.environ.get("FAKE_AWS_TRUST_SUB_OVERRIDE") or params["GitHubSubject"]  # a wrong trust
+            st.setdefault("roles", {})["cce-a09-github-validation"] = {
+                "Arn": f"{acct}:role/cce-a09-github-validation",
+                "MaxSessionDuration": 43200,
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {"Federated": params["GitHubOidcProviderArn"]},
+                            "Action": "sts:AssumeRoleWithWebIdentity",
+                            "Condition": {
+                                "StringEquals": {
+                                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                                    "token.actions.githubusercontent.com:sub": sub,
+                                }
+                            },
+                        }
+                    ],
+                },
+            }
+            print(f"\nSuccessfully created/updated stack - {name}")
+            return 0
+        elif op == "describe-stack-events":
             print(json.dumps({"StackEvents": (stack or {}).get("events", [])}))
             return 0
-        if op == "delete-stack":
+        elif op == "delete-stack":
             if not stack:
                 return 0
             if os.environ.get("FAKE_AWS_DELETE_FAIL") == "1":
@@ -229,12 +329,21 @@ def cloudformation(op: str, o: dict[str, str]) -> int:
                     st["instances"][IID]["terminated"] = True  # the instance went; the volume did not
                 return 0
             stack["status"] = "DELETE_IN_PROGRESS"
-            if IID in st.get("instances", {}):
+            inst = st.get("instances", {}).get(IID)
+            if inst and inst["tags"].get("aws:cloudformation:stack-id") == stack.get("id"):
                 sim("stop")
-                st["instances"][IID]["terminated"] = True
-            st.get("volumes", {}).pop(VOL, None)
+                inst["terminated"] = True
+            if st.get("volumes", {}).get(VOL, {}).get("stack_id") == stack.get("id"):
+                st["volumes"].pop(VOL)
+            for key in [k for k, v in st.get("schedules", {}).items() if v.get("stack_id") == stack.get("id")]:
+                st["schedules"].pop(key)  # the in-stack watchdog goes with its stack
             return 0
-    return fail("InvalidAction", op)
+        else:
+            return fail("InvalidAction", op)
+    if kill_caller:
+        os.kill(os.getppid(), signal.SIGKILL)  # the runner is lost before it learns the StackId
+        return 0
+    return 0
 
 
 def ssm(op: str, o: dict[str, str]) -> int:
@@ -316,7 +425,10 @@ def scheduler(op: str, o: dict[str, str]) -> int:
         if op == "get-schedule":
             if key not in schedules:
                 return fail("ResourceNotFoundException", key, "GetSchedule")
-            print(json.dumps(schedules[key]))
+            sc = schedules[key]
+            print(json.dumps({"Name": o.get("name"), "GroupName": o.get("group-name"), "Target": sc["target"],
+                              "StartDate": sc["start-date"], "EndDate": sc["end-date"],
+                              "ScheduleExpression": sc["schedule-expression"], "State": "ENABLED"}))  # fmt: skip
             return 0
         if op == "delete-schedule":
             if schedules.pop(key, None) is None:
@@ -352,11 +464,19 @@ def main(argv: list[str]) -> int:
     state_dir = Path(os.environ["FAKE_AWS_DIR"])
     state_dir.mkdir(parents=True, exist_ok=True)
     with open(state_dir / "calls.jsonl", "a", encoding="utf-8") as fh:
-        fh.write(json.dumps({"ts": time.time(), "argv": argv}) + "\n")
+        rec = {"ts": time.time(), "argv": argv, "profile": os.environ.get("AWS_PROFILE")}
+        rec["env_static_key"] = bool(os.environ.get("AWS_ACCESS_KEY_ID"))
+        fh.write(json.dumps(rec) + "\n")
     service, op = argv[0], argv[1]
     o = opts(argv[2:])
     if (service, op) == ("fake", "fire-schedules"):
         return fire_schedules()
+    if (service, op) == ("fake", "complete-stack"):  # detached: CloudFormation finishing a creation on its own
+        time.sleep(float(argv[3]))
+        with state() as st:
+            assert st is not None
+            complete_creation(st, argv[2])
+        return 0
     if (service, op) == ("ec2", "describe-instances"):
         return describe_instances(argv, o)
     if (service, op) == ("ec2", "start-instances"):
@@ -376,6 +496,24 @@ def main(argv: list[str]) -> int:
         return cloudformation(op, o)
     if service == "scheduler":
         return scheduler(op, o)
+    if service == "iam":
+        with state() as st:
+            assert st is not None
+            if op == "list-open-id-connect-providers":
+                print(json.dumps({"OpenIDConnectProviderList": [{"Arn": a} for a in st.get("oidc_providers", {})]}))
+                return 0
+            if op == "get-open-id-connect-provider":
+                prov = st.get("oidc_providers", {}).get(o["open-id-connect-provider-arn"])
+                if prov is None:
+                    return fail("NoSuchEntity", "provider", "GetOpenIDConnectProvider")
+                print(json.dumps(prov))
+                return 0
+            if op == "get-role":
+                role = st.get("roles", {}).get(o["role-name"])
+                if role is None:
+                    return fail("NoSuchEntity", o["role-name"], "GetRole")
+                print(json.dumps({"Role": {"RoleName": o["role-name"], **role}}))
+                return 0
     if (service, op) == ("sts", "get-caller-identity"):
         arn = "arn:aws:sts::000000000000:assumed-role/cce-a09-github-validation/a09-test"
         print(json.dumps({"Account": "000000000000", "Arn": arn}))
@@ -391,6 +529,12 @@ def main(argv: list[str]) -> int:
             assert st is not None
             offers = [{"InstanceType": "g6e.xlarge", "Location": loc}] if loc in st["offered_azs"] else []
             print(json.dumps({"InstanceTypeOfferings": offers}))
+        return 0
+    if (service, op) == ("ec2", "describe-vpcs"):
+        with state() as st:
+            assert st is not None
+            vpcs = {s["VpcId"] for s in st.get("subnets", [])} | set(st.get("vpcs", []))
+            print(json.dumps({"Vpcs": [{"VpcId": o["vpc-ids"]}] if o["vpc-ids"] in vpcs else []}))
         return 0
     if (service, op) == ("ec2", "describe-subnets"):
         return seeded("subnets", o, "subnet-ids", "SubnetId")
@@ -410,11 +554,13 @@ def main(argv: list[str]) -> int:
             print(json.dumps({"RouteTables": tables}))
         return 0
     if (service, op) == ("ec2", "describe-volumes"):
-        stack = multi(argv, "--filters")[0].split("Values=", 1)[1]
+        flt = multi(argv, "--filters")[0]
+        value = flt.split("Values=", 1)[1]
+        field = "stack_id" if "stack-id" in flt else "stack"
         with state() as st:
             assert st is not None
             vols = [
-                {"VolumeId": v, "State": "available"} for v, d in st.get("volumes", {}).items() if d["stack"] == stack
+                {"VolumeId": v, "State": "available"} for v, d in st.get("volumes", {}).items() if d.get(field) == value
             ]
             print(json.dumps({"Volumes": vols}))
         return 0
