@@ -8,9 +8,11 @@ Like the real service, Run Command is rejected unless the instance is `running` 
 agent online). Environment: FAKE_AWS_DIR, FAKE_AWS_SIM_DIR, FAKE_AWS_SIM_HOST; FAKE_AWS_STOP_FAIL=1 makes
 stop-instances fail; FAKE_AWS_RUN_FAIL=SUBSTRING makes Run Command fail for the commands that contain SUBSTRING.
 
-Account state for the CI orchestration (deploy/inference/ci/aws_validation.py) lives in $FAKE_AWS_DIR/state.json,
-seeded by the test: access stack, quota, subnets, route tables, AMIs, SSM parameters. Without it the fake behaves
-as for the GPU-validation tests (one simulated instance, text queries). Faults: FAKE_AWS_CREATE_FAIL=1 (stack
+Account state for the local orchestration (deploy/inference/validation/aws_validation.py) lives in
+$FAKE_AWS_DIR/state.json, seeded by the test: identities by access key (the standard chain: environment keys, then
+AWS_PROFILE in AWS_SHARED_CREDENTIALS_FILE), base stack, quota, subnets, route tables, AMIs, SSM parameters.
+Without it the fake behaves as for the GPU-validation tests (one simulated instance, text queries). Faults:
+FAKE_AWS_DEPLOY_FAIL=1 (`cloudformation deploy` of the base stack fails), FAKE_AWS_CREATE_FAIL=1 (stack
 creation fails and is deleted), FAKE_AWS_BOOTSTRAP=fail|hang, FAKE_AWS_DELETE_FAIL=1 (DELETE_FAILED, the volume
 stays), FAKE_AWS_OTHER_GPU=ID:TYPE:STATE (another G instance in the account), FAKE_AWS_CREATE_DELAY_S=N (CloudFormation
 finishes the creation N seconds later in a detached process, like AWS, whether or not the caller is alive),
@@ -21,10 +23,12 @@ every armed schedule (the AWS-side watchdog), including the one CloudFormation c
 
 from __future__ import annotations
 
+import configparser
 import fcntl
 import fnmatch
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -213,6 +217,84 @@ def find_stack(st: dict[str, Any], name_or_id: str) -> tuple[str, dict[str, Any]
     return name_or_id, st.get("stacks", {}).get(name_or_id)
 
 
+ROLE_NAMES = {
+    "CfnExecutionRole": ("cce-a09-cfn-execution", "cloudformation.amazonaws.com"),
+    "WatchdogRole": ("cce-a09-watchdog", "scheduler.amazonaws.com"),
+    "ValidationRole": ("cce-a09-github-validation", None),  # the former CI role: trusted by GitHub's OIDC provider
+}
+ACCT = "arn:aws:iam::000000000000"
+
+
+def base_resources(body: str) -> dict[str, str]:
+    part = body.split("\nResources:\n", 1)[1].split("\nOutputs:\n", 1)[0]
+    return dict(re.findall(r"^  ([A-Za-z0-9]+):\n    Type: (\S+)", part, flags=re.M))
+
+
+def role_doc(logical: str) -> dict[str, Any]:
+    name, service = ROLE_NAMES[logical]
+    principal: dict[str, str] = (
+        {"Service": service} if service else {"Federated": f"{ACCT}:oidc-provider/token.actions.githubusercontent.com"}
+    )
+    stmt: dict[str, Any] = {"Effect": "Allow", "Principal": principal}
+    stmt["Action"] = "sts:AssumeRole" if service else "sts:AssumeRoleWithWebIdentity"
+    return {"Arn": f"{ACCT}:role/{name}", "AssumeRolePolicyDocument": {"Version": "2012-10-17", "Statement": [stmt]}}
+
+
+def deployed_base(
+    st: dict[str, Any], name: str, body: str, params: dict[str, str], old: dict[str, Any] | None
+) -> dict[str, Any]:
+    """The base stack after a create/update: exactly the template's resources; roles that left the template are
+    deleted (as CloudFormation does on update), the others keep their names."""
+    kept = {**(old or {}).get("params", {}), **params} if old else dict(params)
+    resources: dict[str, dict[str, str]] = {}
+    roles = st.setdefault("roles", {})
+    for logical, rtype in base_resources(body).items():
+        physical = ROLE_NAMES[logical][0] if logical in ROLE_NAMES else f"{name}-{logical}"
+        if logical == "HostPermissionsBoundary":
+            physical = f"{ACCT}:policy/cce-a09-host-boundary"
+        if logical == "WatchdogScheduleGroup":
+            physical = "cce-inference-watchdog"
+        resources[logical] = {"type": rtype, "physical": physical}
+        if rtype == "AWS::IAM::Role":
+            roles[physical] = role_doc(logical)
+    for logical, res in (old or {}).get("resources", {}).items():
+        if logical not in resources and res["type"] == "AWS::IAM::Role":
+            roles.pop(res["physical"], None)
+    outputs = {
+        "CfnExecutionRoleArn": f"{ACCT}:role/cce-a09-cfn-execution",
+        "HostPermissionsBoundaryArn": f"{ACCT}:policy/cce-a09-host-boundary",
+        "WatchdogRoleArn": f"{ACCT}:role/cce-a09-watchdog",
+        "WatchdogScheduleGroup": "cce-inference-watchdog",
+        "AllowedVpcId": kept["VpcId"],
+        "AllowedSubnetId": kept["SubnetId"],
+    }
+    if "ValidationRole" in resources:
+        outputs["ValidationRoleArn"] = f"{ACCT}:role/cce-a09-github-validation"
+    return {
+        "id": (old or {}).get("id") or f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/{uuid.uuid4()}",
+        "status": "UPDATE_COMPLETE" if old else "CREATE_COMPLETE",
+        "params": {k: v for k, v in kept.items() if k in ("VpcId", "SubnetId", "InstanceType")}
+        | ({k: v for k, v in kept.items() if k.startswith("GitHub")} if "ValidationRole" in resources else {}),
+        "outputs": outputs,
+        "resources": resources,
+        "template": body,
+    }
+
+
+def caller_key() -> str | None:
+    """The access key the standard chain would use: environment credentials first, then AWS_PROFILE's."""
+    if os.environ.get("AWS_ACCESS_KEY_ID"):
+        return os.environ["AWS_ACCESS_KEY_ID"]
+    profile = os.environ.get("AWS_PROFILE")
+    creds = os.environ.get("AWS_SHARED_CREDENTIALS_FILE")
+    if profile and creds and Path(creds).is_file():
+        cp = configparser.ConfigParser()
+        cp.read(creds)
+        if cp.has_section(profile):
+            return cp.get(profile, "aws_access_key_id", fallback=None)
+    return None
+
+
 def cloudformation(op: str, o: dict[str, str]) -> int:
     kill_caller = False
     with state() as st:
@@ -269,51 +351,38 @@ def cloudformation(op: str, o: dict[str, str]) -> int:
                 )
             print(json.dumps({"StackResourceDetail": {"PhysicalResourceId": IID, "ResourceStatus": "CREATE_COMPLETE"}}))
             return 0
-        elif op == "deploy":  # the access stack (github-validation-access.yaml), as `cloudformation deploy` does it
+        elif op == "deploy":  # the base stack (validation-base.yaml), as `cloudformation deploy` does it
             assert Path(o["template-file"]).is_file() and "--no-fail-on-empty-changeset" in sys.argv
             assert "CAPABILITY_NAMED_IAM" in sys.argv
+            body = Path(o["template-file"]).read_text()
             params = dict(x.split("=", 1) for x in multi(sys.argv[1:], "--parameter-overrides"))
-            if stack and stack.get("params") == params and stack["status"].endswith("_COMPLETE"):
+            same = stack and stack.get("params") == params and stack.get("template") == body
+            if same and stack["status"].endswith("_COMPLETE"):
                 print(f"\nNo changes to deploy. Stack {name} is up to date")
                 return 0
-            acct = "arn:aws:iam::000000000000"
-            stacks[name] = {
-                "id": f"arn:aws:cloudformation:us-east-1:000000000000:stack/{name}/{uuid.uuid4()}",
-                "status": "UPDATE_COMPLETE" if stack else "CREATE_COMPLETE",
-                "params": params,
-                "outputs": {
-                    "ValidationRoleArn": f"{acct}:role/cce-a09-github-validation",
-                    "CfnExecutionRoleArn": f"{acct}:role/cce-a09-cfn-execution",
-                    "HostPermissionsBoundaryArn": f"{acct}:policy/cce-a09-host-boundary",
-                    "WatchdogRoleArn": f"{acct}:role/cce-a09-watchdog",
-                    "WatchdogScheduleGroup": "cce-inference-watchdog",
-                    "AllowedVpcId": params["VpcId"],
-                    "AllowedSubnetId": params["SubnetId"],
-                    "GitHubSubject": params["GitHubSubject"],
-                },
-            }
-            sub = os.environ.get("FAKE_AWS_TRUST_SUB_OVERRIDE") or params["GitHubSubject"]  # a wrong trust
-            st.setdefault("roles", {})["cce-a09-github-validation"] = {
-                "Arn": f"{acct}:role/cce-a09-github-validation",
-                "MaxSessionDuration": 43200,
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {"Federated": params["GitHubOidcProviderArn"]},
-                            "Action": "sts:AssumeRoleWithWebIdentity",
-                            "Condition": {
-                                "StringEquals": {
-                                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                                    "token.actions.githubusercontent.com:sub": sub,
-                                }
-                            },
-                        }
-                    ],
-                },
-            }
+            if os.environ.get("FAKE_AWS_DEPLOY_FAIL") == "1":
+                return fail("ValidationError", "simulated deploy failure", "CreateChangeSet")
+            stacks[name] = deployed_base(st, name, body, params, stack)
             print(f"\nSuccessfully created/updated stack - {name}")
+            return 0
+        elif op == "get-template":
+            if not stack or stack["status"] == "DELETE_COMPLETE":
+                return fail("ValidationError", f"Stack with id {name} does not exist", "GetTemplate")
+            print(json.dumps({"TemplateBody": stack.get("template", "")}))
+            return 0
+        elif op == "list-stack-resources":
+            if not stack or stack["status"] == "DELETE_COMPLETE":
+                return fail("ValidationError", f"Stack with id {name} does not exist", "ListStackResources")
+            res = [
+                {
+                    "LogicalResourceId": k,
+                    "ResourceType": v["type"],
+                    "PhysicalResourceId": v["physical"],
+                    "ResourceStatus": "CREATE_COMPLETE",
+                }
+                for k, v in stack.get("resources", {}).items()
+            ]
+            print(json.dumps({"StackResourceSummaries": res}))
             return 0
         elif op == "describe-stack-events":
             print(json.dumps({"StackEvents": (stack or {}).get("events", [])}))
@@ -465,6 +534,8 @@ def main(argv: list[str]) -> int:
     state_dir.mkdir(parents=True, exist_ok=True)
     with open(state_dir / "calls.jsonl", "a", encoding="utf-8") as fh:
         rec = {"ts": time.time(), "argv": argv, "profile": os.environ.get("AWS_PROFILE")}
+        rec["region"] = os.environ.get("AWS_REGION")
+        rec["key"] = caller_key()
         rec["env_static_key"] = bool(os.environ.get("AWS_ACCESS_KEY_ID"))
         fh.write(json.dumps(rec) + "\n")
     service, op = argv[0], argv[1]
@@ -515,8 +586,17 @@ def main(argv: list[str]) -> int:
                 print(json.dumps({"Role": {"RoleName": o["role-name"], **role}}))
                 return 0
     if (service, op) == ("sts", "get-caller-identity"):
-        arn = "arn:aws:sts::000000000000:assumed-role/cce-a09-github-validation/a09-test"
-        print(json.dumps({"Account": "000000000000", "Arn": arn}))
+        with state() as st:
+            identities = (st or {}).get("identities")
+        if not identities:  # GPU-validation tests: any identity
+            print(json.dumps({"Account": "000000000000", "Arn": f"{ACCT}:user/sim"}))
+            return 0
+        ident = identities.get(caller_key() or "")
+        if ident is None:
+            return fail(
+                "InvalidClientTokenId", "The security token included in the request is invalid", "GetCallerIdentity"
+            )
+        print(json.dumps({"Account": ident["Account"], "Arn": ident["Arn"], "UserId": "AIDASIM"}))
         return 0
     if (service, op) == ("service-quotas", "get-service-quota"):
         with state() as st:

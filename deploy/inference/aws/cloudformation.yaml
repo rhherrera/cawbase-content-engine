@@ -70,16 +70,16 @@ Parameters:
     Type: String
     Default: ""
     Description: >-
-      Optional permissions boundary of the host role. The GitHub validation (deploy/inference/ci) passes the
-      boundary of its access stack, whose CloudFormation execution role can only create roles bounded by it.
+      Optional permissions boundary of the host role. The local validation (deploy/inference/validation) passes
+      the boundary of its base stack, whose CloudFormation execution role can only create roles bounded by it.
       Empty (manual deployment): no boundary.
   WatchdogStart:
     Type: String
     Default: ""
     AllowedPattern: "^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$"
     Description: >-
-      Optional AWS-side stop (GitHub validation, deploy/inference/ci): from this UTC time an EventBridge schedule,
-      created by CloudFormation together with the instance (no runner involved), stops it every 10 minutes until
+      Optional AWS-side stop (local validation, deploy/inference/validation): from this UTC time an EventBridge
+      schedule, created by CloudFormation with the instance (no local process involved), stops it every 10 min until
       WatchdogEnd. If the schedule cannot be created the stack rolls back and the instance is removed. Empty: none.
   WatchdogEnd:
     Type: String
