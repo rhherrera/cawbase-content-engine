@@ -883,10 +883,12 @@ class Run:
             ami = self.aws.json("ssm", "get-parameter", "--name", AMI_PARAM)["Parameter"]["Value"]
         images = self.aws.json("ec2", "describe-images", "--image-ids", ami).get("Images", [])
         img = images[0] if images else {}
-        pre["ami"] = {k: img.get(k) for k in ("ImageId", "Name", "OwnerAlias", "State", "Architecture", "CreationDate")}
+        # DescribeImages names the owner alias `ImageOwnerAlias` (there is no `OwnerAlias` field)
+        fields = ("ImageId", "Name", "ImageOwnerAlias", "OwnerId", "Public", "State", "Architecture", "CreationDate")
+        pre["ami"] = {k: img.get(k) for k in fields}
         if not (
             img.get("State") == "available"
-            and img.get("OwnerAlias") == "amazon"
+            and img.get("ImageOwnerAlias") == "amazon"
             and AMI_NAME in str(img.get("Name"))
             and img.get("Architecture") == "x86_64"
         ):

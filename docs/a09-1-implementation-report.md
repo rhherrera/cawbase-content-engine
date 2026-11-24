@@ -154,7 +154,7 @@ Rama `fix/a09-1-local-aws-validation`, creada desde `origin/main` en `e7e08b3` (
 
 **Evidencia A (AWS real, solo lecturas, 2026-11-24).** Con la solicitud local (fuera del checkout) y la identidad del operador: `setup` (plan) del stack de acceso anterior → `to_remove: ValidationRole (cce-a09-github-validation)` con confianza federada (`token.actions.githubusercontent.com`, `AssumeRoleWithWebIdentity`), parámetros `GitHubOidcProviderArn`, `GitHubSubject` y `ParityObjectArn` descartados, red sin cambios, ningún recurso a agregar; `plan` → identidad igual por la CLI y por boto3 en `us-east-1` y en la cuenta esperada, corrida rechazada porque el stack base aún tiene el rol federado; `get-template` devuelve el cuerpo original como texto, igual a la plantilla desplegada. Lectura del estado (IAM, CloudFormation, SSM, Scheduler, EC2): el único rol que confía en este repositorio es `cce-a09-github-validation`, nunca usado; el proveedor OIDC lo comparten roles de otros repositorios (se conserva); ningún stack de validación, parámetro `/cce/…`, schedule ni instancia G. Ninguna escritura.
 
-**No verificado / pendiente.** La revocación externa (Q-A09-07) espera la autorización del usuario; `setup --apply` real; la corrida con GPU (gasto aparte); el túnel SSM real (falta `session-manager-plugin` en la máquina del operador; el preflight lo exige). GitHub Actions no se ejecutó para este cambio.
+**No verificado / pendiente.** La revocación externa (Q-A09-07) se aplicó después (§2.11); la corrida con GPU (gasto aparte) y el túnel SSM real siguen pendientes. GitHub Actions no se ejecutó para este cambio.
 
 | Ambiente | Comando | Resultado |
 |---|---|---|
@@ -166,6 +166,15 @@ Rama `fix/a09-1-local-aws-validation`, creada desde `origin/main` en `e7e08b3` (
 | macOS | `actionlint .github/workflows/*.yml` | solo el aviso SC2035 de `ci.yml`, anterior y sin tocar |
 
 No se ejecutaron PostgreSQL, `pytest -m dist` ni las validaciones Docker del motor: el paquete del motor no cambió.
+
+### 2.11 Revocación aplicada y `plan` real (2026-11-24)
+
+Con la autorización expresa del usuario (detalle en el [§5.3 del contrato](a09-1-aws-validation-automation.md#53-revocación-aplicada-2026-11-24)):
+
+- **Change set real** `revoke-github-oidc`, creado sin ejecutar: un único cambio, `Remove ValidationRole (cce-a09-github-validation)`, sin `Add` ni `Modify`, red y tipo de instancia sin cambios. Ejecutado: `UPDATE_COMPLETE`; el rol ya no existe (`NoSuchEntity`); se conservan los otros cuatro recursos, el proveedor OIDC compartido y los roles de otros repositorios. `setup` (plan) → `ready`, sin confianza federada, plantilla igual.
+- **GitHub**: variable `CCE_A09_AWS_ROLE_ARN` eliminada (ausente en el listado; la API responde 404).
+- **`plan` real** (perfil del operador, solicitud local): salida 0, `ready`. Identidad igual por la CLI y por boto3 en `us-east-1`; cuota G/VT 4 vCPU, 0 en uso; subred con salida por IGW; DLAMI de Amazon resuelta y `available`; peor caso 8,22 USD; paridad `pending` (sin ZIP); ningún parámetro `/cce/` creado.
+- **Defecto hallado y corregido**: la primera ejecución de `plan` rechazó la DLAMI legítima porque el preflight leía `OwnerAlias`; `DescribeImages` devuelve `ImageOwnerAlias` (el simulador repetía el nombre equivocado, heredado de la versión de CI). Corrección en `aws_validation.py`; el simulador usa la forma real de la respuesta; regresión `ami_without_owner_alias`. `test_aws_validation.py`: **68 aprobadas** (macOS); ruff, `ruff format --check` y `mypy --strict` sin hallazgos.
 
 ## 3. Trazabilidad AC-A09-1
 
@@ -198,7 +207,7 @@ No se ejecutaron PostgreSQL, `pytest -m dist` ni las validaciones Docker del mot
 | 25 | `test_model_selection.py` (17), `test_scripts.py` (ciclos `aws-q8_0` y `onprem-legacy-q4km`), `test_gpu_validation.py` (alias del controlador y artefacto del host); metadatos HF de Q8_0 (§2.6) | S, A | cumplido en S/A; descarga y carga reales **pendientes** (G) |
 | 26 | `parity.sh` con `--model`, artefacto registrado y 43/50 aparte (revisión y prueba estática) | D | **pendiente** (G) |
 | 27 | §2.10 (reformulado por D-A09-09): `test_aws_validation.py` (corrida completa local, `plan` sin escrituras, reintento sin gasto, reutilización, rechazos del preflight, paridad local, offload); `test_gpu_validation.py` (offload); `tests/test_a09_aws_validation_local.py`; lecturas reales (`setup` plan, `plan`) | S, A | cumplido en S/A; primera corrida real **pendiente** (G) |
-| 28 | §2.10: identidad única CLI/boto3/hijos y cuenta verificada antes de escribir (cuenta equivocada, CLI ≠ boto3, sin credenciales, perfil ambiguo), sin GitHub ni OIDC, stack base sin confianza federada y revocación del rol de CI en simulación, limpieza solo de lo propio, parada creada con la instancia, fallo de validación ≠ fallo de limpieza (`test_aws_validation.py`); IaC y árbol sin datos reales (`test_a09_aws_validation_local.py`); plan real del stack base | S, A | cumplido en S/A; revocación real (Q-A09-07) y semántica IAM real **pendientes** (G) |
+| 28 | §2.10: identidad única CLI/boto3/hijos y cuenta verificada antes de escribir (cuenta equivocada, CLI ≠ boto3, sin credenciales, perfil ambiguo), sin GitHub ni OIDC, stack base sin confianza federada y revocación del rol de CI en simulación, limpieza solo de lo propio, parada creada con la instancia, fallo de validación ≠ fallo de limpieza (`test_aws_validation.py`); IaC y árbol sin datos reales (`test_a09_aws_validation_local.py`); plan real del stack base | S, A | cumplido en S/A; revocación real aplicada y verificada (§2.11); semántica IAM real **pendiente** (G) |
 
 ## 4. Validación pendiente en GPU real
 

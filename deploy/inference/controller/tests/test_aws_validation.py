@@ -221,7 +221,9 @@ class CiSim(Sim):
                 {
                     "ImageId": AMI,
                     "Name": "Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 24.04) 20261119",
-                    "OwnerAlias": "amazon",
+                    "ImageOwnerAlias": "amazon",  # the DescribeImages field name (real response shape)
+                    "OwnerId": "898082745236",
+                    "Public": True,
                     "State": "available",
                     "Architecture": "x86_64",
                 }
@@ -536,6 +538,7 @@ def test_keep_stopped_then_retry_spends_nothing_then_a_new_request_reuses_the_st
         ("no_base_stack", f"base stack {BASE} is not ready (it does not exist"),
         ("base_keeps_a_ci_role", "roles trusted by a federated principal"),
         ("bad_ami", "is not an available Amazon"),
+        ("ami_without_owner_alias", "is not an available Amazon"),
         ("no_plugin", "session-manager-plugin is not installed"),
         ("parity_sha_mismatch", "parity ZIP sha256"),
     ],
@@ -564,7 +567,9 @@ def test_preflight_refusals_create_nothing_and_claim_nothing(cs: CiSim, case: st
     elif case == "base_keeps_a_ci_role":
         seed_legacy_ci_role(cs)
     elif case == "bad_ami":
-        cs.patch_state(lambda s: s["images"][0].update(OwnerAlias="someone"))
+        cs.patch_state(lambda s: s["images"][0].update(ImageOwnerAlias="someone"))
+    elif case == "ami_without_owner_alias":  # e.g. a copy in another account: no `ImageOwnerAlias`
+        cs.patch_state(lambda s: s["images"][0].pop("ImageOwnerAlias"))
     elif case == "no_plugin":
         (cs.bin / "session-manager-plugin").unlink()
         env["PATH"] = f"{cs.bin}:/usr/bin:/bin"
